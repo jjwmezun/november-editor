@@ -1,7 +1,7 @@
-import './Editor.scss';
+import '../assets/editor.scss';
 import React, { useEffect, useRef, useState } from 'react';
 import FileSaver from 'file-saver';
-import urban from './assets/urban.png';
+import urban from '../assets/urban.png';
 
 const createTileRenderer = ( ctx, tileset ) => args => {
     const {
@@ -437,6 +437,15 @@ const Canvas = props => {
     const [ selectedType, setSelectedType ] = useState( 0 );
     const [ frame, setFrame ] = useState( 0 );
 
+    useEffect(() => {
+        setWidth( props.width );
+        setHeight( props.height );
+        setObjects( props.objects );
+        setSelected( { x: null, y: null } );
+        setSelectedObject( null );
+        setSelectedType( 0 );
+    }, [ props.width, props.height, props.objects ]);
+
     const addObject = o => {
         setObjects( objects => {
             return [ ...objects, createObject( o ) ];
@@ -748,8 +757,13 @@ const Editor = () => {
     const createNewMap = () => {
         setWidth( 20 );
         setHeight( 20 );
+        setObjects( [] );
         setIsLoaded( true );
     };
+
+    useEffect(() => {
+        window.electronAPI.onNewMap( createNewMap );
+    }, [])
 
     return <div>
         { isLoaded && <Canvas height={ height } objects={ objects } width={ width } /> }
