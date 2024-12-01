@@ -1,7 +1,6 @@
-import './Editor.scss';
+import '../assets/editor.scss';
 import React, { useEffect, useRef, useState } from 'react';
-import FileSaver from 'file-saver';
-import urban from './assets/urban.png';
+import urban from '../assets/urban.png';
 
 const createTileRenderer = ( ctx, tileset ) => args => {
     const {
@@ -426,16 +425,27 @@ const getMousePosition = e => ({
 });
 
 const Canvas = props => {
+    const { height, objects, update, width } = props;
+
     const canvasRef = useRef();
-    const [ width, setWidth ] = useState( props.width );
-    const [ height, setHeight ] = useState( props.height );
-    const [ objects, setObjects ] = useState( props.objects );
     const [ gridImage, setGridImage ] = useState( null );
     const [ selected, setSelected ] = useState( { x: null, y: null } );
     const [ selectedObject, setSelectedObject ] = useState( null );
     const [ tileset, setTileset ] = useState( null );
     const [ selectedType, setSelectedType ] = useState( 0 );
     const [ frame, setFrame ] = useState( 0 );
+
+    useEffect(() => {
+        if ( objects.length === 0 ) {
+            setSelected( { x: null, y: null } );
+            setSelectedObject( null );
+            setSelectedType( 0 );
+        }
+    }, [ objects ]);
+
+    const setWidth = width => update( `Width`, width );
+    const setHeight = height => update( `Height`, height );
+    const setObjects = objects => update( `Objects`, objects );
 
     const addObject = o => {
         setObjects( objects => {
@@ -526,6 +536,10 @@ const Canvas = props => {
             window.requestAnimationFrame( tick );
         }
         window.requestAnimationFrame( tick );
+
+        return () => {
+            window.cancelAnimationFrame( tick );
+        };
     }, []);
 
     // Generate gridline image whene’er width or height changes.
@@ -584,34 +598,6 @@ const Canvas = props => {
         if ( gridImage !== null ) {
             ctx.drawImage( gridImage, 0, 0 );
         }
-    };
-
-    const exportMap = () => {
-        // Initialize size to bytes for width and height & initialize data list with width and height.
-        let size = 4;
-        const dataList = [
-            { type: `Uint16`, data: width, i: 0 },
-            { type: `Uint16`, data: height, i: 2 },
-        ];
-
-        // For each object, add 2 bytes for type, then add bytes for each object data type & add each datum to data list & increment total bytes size.
-        objects.forEach( object => {
-            size += 2;
-            dataList.push( { type: `Uint16`, data: object.type } );
-            const data = types[ object.type ].exportData;
-            size += data.reduce( ( acc, { type } ) => acc + getDataTypeSize( type ), 0 );
-            dataList.push( ...data.map( ( { type, data } ) => ( { type, data: object[ data ] } ) ) );
-        });
-
-        // Having calculated the total size, create a buffer, view, and iterate through data list to set each datum in the buffer.
-        const buffer = new ArrayBuffer( size );
-        const view = new DataView( buffer );
-        let i = 0;
-        dataList.forEach( ( { type, data } ) => {
-            view[ `set${ type }` ]( i, data );
-            i += getDataTypeSize( type );
-        });
-        FileSaver.saveAs( new Blob( [ buffer ], { type: `boskeopolisland/map` } ), `map.map` );
     };
 
     useEffect(() => {
@@ -690,9 +676,6 @@ const Canvas = props => {
                 setSelectedObject( null );
             } }>Delete</button>
         </div> }
-        <div>
-            <button onClick={ exportMap }>Export</button>
-        </div>
     </div>;
 };
 
@@ -702,61 +685,127 @@ const Editor = () => {
     const [ height, setHeight ] = useState( null );
     const [ objects, setObjects ] = useState( [] );
 
-    const onImport = e => {
-        const file = e.target.files[ 0 ];
-        const reader = new FileReader();
-        reader.onload = e => {
-            // Get bytes from file.
-            const buffer = e.target.result;
-            const view = new DataView( buffer );
+    const update = ( key, value ) => {
+        switch ( key ) {
+            case `Width`:
+                setWidth( value );
+                break;
+            case `Height`:
+                setHeight( value );
+                break;
+            case `Objects`:
+                setObjects( value );
+                break;
+        }
+        window.electronAPI.enableSave();
+    };
 
-            // Read width and height from buffer.
-            setWidth( view.getUint16( 0 ) );
-            setHeight( view.getUint16( 2 ) );
+    const onImport = data => {
+        const { buffer } = data;
+        const view = new DataView( buffer );
 
-            // Read object data from buffer.
-            const objects = [];
-            let state = `readingType`;
-            let type = 0;
-            let i = 4; // Initialize to bytes after width & height.
-            while ( i < buffer.byteLength ) {
-                if ( state === `readingType` ) {
-                    type = view.getUint16( i );
-                    i += 2; // Move to bytes after type.
-                    state = `readingObjectData`;
-                } else {
-                    const object = {};
+        // Read width and height from buffer.
+        setWidth( view.getUint16( 0 ) );
+        setHeight( view.getUint16( 2 ) );
 
-                    // Go thru each object data type, read from buffer, then move forward bytes read.
-                    const data = types[ type ].exportData;
-                    data.forEach( ( { type, data } ) => {
-                        object[ data ] = view[ `get${ type }` ]( i );
-                        i += getDataTypeSize( type );
-                    });
-                    objects.push( createObject({ ...object, type }) );
+        // Read object data from buffer.
+        const objects = [];
+        let state = `readingType`;
+        let type = 0;
+        let i = 4; // Initialize to bytes after width & height.
+        while ( i < buffer.byteLength ) {
+            if ( state === `readingType` ) {
+                type = view.getUint16( i );
+                i += 2; // Move to bytes after type.
+                state = `readingObjectData`;
+            } else {
+                const object = {};
 
-                    // Since object has been fully read, try reading the next object’s type.
-                    state = `readingType`;
-                }
+                // Go thru each object data type, read from buffer, then move forward bytes read.
+                const data = types[ type ].exportData;
+                data.forEach( ( { type, data } ) => {
+                    object[ data ] = view[ `get${ type }` ]( i );
+                    i += getDataTypeSize( type );
+                });
+                objects.push( createObject({ ...object, type }) );
+
+                // Since object has been fully read, try reading the next object’s type.
+                state = `readingType`;
             }
-            setObjects( objects );
-            setIsLoaded( true );
-        };
-        reader.readAsArrayBuffer( file );
+        }
+        setObjects( objects );
+        setIsLoaded( true );
     };
 
     const createNewMap = () => {
         setWidth( 20 );
         setHeight( 20 );
+        setObjects( [] );
         setIsLoaded( true );
     };
 
+    const generateDataBytes = () => {
+        // Initialize size to bytes for width and height & initialize data list with width and height.
+        let size = 4;
+        const dataList = [
+            { type: `Uint16`, data: width, i: 0 },
+            { type: `Uint16`, data: height, i: 2 },
+        ];
+
+        // For each object, add 2 bytes for type, then add bytes for each object data type & add each datum to data list & increment total bytes size.
+        objects.forEach( object => {
+            size += 2;
+            dataList.push( { type: `Uint16`, data: object.type } );
+            const data = types[ object.type ].exportData;
+            size += data.reduce( ( acc, { type } ) => acc + getDataTypeSize( type ), 0 );
+            dataList.push( ...data.map( ( { type, data } ) => ( { type, data: object[ data ] } ) ) );
+        });
+
+        // Having calculated the total size, create a buffer, view, and iterate through data list to set each datum in the buffer.
+        const buffer = new ArrayBuffer( size );
+        const view = new DataView( buffer );
+        let i = 0;
+        dataList.forEach( ( { type, data } ) => {
+            view[ `set${ type }` ]( i, data );
+            i += getDataTypeSize( type );
+        });
+        return view;
+    };
+
+    useEffect(() => {
+        window.electronAPI.onNew( createNewMap );
+        window.electronAPI.onOpen( onImport );
+        window.electronAPI.onClose( () => {
+            setWidth( 20 );
+            setHeight( 20 );
+            setObjects( [] );
+            setIsLoaded( false );
+        });
+
+        return () => {
+            window.electronAPI.removeNewListener();
+            window.electronAPI.removeOpenListener();
+            window.electronAPI.removeCloseListener();
+        };
+    }, []);
+
+    useEffect(() => {
+        window.electronAPI.onSave( file => {
+            window.electronAPI.save(generateDataBytes());
+        });
+
+        return () => {
+            window.electronAPI.removeSaveListener();
+        };
+    }, [ width, height, objects ]);
+
     return <div>
-        { isLoaded && <Canvas height={ height } objects={ objects } width={ width } /> }
-        { !isLoaded && <div>
-            <button onClick={ createNewMap }>New Map</button>
-            <input type="file" onChange={ onImport } />
-        </div> }
+        { isLoaded && <Canvas
+            height={ height }
+            objects={ objects }
+            update={ update }
+            width={ width }
+        /> }
     </div>;
 };
 
