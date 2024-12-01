@@ -1,9 +1,12 @@
-import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
+import { app, dialog, shell, BrowserWindow, ipcMain, Menu } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import fs from 'fs';
 
 function createWindow() {
+  let savePath = null;
+
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 900,
@@ -14,28 +17,153 @@ function createWindow() {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
     }
-  })
+  });
+
+  const enableSave = () => {
+    const save = menu.getMenuItemById('save');
+    save.enabled = true;
+  };
+
+  const disableSave = () => {
+    const save = menu.getMenuItemById('save');
+    save.enabled = false;
+  };
+
+  const enableSaveAs = () => {
+    const saveAs = menu.getMenuItemById('save-as');
+    saveAs.enabled = true;
+  };
+
+  const disableSaveAs = () => {
+    const saveAs = menu.getMenuItemById('save-as');
+    saveAs.enabled = false;
+  };
+
+  const enableClose = () => {
+    const close = menu.getMenuItemById('close');
+    close.enabled = true;
+  };
+
+  const disableClose = () => {
+    const close = menu.getMenuItemById('close');
+    close.enabled = false;
+  };
+
+  const save = () => {
+    mainWindow.webContents.send('save', true);
+    disableSave();
+  };
+
+  const showSaveDialog = () => {
+    dialog.showSaveDialog(null, {
+      title: 'Save',
+      filters: [
+        { name: 'Boskeopolis Land Data', extensions: ['bsld'] },
+      ],
+    }).then((result) => {
+      if (!result.canceled) {
+        savePath = result.filePath;
+        save();
+      }
+    });
+  };
 
   const menu = Menu.buildFromTemplate([
     {
       label: 'File',
       submenu: [
         {
-          label: 'Open DevTools',
+          label: 'New',
           click() {
-            mainWindow.webContents.openDevTools()
+            mainWindow.webContents.send('new', true);
+            savePath = null;
+            enableSave();
+            enableSaveAs();
+            enableClose();
           }
         },
         {
-          label: 'New Map',
+          label: 'Open',
           click() {
-            mainWindow.webContents.send('new-map', true);
+            dialog.showOpenDialog(null, {
+              title: 'Open',
+              filters: [
+                { name: 'Boskeopolis Land Data', extensions: ['bsld'] },
+              ]
+            }).then((result) => {
+              if (!result.canceled) {
+                fs.readFile(result.filePaths[0], (err, data) => {
+                  if (err) {
+                    console.error(err);
+                    return;
+                  }
+                  savePath = result.filePaths[0];
+                  mainWindow.webContents.send('open', data);
+                  enableClose();
+                  enableSaveAs();
+                });
+              }
+            });
           }
         },
+        {
+          label: 'Save',
+          id: 'save',
+          enabled: false,
+          click() {
+            if ( savePath === null ) {
+              showSaveDialog();
+            } else {
+              save();
+            }
+          }
+        },
+        {
+          label: 'Save As…',
+          id: 'save-as',
+          enabled: false,
+          click() {
+            showSaveDialog();
+          }
+        },
+        {
+          label: 'Close',
+          id: 'close',
+          enabled: false,
+          click() {
+            mainWindow.webContents.send('close', true);
+            disableSave();
+            disableSaveAs();
+            disableClose();
+            savePath = null;
+          }
+        },
+      ]
+    },
+    {
+      label: 'Dev',
+      submenu: [
+        {
+          label: 'DevTools',
+          click() {
+            mainWindow.webContents.openDevTools()
+          }
+        }
       ]
     }
   ]);
   Menu.setApplicationMenu(menu);
+
+  ipcMain.on('save', (event, data) => {
+    fs.writeFile(savePath, data, (err) => {
+      if (err) {
+        console.error( err );
+        return;
+      }
+    });
+  });
+
+  ipcMain.on('enable-save', enableSave);
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()

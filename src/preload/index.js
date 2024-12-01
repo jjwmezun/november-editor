@@ -12,7 +12,16 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
     contextBridge.exposeInMainWorld('electronAPI', {
-      onNewMap: (callback) => ipcRenderer.on('new-map', (_event, value) => callback(value))
+      onNew: (callback) => ipcRenderer.on('new', (_event, value) => callback(value)),
+      onOpen: (callback) => ipcRenderer.on('open', (_event, value) => callback(value)),
+      onSave: (callback) => ipcRenderer.on('save', (_event, value) => callback(value)),
+      onClose: (callback) => ipcRenderer.on('close', (_event, value) => callback(value)),
+      save: (value) => ipcRenderer.send('save', value),
+      enableSave: (value) => ipcRenderer.send('enable-save', value),
+      removeNewListener: () => ipcRenderer.removeAllListeners('new'),
+      removeOpenListener: () => ipcRenderer.removeAllListeners('open'),
+      removeSaveListener: () => ipcRenderer.removeAllListeners('save'),
+      removeCloseListener: () => ipcRenderer.removeAllListeners('close'),
     })
   } catch (error) {
     console.error(error)
