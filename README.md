@@ -15,9 +15,15 @@ Created by J. J. W. Mezun. Released under GPLv3 license.
 
 ## File format
 
-map header: 4 bytes
-* width: 2 bytes
-* height: 2 bytes
+level header: 2+ bytes
+* name: 1+ bytes
+* goal: 1+ bytes
+  * type: 1 byte
+  * misc options: 0+ bytes
+per map:
+* map options:
+  * width: 2 bytes
+  * height: 2 bytes
 layers header: 1 byte
 * layer count: 1 byte
 per layer:

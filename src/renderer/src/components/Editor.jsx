@@ -2,6 +2,8 @@ import '../assets/editor.scss';
 import React, { useEffect, useRef, useState } from 'react';
 import urban from '../assets/urban.png';
 
+import { encode, decode, testCharacters } from '../../../common/text';
+
 const createTileRenderer = ( ctx, tileset, layer, windowScrollX ) => args => {
     const {
         srcx,
@@ -66,6 +68,44 @@ const createNewLayer = () => ({
     objects: [],
     scrollX: 1.0,
 });
+
+const goals = Object.freeze([
+    {
+        name: `Reach Keycane`,
+        exportData: [
+        ],
+    },
+    {
+        name: `Collect ₧`,
+        options: [
+            {
+                slug: `amount`,
+                title: `Amount`,
+                type: `number`,
+                default: 10000,
+                atts: {
+                    min: 1,
+                    max: 99999,
+                },
+            }
+        ],
+        exportData: [
+            { type: `Uint32`, data: `amount`, },
+        ],
+    },
+]);
+
+const createGoal = id => {
+    const goal = {
+        id
+    };
+    if ( Array.isArray( goals[ id ].options ) ) {
+        goals[ id ].options.forEach( option => {
+            goal[ option.slug ] = option.default;
+        } );
+    }
+    return goal;
+};
 
 const types = Object.freeze([
     {
@@ -529,18 +569,163 @@ const getMousePosition = e => ({
     y: e.clientY - e.target.offsetTop,
 });
 
-const Canvas = props => {
+const createNewMap = () => ({
+    width: 20,
+    height: 20,
+    layers: [],
+});
+
+const splitMapBytes = data => {
+    const buffer = new ArrayBuffer( data.byteLength );
+    const maps = [];
+    const view = new DataView( buffer );
+    new Uint8Array( data ).forEach( ( byte, i ) => view.setUint8( i, byte ) );
+    let i = 0;
+    let start = i;
+    while ( i < data.byteLength ) {
+        const layerCount = view.getUint8( i + 4 );
+        let currentLayer = 0;
+        let state = `readingLayerOptions`;
+        let type = 0;
+        i += 5; // Move to bytes after width, height, & layer count.
+        while ( currentLayer < layerCount ) {
+            if ( state === `readingLayerOptions` ) {
+                i += 4; // Move to bytes after layer options.
+                state = `readingType`;
+            } else if ( state === `readingType` ) {
+                type = view.getUint16( i );
+                // If type is terminator, move to next layer.
+                if ( type === 0xFFFF ) {
+                    ++currentLayer;
+                    i += 2; // Move to bytes after type.
+                    state = `readingLayerOptions`;
+                }
+                // Otherwise, interpret bytes as type for next object.
+                else {
+                    state = `readingObjectData`;
+                    i += 2; // Move to bytes after type.
+                }
+            } else {
+                // Go thru each object data type, read from buffer, then move forward bytes read.
+                const data = types[ type ].exportData;
+                data.forEach( ( { type, data } ) => {
+                    i += getDataTypeSize( type );
+                });
+    
+                // Since object has been fully read, try reading the next object’s type.
+                state = `readingType`;
+            }
+        }
+        const mapBuffer = new ArrayBuffer( i - start );
+        const mapView = new DataView( mapBuffer );
+        for ( let j = start; j < i; j++ ) {
+            mapView.setUint8( j - start, view.getUint8( j ) );
+        }
+        maps.push( mapBuffer );
+        start = i;
+    }
+    return maps;
+};
+
+const transformMapDataToObject = data => {
+    const view = new DataView( data );
+
+    // Read width and height from buffer.
+    const width = view.getUint16( 0 );
+    const height = view.getUint16( 2 );
+
+    // Read layer data from buffer.
+    const layers = [];
+    const layerCount = view.getUint8( 4 );
+    for ( let i = 0; i < layerCount; i++ ) {
+        layers.push( createNewLayer() );
+    }
+    let currentLayer = 0;
+    let state = `readingLayerOptions`;
+    let type = 0;
+    let i = 5; // Initialize to bytes after width, height, & layer count.
+    while ( currentLayer < layerCount ) {
+        if ( state === `readingLayerOptions` ) {
+            layers[ currentLayer ].scrollX = view.getFloat32( i );
+            i += 4; // Move to bytes after layer options.
+            state = `readingType`;
+        } else if ( state === `readingType` ) {
+            type = view.getUint16( i );
+            // If type is terminator, move to next layer.
+            if ( type === 0xFFFF ) {
+                ++currentLayer;
+                i += 2; // Move to bytes after type.
+                state = `readingLayerOptions`;
+            }
+            // Otherwise, interpret bytes as type for next object.
+            else {
+                if ( layers.length === 0 ) {
+                    throw new Error( `No layers found in buffer.` );
+                }
+                state = `readingObjectData`;
+                i += 2; // Move to bytes after type.
+            }
+        } else {
+            // Initialize object with type’s default.
+            const object = types[ type ].create( 0, 0 );
+
+            // Go thru each object data type, read from buffer, then move forward bytes read.
+            const data = types[ type ].exportData;
+            data.forEach( ( { type, data } ) => {
+                object[ data ] = view[ `get${ type }` ]( i );
+                i += getDataTypeSize( type );
+            });
+            layers[ currentLayer ].objects.push( createObject({ ...object, type }) );
+
+            // Since object has been fully read, try reading the next object’s type.
+            state = `readingType`;
+        }
+    }
+    return { width, height, layers };
+};
+
+const Canvas = () => {
     const canvasRef = useRef();
-    const { height, layers, update, width } = props;
     const [ gridImage, setGridImage ] = useState( null );
     const [ selected, setSelected ] = useState( { x: null, y: null } );
     const [ selectedObject, setSelectedObject ] = useState( null );
     const [ tileset, setTileset ] = useState( null );
     const [ selectedType, setSelectedType ] = useState( 0 );
     const [ frame, setFrame ] = useState( 0 );
-    const [ selectedLayer, setSelectedLayer ] = useState( 0 );
+    const [ selectedLayer, setSelectedLayer ] = useState( null );
     const [ windowScrollX, setWindowScrollX ] = useState( 0 );
-    const { objects } = selectedLayer === null ? [] : layers[ selectedLayer ];
+    const [ maps, setMaps ] = useState( [] );
+    const [ selectedMapIndex, setSelectedMapIndex ] = useState( null );
+    const [ selectedMap, setSelectedMap ] = useState( null );
+    const { height, layers, width } = selectedMap !== null ? selectedMap : { height: 0, layers: [], width: 0 };
+    const [ isLoaded, setIsLoaded ] = useState( false );
+    const [ name, setName ] = useState( `` );
+    const [ selectedGoal, setSelectedGoal ] = useState( { id: 0 } );
+
+    const update = ( key, value ) => {
+        setSelectedMap( { ...selectedMap, [ key ]: value } );
+        setMaps( maps.map( ( map, i ) => i === selectedMapIndex ? generateDataBytes( { ...selectedMap, [ key ]: value } ) : map ) );
+        window.electronAPI.enableSave();
+    };
+
+    const addMap = () => {
+        setselectedMapIndex( maps.length );
+        const map = createNewMap();
+        setSelectedMap( map );
+        console.log(maps);
+        setMaps( [ ...maps, generateDataBytes( map ) ] );
+        setSelected( { x: null, y: null } );
+        setSelectedObject( null );
+        setSelectedLayer( null );
+    };
+
+    useEffect(() => {
+        setSelected( { x: null, y: null } );
+        setSelectedObject( null );
+        setSelectedLayer( null );
+    }, [ selectedMapIndex ]);
+
+    const objects = selectedLayer === null || layers.length === 0 ? [] : layers[ selectedLayer ].objects;
 
     useEffect(() => {
         if ( selectedLayer === null || layers[ selectedLayer ].objects.length === 0 ) {
@@ -551,52 +736,52 @@ const Canvas = props => {
         }
     }, [ layers ]);
 
-    const setWidth = width => update( `Width`, width );
-    const setHeight = height => update( `Height`, height );
+    const setWidth = width => update( `width`, width );
+    const setHeight = height => update( `height`, height );
 
     const addObject = o => {
-        update( `Layers`, layers => {
+        update( `layers`, (() => {
             const newLayers = [ ...layers ];
             newLayers[ selectedLayer ].objects.push( createObject( o ) );
             return newLayers;
-        });
+        })());
     };
 
     const updateObject = ( index, o ) => {
-        update( `Layers`, layers => {
+        update( `layers`, (() => {
             const newLayers = [ ...layers ];
             newLayers[ selectedLayer ].objects[ index ] = { ...newLayers[ selectedLayer ].objects[ index ], ...o };
             return newLayers;
-        });
+        })());
     };
 
     const removeObject = () => {
-        update( `Layers`, layers => {
+        update( `layers`, (() => {
             const newLayers = [ ...layers ];
             newLayers[ selectedLayer ].objects = newLayers[ selectedLayer ].objects.filter( ( _, i ) => i !== selectedObject );
             return newLayers;
-        });
+        })());
         setSelectedObject( null );
     };
 
     const addLayer = () => {
         setSelectedLayer( layers.length );
         setSelectedObject( null );
-        update( `Layers`, layers => [ ...layers, createNewLayer() ] );
+        update( `layers`, [ ...layers, createNewLayer() ] );
     };
 
     const removeLayer = () => {
         const layersCount = layers.length - 1;
-        update( `Layers`, layers => layers.filter( ( _, i ) => i !== selectedLayer ) )
+        update( `layers`, layers.filter( ( _, i ) => i !== selectedLayer ) )
         setSelectedLayer( selectedLayer === 0 ? ( selectedLayer === layersCount ? null : selectedLayer + 1 ) : selectedLayer - 1 );
     };
 
     const updateLayerOption = ( key, value ) => {
-        update( `Layers`, layers => {
+        update( `layers`, (() => {
             const newLayers = [ ...layers ];
             newLayers[ selectedLayer ][ key ] = value;
             return newLayers;
-        });
+        })());
     };
 
     const onLayerSelection = e => {
@@ -611,24 +796,24 @@ const Canvas = props => {
     };
 
     const moveLayerUp = () => {
-        update( `Layers`, layers => {
+        update( `layers`, (() => {
             const newLayers = [ ...layers ];
             const temp = newLayers[ selectedLayer ];
             newLayers[ selectedLayer ] = newLayers[ selectedLayer - 1 ];
             newLayers[ selectedLayer - 1 ] = temp;
             return newLayers;
-        });
+        })());
         setSelectedLayer( selectedLayer - 1 );
     };
 
     const moveLayerDown = () => {
-        update( `Layers`, layers => {
+        update( `layers`, (() => {
             const newLayers = [ ...layers ];
             const temp = newLayers[ selectedLayer ];
             newLayers[ selectedLayer ] = newLayers[ selectedLayer + 1 ];
             newLayers[ selectedLayer + 1 ] = temp;
             return newLayers;
-        });
+        })());
         setSelectedLayer( selectedLayer + 1 );
     };
 
@@ -685,6 +870,40 @@ const Canvas = props => {
 
     const onScrollWindow = e => {
         setWindowScrollX( e.target.scrollLeft );
+    };
+
+    const generateMapSelector = ( maps, i ) => () => {
+        setSelectedMapIndex( i );
+        setSelectedMap( transformMapDataToObject( maps[ i ] ) );
+        setSelected( { x: null, y: null } );
+        setSelectedObject( null );
+        setSelectedLayer( null );
+    };
+
+    const saveLevel = () => {
+        const nameBytes = encode( name );
+        const size = maps.reduce(
+            ( acc, map ) => acc + map.byteLength,
+            nameBytes.length
+            + goals[ selectedGoal.id ].exportData.reduce(
+                ( acc, data ) => acc + getDataTypeSize( data.type ),
+                1
+            )
+        );
+        const buffer = new ArrayBuffer( size );
+        const view = new DataView( buffer );
+        let i = 0;
+        nameBytes.forEach( byte => view.setUint8( i++, byte ) );
+        view.setUint8( i++, selectedGoal.id );
+        goals[ selectedGoal.id ].exportData.forEach( data => {
+            console.log(selectedGoal[ data.data ]);
+            view[ `set${ data.type }` ]( i, selectedGoal[ data.data ] );
+            i += getDataTypeSize( data.type );
+        });
+        maps.forEach( map => {
+            new Uint8Array( map ).forEach( byte => view.setUint8( i++, byte ) );
+        });
+        return view;
     };
 
     useEffect(() => {
@@ -788,211 +1007,6 @@ const Canvas = props => {
         render( ctx );
     }, [ canvasRef, render ]);
 
-    return <div>
-        <div className="window" onScroll={ onScrollWindow }>
-            <canvas
-                ref={ canvasRef }
-                id="editor"
-                width={ width * 16 }
-                height={ height * 16 }
-                onClick={ onClick }
-                onContextMenu={ onRightClick }
-                onMouseMove={ onMouseMove }
-            />
-        </div>
-        <div>
-            <label>
-                <span>Width:</span>
-                <input type="number" value={ width } onChange={ e => setWidth( e.target.value ) } />
-            </label>
-            <label>
-                <span>Height:</span>
-                <input type="number" value={ height } onChange={ e => setHeight( e.target.value ) } />
-            </label>
-            <label>
-                <span>Type:</span>
-                <select value={ selectedType } onChange={ e => setSelectedType( e.target.value ) }>
-                    { types.map( ( type, i ) => <option key={ i } value={ i }>{ type.name }</option> ) }
-                </select>
-            </label>
-        </div>
-        { selectedLayer !== null && <div>
-            <label>
-                <span>Scroll X:</span>
-                <input type="number" value={ layers[ selectedLayer ].scrollX } onChange={ v => updateLayerOption( `scrollX`, v.target.value ) } />
-            </label>
-        </div> }
-        { selectedLayer !== null && selectedObject !== null && <div>
-            <div>Selected object: { selectedObject }</div>
-            {
-                types[ objects[ selectedObject ].type ].options.map( ( options, i ) => {
-                    const {
-                        atts,
-                        key,
-                        title,
-                        type,
-                        update,
-                        extraUpdate,
-                    } = {
-                        atts: [],
-                        title: `MISSING TITLE`,
-                        key: `missingKey`,
-                        type: `text`,
-                        update: v => v,
-                        extraUpdate: () => ({}),
-                        ...options,
-                    };
-                    const extraAtts = {};
-                    for ( const key in atts ) {
-                        extraAtts[ key ] = typeof atts[ key ] === `function` ? atts[ key ]( objects[ selectedObject ] ) : atts[ key ];
-                    }
-                    return <label key={ i }>
-                        <span>{ title }:</span>
-                        <input
-                            type={ type }
-                            value={ objects[ selectedObject ][ key ] }
-                            onChange={ e => updateObject( selectedObject, { [ key ]: update( e.target.value ), ...extraUpdate( objects[ selectedObject ], e.target.value ) } ) }
-                            { ...extraAtts }
-                        />
-                    </label>;
-                } )
-            }
-            <button onClick={ removeObject }>Delete</button>
-        </div> }
-        <select selected={ selectedLayer } size={ Math.min( layers.length + 1, 10 ) } onChange={ onLayerSelection }>
-            { layers.map( ( layer, i ) => <option key={ i }>Layer { i + 1 } – { layer.type.title }</option> ) }
-        </select>
-        <button disabled={ layers.length >= 255 } onClick={ addLayer }>Add layer</button>
-        <button onClick={ removeLayer }>Delete layer</button>
-        <button disabled={ selectedLayer === null || selectedLayer === 0 } onClick={ moveLayerUp }>↑</button>
-        <button disabled={ selectedLayer === null || selectedLayer === layers.length - 1 } onClick={ moveLayerDown }>↓</button>
-    </div>;
-};
-
-const Editor = () => {
-    const [ isLoaded, setIsLoaded ] = useState( false );
-    const [ width, setWidth ] = useState( null );
-    const [ height, setHeight ] = useState( null );
-    const [ layers, setLayers ] = useState( [ createNewLayer() ] );
-
-    const update = ( key, value ) => {
-        switch ( key ) {
-            case `Width`:
-                setWidth( value );
-                break;
-            case `Height`:
-                setHeight( value );
-                break;
-            case `Layers`:
-                setLayers( value );
-                break;
-        }
-        window.electronAPI.enableSave();
-    };
-
-    const onImport = data => {
-        const { buffer } = data;
-        const view = new DataView( buffer );
-
-        // Read width and height from buffer.
-        setWidth( view.getUint16( 0 ) );
-        setHeight( view.getUint16( 2 ) );
-
-        // Read layer data from buffer.
-        const layers = [];
-        const layerCount = view.getUint8( 4 );
-        for ( let i = 0; i < layerCount; i++ ) {
-            layers.push( createNewLayer() );
-        }
-        let currentLayer = 0;
-        let state = `readingLayerOptions`;
-        let type = 0;
-        let i = 5; // Initialize to bytes after width, height, & layer count.
-        while ( currentLayer < layerCount ) {
-            if ( state === `readingLayerOptions` ) {
-                layers[ currentLayer ].scrollX = view.getFloat32( i );
-                i += 4; // Move to bytes after layer options.
-                state = `readingType`;
-            } else if ( state === `readingType` ) {
-                type = view.getUint16( i );
-                // If type is terminator, move to next layer.
-                if ( type === 0xFFFF ) {
-                    ++currentLayer;
-                    i += 2; // Move to bytes after type.
-                    state = `readingLayerOptions`;
-                }
-                // Otherwise, interpret bytes as type for next object.
-                else {
-                    if ( layers.length === 0 ) {
-                        throw new Error( `No layers found in buffer.` );
-                    }
-                    state = `readingObjectData`;
-                    i += 2; // Move to bytes after type.
-                }
-            } else {
-                // Initialize object with type’s default.
-                const object = types[ type ].create( 0, 0 );
-
-                // Go thru each object data type, read from buffer, then move forward bytes read.
-                const data = types[ type ].exportData;
-                data.forEach( ( { type, data } ) => {
-                    object[ data ] = view[ `get${ type }` ]( i );
-                    i += getDataTypeSize( type );
-                });
-                layers[ currentLayer ].objects.push( createObject({ ...object, type }) );
-
-                // Since object has been fully read, try reading the next object’s type.
-                state = `readingType`;
-            }
-        }
-        setLayers( layers );
-        setIsLoaded( true );
-    };
-
-    const createNewMap = () => {
-        setWidth( 20 );
-        setHeight( 20 );
-        setLayers( [ createNewLayer() ] );
-        setIsLoaded( true );
-    };
-
-    const generateDataBytes = () => {
-        // Initialize data list with width, height, & layers count.
-        const dataList = [
-            { type: `Uint16`, data: width },
-            { type: `Uint16`, data: height },
-            { type: `Uint8`, data: layers.length },
-        ];
-
-        layers.forEach( layer => {
-            // Add layer options.
-            dataList.push({ type: `Float32`, data: layer.scrollX });
-
-            // For each object, add 2 bytes for type, then add bytes for each object data type
-            // & add each datum to data list.
-            layer.objects.forEach( object => {
-                dataList.push( { type: `Uint16`, data: object.type } );
-                const data = types[ object.type ].exportData;
-                dataList.push( ...data.map( ( { type, data } ) => ( { type, data: object[ data ] } ) ) );
-            });
-
-            // Add terminator for layer.
-            dataList.push( { type: `Uint16`, data: 0xFFFF } );
-        });
-
-        // Having calculated the total size, create a buffer, view, & iterate through data list
-        // to set each datum in the buffer.
-        const size = dataList.reduce( ( acc, { type } ) => acc + getDataTypeSize( type ), 0 );
-        const buffer = new ArrayBuffer( size );
-        const view = new DataView( buffer );
-        let i = 0;
-        dataList.forEach( ( { type, data } ) => {
-            view[ `set${ type }` ]( i, data );
-            i += getDataTypeSize( type );
-        });
-        return view;
-    };
-
     useEffect(() => {
         window.electronAPI.onNew( createNewMap );
         window.electronAPI.onOpen( onImport );
@@ -1012,21 +1026,224 @@ const Editor = () => {
 
     useEffect(() => {
         window.electronAPI.onSave( () => {
-            window.electronAPI.save( generateDataBytes() );
+            window.electronAPI.save( saveLevel() );
         });
 
         return () => {
             window.electronAPI.removeSaveListener();
         };
-    }, [ width, height, layers ]);
+    }, [ maps, name, selectedGoal ]);
+
+    const onImport = data => {
+        const nameData = decode( data );
+        setName( nameData.text );
+
+        const remainingBytes = nameData.remainingBytes;
+        const buffer = new ArrayBuffer( 1 );
+        const view = new DataView( buffer );
+        view.setUint8( 0, remainingBytes[ 0 ] );
+        const goalId = view.getUint8( 0 );
+        const goalData = goals[ goalId ].exportData;
+        const goalDataSize = goalData.reduce( ( acc, { type } ) => acc + getDataTypeSize( type ), 0 );
+        const goalBuffer = new ArrayBuffer( goalDataSize );
+        const goalView = new DataView( goalBuffer );
+        for ( let i = 0; i < goalDataSize; i++ ) {
+            goalView.setUint8( i, remainingBytes[ i + 1 ] );
+        }
+        const goal = { id: goalId };
+        let i = 0;
+        goalData.forEach( ( { data, type } ) => {
+            goal[ data ] = goalView[ `get${ type }` ]( i );
+            i += getDataTypeSize( type );
+        } );
+        setSelectedGoal( goal );
+
+        const mapsBuffer = new ArrayBuffer( remainingBytes.length - goalDataSize - 1 );
+        const mapsView = new DataView( mapsBuffer );
+        for ( let i = 0; i < mapsBuffer.byteLength; i++ ) {
+            mapsView.setUint8( i, remainingBytes[ i + goalDataSize + 1 ] );
+        }
+        const newMaps = splitMapBytes( mapsBuffer );
+        setMaps( newMaps );
+        generateMapSelector( newMaps, 0 )();
+    };
+
+    const updateLevelName = e => {
+        const newName = e.target.value.toUpperCase();
+        if ( ! testCharacters( newName ) ) {
+            return;
+        }
+        setName( newName );
+        window.electronAPI.enableSave();
+    };
+
+    const onChangeGoal = e => {
+        setSelectedGoal( createGoal( e.target.selectedIndex ) );
+        window.electronAPI.enableSave();
+    };
 
     return <div>
-        { isLoaded && <Canvas
-            height={ height }
-            layers={ layers }
-            update={ update }
-            width={ width }
-        /> }
+        <div>
+            <h2>Level options:</h2>
+            <div>
+                <label>
+                    <span>Name:</span>
+                    <input type="text" value={ name } onChange={ updateLevelName } />
+                </label>
+            </div>
+            <div>
+                <label>
+                    <span>Goal:</span>
+                    <select onChange={ onChangeGoal }>
+                        { goals.map( ( goal, i ) => <option key={ i } selected={ i === selectedGoal.id }>{ goal.name }</option> ) }
+                    </select>
+                </label>
+                { Array.isArray( goals[ selectedGoal.id ].options ) && goals[ selectedGoal.id ].options.map( ( { atts, slug, title, type }, i ) => <label key={ i }>
+                    <span>{ title }:</span>
+                    <input
+                        type={ type }
+                        onChange={ e => setSelectedGoal( { ...selectedGoal, [ slug ]: e.target.value } ) }
+                        value={ selectedGoal[ slug ] }
+                        { ...atts }
+                    />
+                </label> ) }
+            </div>
+        </div>
+        { maps.length > 0 && <ul>
+            { maps.map( ( map, i ) => <li key={ i }>
+                <button
+                    disabled={ selectedMapIndex === i }
+                    onClick={ generateMapSelector( maps, i ) }
+                >
+                    Map { i + 1 }
+                </button>
+            </li> ) }
+        </ul>}
+        <button onClick={ addMap }>Add Map</button>
+        { selectedMap !== null && <div>
+            <div className="window" onScroll={ onScrollWindow }>
+                <canvas
+                    ref={ canvasRef }
+                    id="editor"
+                    width={ width * 16 }
+                    height={ height * 16 }
+                    onClick={ onClick }
+                    onContextMenu={ onRightClick }
+                    onMouseMove={ onMouseMove }
+                />
+            </div>
+            <div>
+                <label>
+                    <span>Width:</span>
+                    <input type="number" value={ width } onChange={ e => setWidth( e.target.value ) } />
+                </label>
+                <label>
+                    <span>Height:</span>
+                    <input type="number" value={ height } onChange={ e => setHeight( e.target.value ) } />
+                </label>
+                <label>
+                    <span>Type:</span>
+                    <select value={ selectedType } onChange={ e => setSelectedType( e.target.value ) }>
+                        { types.map( ( type, i ) => <option key={ i } value={ i }>{ type.name }</option> ) }
+                    </select>
+                </label>
+            </div>
+            { selectedLayer !== null && <div>
+                <label>
+                    <span>Scroll X:</span>
+                    <input type="number" value={ layers[ selectedLayer ].scrollX } onChange={ v => updateLayerOption( `scrollX`, v.target.value ) } />
+                </label>
+            </div> }
+            { selectedLayer !== null && selectedObject !== null && <div>
+                <div>Selected object: { selectedObject }</div>
+                {
+                    types[ objects[ selectedObject ].type ].options.map( ( options, i ) => {
+                        const {
+                            atts,
+                            key,
+                            title,
+                            type,
+                            update,
+                            extraUpdate,
+                        } = {
+                            atts: [],
+                            title: `MISSING TITLE`,
+                            key: `missingKey`,
+                            type: `text`,
+                            update: v => v,
+                            extraUpdate: () => ({}),
+                            ...options,
+                        };
+                        const extraAtts = {};
+                        for ( const key in atts ) {
+                            extraAtts[ key ] = typeof atts[ key ] === `function` ? atts[ key ]( objects[ selectedObject ] ) : atts[ key ];
+                        }
+                        return <label key={ i }>
+                            <span>{ title }:</span>
+                            <input
+                                type={ type }
+                                value={ objects[ selectedObject ][ key ] }
+                                onChange={ e => updateObject( selectedObject, { [ key ]: update( e.target.value ), ...extraUpdate( objects[ selectedObject ], e.target.value ) } ) }
+                                { ...extraAtts }
+                            />
+                        </label>;
+                    } )
+                }
+                <button onClick={ removeObject }>Delete</button>
+            </div> }
+            <select selected={ selectedLayer } size={ Math.min( layers.length + 1, 10 ) } onChange={ onLayerSelection }>
+                { layers.map( ( layer, i ) => <option key={ i }>Layer { i + 1 } – { layer.type.title }</option> ) }
+            </select>
+            <button disabled={ layers.length >= 255 } onClick={ addLayer }>Add layer</button>
+            <button onClick={ removeLayer }>Delete layer</button>
+            <button disabled={ selectedLayer === null || selectedLayer === 0 } onClick={ moveLayerUp }>↑</button>
+            <button disabled={ selectedLayer === null || selectedLayer === layers.length - 1 } onClick={ moveLayerDown }>↓</button>
+        </div> }
+    </div>;
+};
+
+const generateDataBytes = map => {
+    const { width, height, layers } = map;
+
+    // Initialize data list with width, height, & layers count.
+    const dataList = [
+        { type: `Uint16`, data: width },
+        { type: `Uint16`, data: height },
+        { type: `Uint8`, data: layers.length },
+    ];
+
+    layers.forEach( layer => {
+        // Add layer options.
+        dataList.push({ type: `Float32`, data: layer.scrollX });
+
+        // For each object, add 2 bytes for type, then add bytes for each object data type
+        // & add each datum to data list.
+        layer.objects.forEach( object => {
+            dataList.push( { type: `Uint16`, data: object.type } );
+            const data = types[ object.type ].exportData;
+            dataList.push( ...data.map( ( { type, data } ) => ( { type, data: object[ data ] } ) ) );
+        });
+
+        // Add terminator for layer.
+        dataList.push( { type: `Uint16`, data: 0xFFFF } );
+    });
+
+    // Having calculated the total size, create a buffer, view, & iterate through data list
+    // to set each datum in the buffer.
+    const size = dataList.reduce( ( acc, { type } ) => acc + getDataTypeSize( type ), 0 );
+    const buffer = new ArrayBuffer( size );
+    const view = new DataView( buffer );
+    let i = 0;
+    dataList.forEach( ( { type, data } ) => {
+        view[ `set${ type }` ]( i, data );
+        i += getDataTypeSize( type );
+    });
+    return buffer;
+};
+
+const Editor = () => {
+    return <div>
+        <Canvas />
     </div>;
 };
 
