@@ -575,14 +575,15 @@ const createNewMap = () => ({
     layers: [],
 });
 
-const splitMapBytes = data => {
+const splitMapBytes = ( data, count ) => {
     const buffer = new ArrayBuffer( data.byteLength );
     const maps = [];
     const view = new DataView( buffer );
     new Uint8Array( data ).forEach( ( byte, i ) => view.setUint8( i, byte ) );
     let i = 0;
     let start = i;
-    while ( i < data.byteLength ) {
+    let currentMap = 0;
+    while ( currentMap < count ) {
         const layerCount = view.getUint8( i + 4 );
         let currentLayer = 0;
         let state = `readingLayerOptions`;
@@ -622,9 +623,13 @@ const splitMapBytes = data => {
             mapView.setUint8( j - start, view.getUint8( j ) );
         }
         maps.push( mapBuffer );
+        ++currentMap;
         start = i;
     }
-    return maps;
+    return {
+        maps,
+        remainingBytes: new Uint8Array( buffer ).slice( i ),
+    };
 };
 
 const transformMapDataToObject = data => {
@@ -684,7 +689,7 @@ const transformMapDataToObject = data => {
     return { width, height, layers };
 };
 
-const Canvas = () => {
+const Canvas = props => {
     const canvasRef = useRef();
     const [ gridImage, setGridImage ] = useState( null );
     const [ selected, setSelected ] = useState( { x: null, y: null } );
@@ -694,13 +699,20 @@ const Canvas = () => {
     const [ frame, setFrame ] = useState( 0 );
     const [ selectedLayer, setSelectedLayer ] = useState( null );
     const [ windowScrollX, setWindowScrollX ] = useState( 0 );
-    const [ maps, setMaps ] = useState( [] );
     const [ selectedMapIndex, setSelectedMapIndex ] = useState( null );
     const [ selectedMap, setSelectedMap ] = useState( null );
     const { height, layers, width } = selectedMap !== null ? selectedMap : { height: 0, layers: [], width: 0 };
-    const [ isLoaded, setIsLoaded ] = useState( false );
-    const [ name, setName ] = useState( `` );
-    const [ selectedGoal, setSelectedGoal ] = useState( { id: 0 } );
+
+    const { closeLevel, maps, name, setName, selectedGoal, setMaps, setSelectedGoal } = props;
+
+    const exit = () => {
+        closeLevel();
+        setSelected( { x: null, y: null } );
+        setSelectedObject( null );
+        setSelectedLayer( null );
+        setSelectedMap( null );
+        setSelectedMapIndex( null );
+    };
 
     const update = ( key, value ) => {
         setSelectedMap( { ...selectedMap, [ key ]: value } );
@@ -709,10 +721,9 @@ const Canvas = () => {
     };
 
     const addMap = () => {
-        setselectedMapIndex( maps.length );
+        setSelectedMapIndex( maps.length );
         const map = createNewMap();
         setSelectedMap( map );
-        console.log(maps);
         setMaps( [ ...maps, generateDataBytes( map ) ] );
         setSelected( { x: null, y: null } );
         setSelectedObject( null );
@@ -880,32 +891,6 @@ const Canvas = () => {
         setSelectedLayer( null );
     };
 
-    const saveLevel = () => {
-        const nameBytes = encode( name );
-        const size = maps.reduce(
-            ( acc, map ) => acc + map.byteLength,
-            nameBytes.length
-            + goals[ selectedGoal.id ].exportData.reduce(
-                ( acc, data ) => acc + getDataTypeSize( data.type ),
-                1
-            )
-        );
-        const buffer = new ArrayBuffer( size );
-        const view = new DataView( buffer );
-        let i = 0;
-        nameBytes.forEach( byte => view.setUint8( i++, byte ) );
-        view.setUint8( i++, selectedGoal.id );
-        goals[ selectedGoal.id ].exportData.forEach( data => {
-            console.log(selectedGoal[ data.data ]);
-            view[ `set${ data.type }` ]( i, selectedGoal[ data.data ] );
-            i += getDataTypeSize( data.type );
-        });
-        maps.forEach( map => {
-            new Uint8Array( map ).forEach( byte => view.setUint8( i++, byte ) );
-        });
-        return view;
-    };
-
     useEffect(() => {
         // Load tileset image on 1st load.
         const tileset = new Image();
@@ -1006,67 +991,6 @@ const Canvas = () => {
         const ctx = canvasRef.current.getContext( `2d` );
         render( ctx );
     }, [ canvasRef, render ]);
-
-    useEffect(() => {
-        window.electronAPI.onNew( createNewMap );
-        window.electronAPI.onOpen( onImport );
-        window.electronAPI.onClose( () => {
-            setWidth( 20 );
-            setHeight( 20 );
-            setLayers( [ createNewLayer() ] );
-            setIsLoaded( false );
-        });
-
-        return () => {
-            window.electronAPI.removeNewListener();
-            window.electronAPI.removeOpenListener();
-            window.electronAPI.removeCloseListener();
-        };
-    }, []);
-
-    useEffect(() => {
-        window.electronAPI.onSave( () => {
-            window.electronAPI.save( saveLevel() );
-        });
-
-        return () => {
-            window.electronAPI.removeSaveListener();
-        };
-    }, [ maps, name, selectedGoal ]);
-
-    const onImport = data => {
-        const nameData = decode( data );
-        setName( nameData.text );
-
-        const remainingBytes = nameData.remainingBytes;
-        const buffer = new ArrayBuffer( 1 );
-        const view = new DataView( buffer );
-        view.setUint8( 0, remainingBytes[ 0 ] );
-        const goalId = view.getUint8( 0 );
-        const goalData = goals[ goalId ].exportData;
-        const goalDataSize = goalData.reduce( ( acc, { type } ) => acc + getDataTypeSize( type ), 0 );
-        const goalBuffer = new ArrayBuffer( goalDataSize );
-        const goalView = new DataView( goalBuffer );
-        for ( let i = 0; i < goalDataSize; i++ ) {
-            goalView.setUint8( i, remainingBytes[ i + 1 ] );
-        }
-        const goal = { id: goalId };
-        let i = 0;
-        goalData.forEach( ( { data, type } ) => {
-            goal[ data ] = goalView[ `get${ type }` ]( i );
-            i += getDataTypeSize( type );
-        } );
-        setSelectedGoal( goal );
-
-        const mapsBuffer = new ArrayBuffer( remainingBytes.length - goalDataSize - 1 );
-        const mapsView = new DataView( mapsBuffer );
-        for ( let i = 0; i < mapsBuffer.byteLength; i++ ) {
-            mapsView.setUint8( i, remainingBytes[ i + goalDataSize + 1 ] );
-        }
-        const newMaps = splitMapBytes( mapsBuffer );
-        setMaps( newMaps );
-        generateMapSelector( newMaps, 0 )();
-    };
 
     const updateLevelName = e => {
         const newName = e.target.value.toUpperCase();
@@ -1198,6 +1122,9 @@ const Canvas = () => {
             <button onClick={ removeLayer }>Delete layer</button>
             <button disabled={ selectedLayer === null || selectedLayer === 0 } onClick={ moveLayerUp }>↑</button>
             <button disabled={ selectedLayer === null || selectedLayer === layers.length - 1 } onClick={ moveLayerDown }>↓</button>
+            <div>
+                <button onClick={ exit }>Back to Level List</button>
+            </div>
         </div> }
     </div>;
 };
@@ -1241,9 +1168,170 @@ const generateDataBytes = map => {
     return buffer;
 };
 
-const Editor = () => {
+const generateNewLevel = () => ({
+    name: `New Level`,
+    goal: { id: 0 },
+    maps: [],
+});
+
+const LevelList = props => {
+    const { levels, setLevels, setSelectedLevel } = props;
     return <div>
-        <Canvas />
+        <h2>Levels</h2>
+        <ul>
+            { levels.map( ( level, i ) => <li key={ i }>
+                <input type="text" value={ level.name } onChange={ e => setLevels( levels.map( ( l, j ) => i === j ? { ...l, name: e.target.value } : l ) ) } />
+                <button onClick={ () => setSelectedLevel( i ) }>Edit</button>
+                <button onClick={ () => setLevels( levels.filter( ( _, j ) => i !== j ) ) }>Delete</button>
+            </li> ) }
+        </ul>
+        <button onClick={ () => setLevels( [ ...levels, generateNewLevel() ] ) }>Add Level</button>
+    </div>;
+};
+
+const loadLevelFromData = data => {
+    const level = {};
+
+    // Gather name.
+    const nameData = decode( data );
+    level.name = nameData.text;
+
+    // Gather goal.
+    const remainingBytes = nameData.remainingBytes;
+    const buffer = new ArrayBuffer( 1 );
+    const view = new DataView( buffer );
+    view.setUint8( 0, remainingBytes[ 0 ] );
+    const goalId = view.getUint8( 0 );
+    const goalData = goals[ goalId ].exportData;
+    const goalDataSize = goalData.reduce( ( acc, { type } ) => acc + getDataTypeSize( type ), 0 );
+    const goalBuffer = new ArrayBuffer( goalDataSize );
+    const goalView = new DataView( goalBuffer );
+    for ( let i = 0; i < goalDataSize; i++ ) {
+        goalView.setUint8( i, remainingBytes[ i + 1 ] );
+    }
+    const goal = { id: goalId };
+    let i = 0;
+    goalData.forEach( ( { data, type } ) => {
+        goal[ data ] = goalView[ `get${ type }` ]( i );
+        i += getDataTypeSize( type );
+    } );
+    level.goal = goal;
+
+    // Gather maps.
+    const mapCount = remainingBytes[ goalDataSize + 1 ];
+    const mapsBuffer = new ArrayBuffer( remainingBytes.length - goalDataSize - 2 );
+    const mapsView = new DataView( mapsBuffer );
+    for ( let i = 0; i < mapsBuffer.byteLength; i++ ) {
+        mapsView.setUint8( i, remainingBytes[ i + goalDataSize + 2 ] );
+    }
+    const mapData = splitMapBytes( mapsBuffer, mapCount );
+    level.maps = mapData.maps;
+
+    return {
+        level,
+        remainingBytes: mapData.remainingBytes,
+    };
+};
+
+const gatherLevelSaveData = levels => {
+    let size = 0;
+    let levelData = [];
+    levels.map( level => {
+        const nameBytes = encode( level.name );
+        size += level.maps.reduce(
+            ( acc, map ) => acc + map.byteLength,
+            nameBytes.length
+            + goals[ level.goal.id ].exportData.reduce(
+                ( acc, data ) => acc + getDataTypeSize( data.type ),
+                1
+            ) + 1
+        );
+        levelData.push({
+            name: nameBytes,
+            goal: level.goal,
+            maps: level.maps,
+        });
+    });
+    return {
+        size,
+        levelData,
+    };
+};
+
+const Editor = () => {
+    const [ levels, setLevels ] = useState( null );
+    const [ selectedLevel, setSelectedLevel ] = useState( null );
+
+    const closeLevel = () => setSelectedLevel( null );
+
+    const onOpen = data => {
+        const levels = [];
+        let remainingBytes = data;
+        while ( remainingBytes.length > 0 ) {
+            const levelData = loadLevelFromData( remainingBytes );
+            levels.push( levelData.level );
+            remainingBytes = levelData.remainingBytes;
+        }
+        setLevels( levels );
+    };
+
+    const onSave = () => {
+        const { levelData, size } = gatherLevelSaveData( levels );
+        const buffer = new ArrayBuffer( size );
+        const view = new DataView( buffer );
+        let i = 0;
+        levelData.forEach( ( { name, goal, maps } ) => {
+            name.forEach( byte => view.setUint8( i++, byte ) );
+            view.setUint8( i++, goal.id );
+            goals[ goal.id ].exportData.forEach( data => {
+                view[ `set${ data.type }` ]( i, goal[ data.data ] );
+                i += getDataTypeSize( data.type );
+            });
+            view.setUint8( i++, maps.length );
+            maps.forEach( map => {
+                new Uint8Array( map ).forEach( byte => view.setUint8( i++, byte ) );
+            });
+        } );
+        window.electronAPI.save( view );
+    };
+
+    const setMaps = maps => setLevels( levels.map( ( level, i ) => i === selectedLevel ? { ...level, maps } : level ) );
+
+    const onNew = () => {
+        setLevels( [] );
+        setSelectedLevel( null );
+    };
+
+    const onClose = () => {
+        setLevels( null );
+        setSelectedLevel( null );
+    };
+
+    useEffect(() => {
+        window.electronAPI.onOpen( onOpen );
+        window.electronAPI.onSave( onSave );
+        window.electronAPI.onNew( onNew );
+        window.electronAPI.onClose( onClose );
+
+        return () => {
+            window.electronAPI.removeNewListener();
+            window.electronAPI.removeCloseListener();
+            window.electronAPI.removeOpenListener();
+            window.electronAPI.removeSaveListener();
+        };
+    }, [ levels ]);
+
+    return <div>
+        { levels !== null && selectedLevel === null && <LevelList levels={ levels } setLevels={ setLevels } setSelectedLevel={ setSelectedLevel } /> }
+        { levels !== null && selectedLevel !== null && <Canvas
+            closeLevel={ closeLevel }
+            maps={ levels[ selectedLevel ].maps }
+            name={ levels[ selectedLevel ].name }
+            setName={ name => setLevels( levels.map( ( level, i ) => i === selectedLevel ? { ...level, name } : level ) ) }
+            selectedGoal={ levels[ selectedLevel ].goal }
+            setMaps={ setMaps }
+            setSelectedGoal={ goal => setLevels( levels.map( ( level, i ) => i === selectedLevel ? { ...level, goal } : level ) ) }
+        /> }
     </div>;
 };
 
