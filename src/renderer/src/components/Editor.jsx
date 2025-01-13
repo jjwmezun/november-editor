@@ -7,6 +7,8 @@ import goals from '../../../common/goals';
 import types from '../../../common/types';
 import { getDataTypeSize } from '../../../common/utils';
 
+const what = 'what';
+
 const splitMapBytes = ( data, count ) => {
 	const buffer = new ArrayBuffer( data.byteLength );
 	const maps = [];
