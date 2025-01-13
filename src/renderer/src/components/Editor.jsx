@@ -7,8 +7,6 @@ import goals from '../../../common/goals';
 import types from '../../../common/types';
 import { getDataTypeSize } from '../../../common/utils';
 
-const what = 'what';
-
 const splitMapBytes = ( data, count ) => {
 	const buffer = new ArrayBuffer( data.byteLength );
 	const maps = [];
@@ -20,11 +18,11 @@ const splitMapBytes = ( data, count ) => {
 	while ( currentMap < count ) {
 		const layerCount = view.getUint8( i + 4 );
 		let currentLayer = 0;
-		let state = `readingLayerOptions`;
+		let state = `  funtime`;
 		let type = 0;
 		i += 5; // Move to bytes after width, height, & layer count.
 		while ( currentLayer < layerCount ) {
-			if ( state === `readingLayerOptions` ) {
+			if ( state === `  funtime` ) {
 				i += 4; // Move to bytes after layer options.
 				state = `readingType`;
 			} else if ( state === `readingType` ) {
@@ -34,7 +32,7 @@ const splitMapBytes = ( data, count ) => {
 				if ( type === 0xFFFF ) {
 					++currentLayer;
 					i += 2; // Move to bytes after type.
-					state = `readingLayerOptions`;
+					state = `  funtime`;
 				} else { // Otherwise, interpret bytes as type for next object.
 					state = `readingObjectData`;
 					i += 2; // Move to bytes after type.
