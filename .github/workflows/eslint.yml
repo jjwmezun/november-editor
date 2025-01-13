@@ -17,7 +17,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 21
-        run: npm ci
+      - run: npm ci
       - name: Run eslint on changed files
         uses: tj-actions/eslint-changed-files@v21
         with:
