@@ -1,4 +1,4 @@
-const { encode, decode, testCharacters } = require( `../src/common/text` );
+import { encode, decode, testCharacters } from '../src/common/text';
 
 test( `Text encodes to expected bits.`, () => {
 	expect( encode( `1st We Take Manhattan…` ) )
