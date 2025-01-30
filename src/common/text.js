@@ -1380,3 +1380,5 @@ export const decode = bytes => {
 export const testCharacters = text => {
 	return text.toUpperCase().split( `` ).every( char => codeMap[ char ] !== undefined );
 };
+
+export const dummy = () => null;
