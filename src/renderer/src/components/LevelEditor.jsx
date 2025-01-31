@@ -232,6 +232,14 @@ const LevelEditor = props => {
 		setSelectedLayer( null );
 	};
 
+	const exportMap = () => {
+		window.electronAPI.exportMap( maps[ selectedMapIndex ] );
+	};
+
+	const importMap = () => {
+		window.electronAPI.importMap();
+	};
+
 	const objects = selectedLayer === null || layers.length === 0 ? [] : layers[ selectedLayer ].objects;
 
 	const setWidth = width => update( `width`, width );
@@ -515,6 +523,22 @@ const LevelEditor = props => {
 	useEffect( render, [ canvasRef ] );
 	useEffect( render );
 
+	useEffect( () => {
+		window.electronAPI.importMapData( data => {
+			const map = transformMapDataToObject( data.buffer );
+			setSelectedMap( map );
+			setSelectedMapIndex( maps.length );
+			setMaps( [ ...maps, data.buffer ] );
+			setSelected( { x: null, y: null } );
+			setSelectedObject( null );
+			setSelectedLayer( null );
+		} );
+
+		return () => {
+			window.electronAPI.removeSaveListener();
+		};
+	}, [ maps ] );
+
 	return <div>
 		<div>
 			<h2>Level options:</h2>
@@ -561,6 +585,8 @@ const LevelEditor = props => {
 			</li> ) }
 		</ul>}
 		<button onClick={ addMap }>Add Map</button>
+		<button disabled={ selectedMap === null } onClick={ exportMap }>Export Map</button>
+		<button disabled={ maps.length >= 255 } onClick={ importMap }>Import Map</button>
 		{ selectedMap !== null && <div>
 			<div className="window" onScroll={ onScrollWindow }>
 				<canvas

@@ -68,6 +68,41 @@ function createWindow() {
 		} );
 	};
 
+	const exportMap = ( _event, map ) => {
+		dialog.showSaveDialog( null, {
+			title: `Export Map`,
+			filters: [
+				{ name: `Boskeopolis Land Map`, extensions: [ `blmap` ] },
+			],
+		} ).then( result => {
+			fs.writeFile( result.filePath, Buffer.from( map ), err => {
+				if ( err ) {
+					console.error( err );
+					return;
+				}
+			} );
+		} );
+	};
+
+	const importMap = () => {
+		dialog.showOpenDialog( null, {
+			title: `Import Map`,
+			filters: [
+				{ name: `Boskeopolis Land Map`, extensions: [ `blmap` ] },
+			],
+		} ).then( result => {
+			if ( !result.canceled ) {
+				fs.readFile( result.filePaths[ 0 ], ( err, data ) => {
+					if ( err ) {
+						console.error( err );
+						return;
+					}
+					mainWindow.webContents.send( `importMapData`, data );
+				} );
+			}
+		} );
+	};
+
 	const menu = Menu.buildFromTemplate( [
 		{
 			label: `File`,
@@ -164,6 +199,9 @@ function createWindow() {
 	} );
 
 	ipcMain.on( `enable-save`, enableSave );
+
+	ipcMain.on( `exportMap`, exportMap );
+	ipcMain.on( `importMap`, importMap );
 
 	mainWindow.on( `ready-to-show`, () => {
 		mainWindow.show();
