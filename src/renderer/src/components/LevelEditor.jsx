@@ -240,22 +240,7 @@ const LevelEditor = props => {
 		window.electronAPI.importMap();
 	};
 
-	useEffect( () => {
-		setSelected( { x: null, y: null } );
-		setSelectedObject( null );
-		setSelectedLayer( null );
-	}, [ selectedMapIndex ] );
-
 	const objects = selectedLayer === null || layers.length === 0 ? [] : layers[ selectedLayer ].objects;
-
-	useEffect( () => {
-		if ( selectedLayer === null || layers[ selectedLayer ].objects.length === 0 ) {
-			setSelected( { x: null, y: null } );
-			setSelectedObject( null );
-			setSelectedLayer( null );
-			setSelectedType( 0 );
-		}
-	}, [ layers ] );
 
 	const setWidth = width => update( `width`, width );
 	const setHeight = height => update( `height`, height );
@@ -312,14 +297,8 @@ const LevelEditor = props => {
 		} )() );
 	};
 
-	const onLayerSelection = e => {
-		const options = e.target.querySelectorAll( `option` );
-		for ( let i = 0; i < options.length; i++ ) {
-			if ( options[ i ].selected ) {
-				setSelectedLayer( i );
-				break;
-			}
-		}
+	const generateLayerSelector = i => () => {
+		setSelectedLayer( i );
 		setSelectedObject( null );
 	};
 
@@ -414,6 +393,78 @@ const LevelEditor = props => {
 		setSelectedLayer( null );
 	};
 
+	const render = () => {
+		if ( ! canvasRef.current ) {
+			return;
+		}
+		const ctx = canvasRef.current.getContext( `2d` );
+
+		ctx.clearRect( 0, 0, width * 16, height * 16 );
+
+		// Render objects.
+		if ( tileset !== null ) {
+			layers.forEach( ( layer, i ) => {
+				const tileRenderer = createTileRenderer( ctx, tileset, layer, windowScrollX );
+
+				// Fade out layer if not selected.
+				ctx.globalAlpha = selectedLayer === i ? 1.0 : 0.5;
+
+				layer.objects.forEach( object => {
+					types[ object.type ].render( tileRenderer, object, frame );
+				} );
+			} );
+		}
+
+		// Render highlight o’er selected object.
+		if ( selectedObject !== null ) {
+			const object = objects[ selectedObject ];
+			ctx.fillStyle = `rgba( 0, 64, 128, 0.5 )`;
+			ctx.fillRect( object.x * 16, object.y * 16, ( object.width ?? 1 ) * 16, ( object.height ?? 1 ) * 16 );
+		}
+
+		// Render highlight o’er selected grid box.
+		const gridXPixels = selected.x * 16;
+		const gridYPixels = selected.y * 16;
+		ctx.fillStyle = `rgba( 0, 64, 128, 0.5 )`;
+		ctx.fillRect( gridXPixels, gridYPixels, 15, 15 );
+
+		// Render grid lines.
+		if ( gridImage !== null ) {
+			ctx.globalAlpha = 0.5;
+			ctx.drawImage( gridImage, 0, 0 );
+			ctx.globalAlpha = 1.0;
+		}
+	};
+
+	const updateLevelName = e => {
+		const newName = e.target.value.toUpperCase();
+		if ( ! testCharacters( newName ) ) {
+			return;
+		}
+		setName( newName );
+		window.electronAPI.enableSave();
+	};
+
+	const onChangeGoal = e => {
+		setSelectedGoal( createGoal( e.target.selectedIndex ) );
+		window.electronAPI.enableSave();
+	};
+
+	useEffect( () => {
+		setSelected( { x: null, y: null } );
+		setSelectedObject( null );
+		setSelectedLayer( null );
+	}, [ selectedMapIndex ] );
+
+	useEffect( () => {
+		if ( selectedLayer === null || layers[ selectedLayer ].objects.length === 0 ) {
+			setSelected( { x: null, y: null } );
+			setSelectedObject( null );
+			setSelectedLayer( null );
+			setSelectedType( 0 );
+		}
+	}, [ selectedMap ] );
+
 	useEffect( () => {
 		// Load tileset image on 1st load.
 		const tileset = new Image();
@@ -468,65 +519,9 @@ const LevelEditor = props => {
 		}
 	}, [ width, height ] );
 
-	const render = ctx => {
-		ctx.clearRect( 0, 0, width * 16, height * 16 );
-
-		// Render objects.
-		if ( tileset !== null ) {
-			layers.forEach( ( layer, i ) => {
-				const tileRenderer = createTileRenderer( ctx, tileset, layer, windowScrollX );
-
-				// Fade out layer if not selected.
-				ctx.globalAlpha = selectedLayer === i ? 1.0 : 0.5;
-
-				layer.objects.forEach( object => {
-					types[ object.type ].render( tileRenderer, object, frame );
-				} );
-			} );
-		}
-
-		// Render highlight o’er selected object.
-		if ( selectedObject !== null ) {
-			const object = objects[ selectedObject ];
-			ctx.fillStyle = `rgba( 0, 64, 128, 0.5 )`;
-			ctx.fillRect( object.x * 16, object.y * 16, ( object.width ?? 1 ) * 16, ( object.height ?? 1 ) * 16 );
-		}
-
-		// Render highlight o’er selected grid box.
-		const gridXPixels = selected.x * 16;
-		const gridYPixels = selected.y * 16;
-		ctx.fillStyle = `rgba( 0, 64, 128, 0.5 )`;
-		ctx.fillRect( gridXPixels, gridYPixels, 15, 15 );
-
-		// Render grid lines.
-		if ( gridImage !== null ) {
-			ctx.globalAlpha = 0.5;
-			ctx.drawImage( gridImage, 0, 0 );
-			ctx.globalAlpha = 1.0;
-		}
-	};
-
-	useEffect( () => {
-		if ( ! canvasRef.current ) {
-			return;
-		}
-		const ctx = canvasRef.current.getContext( `2d` );
-		render( ctx );
-	}, [ canvasRef, render ] );
-
-	const updateLevelName = e => {
-		const newName = e.target.value.toUpperCase();
-		if ( ! testCharacters( newName ) ) {
-			return;
-		}
-		setName( newName );
-		window.electronAPI.enableSave();
-	};
-
-	const onChangeGoal = e => {
-		setSelectedGoal( createGoal( e.target.selectedIndex ) );
-		window.electronAPI.enableSave();
-	};
+	// Render on canvas ref or whene’er there is a state change.
+	useEffect( render, [ canvasRef ] );
+	useEffect( render );
 
 	useEffect( () => {
 		window.electronAPI.importMapData( data => {
@@ -556,10 +551,9 @@ const LevelEditor = props => {
 			<div>
 				<label>
 					<span>Goal:</span>
-					<select onChange={ onChangeGoal }>
+					<select onChange={ onChangeGoal } value={ selectedGoal.id }>
 						{ goals.map( ( goal, i ) => <option
 							key={ i }
-							selected={ i === selectedGoal.id }
 						>
 							{ goal.name }
 						</option> ) }
@@ -678,9 +672,18 @@ const LevelEditor = props => {
 				}
 				<button onClick={ removeObject }>Delete</button>
 			</div> }
-			<select selected={ selectedLayer } size={ Math.min( layers.length + 1, 10 ) } onChange={ onLayerSelection }>
-				{ layers.map( ( layer, i ) => <option key={ i }>Layer { i + 1 } – { layer.type.title }</option> ) }
-			</select>
+			<div>
+				<ul>
+					{ layers.map( ( layer, i ) => <li key={ i }>
+						<button
+							disabled={ selectedLayer === i }
+							onClick={ generateLayerSelector( i ) }
+						>
+							Layer { i + 1 } – { layer.type.title }
+						</button>
+					</li> ) }
+				</ul>
+			</div>
 			<button disabled={ layers.length >= 255 } onClick={ addLayer }>Add layer</button>
 			<button onClick={ removeLayer }>Delete layer</button>
 			<button disabled={ selectedLayer === null || selectedLayer === 0 } onClick={ moveLayerUp }>↑</button>
