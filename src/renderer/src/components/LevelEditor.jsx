@@ -232,6 +232,34 @@ const LevelEditor = props => {
 		setSelectedLayer( null );
 	};
 
+	const deleteMap = () => {
+		setMaps( maps.filter( ( _, i ) => i !== selectedMapIndex ) );
+		setSelectedMap( null );
+		setSelectedMapIndex( null );
+	};
+
+	const moveMapUp = () => {
+		setMaps( ( () => {
+			const newMaps = [ ...maps ];
+			const temp = newMaps[ selectedMapIndex ];
+			newMaps[ selectedMapIndex ] = newMaps[ selectedMapIndex - 1 ];
+			newMaps[ selectedMapIndex - 1 ] = temp;
+			return newMaps;
+		} )() );
+		setSelectedMapIndex( selectedMapIndex - 1 );
+	};
+
+	const moveMapDown = () => {
+		setMaps( ( () => {
+			const newMaps = [ ...maps ];
+			const temp = newMaps[ selectedMapIndex ];
+			newMaps[ selectedMapIndex ] = newMaps[ selectedMapIndex + 1 ];
+			newMaps[ selectedMapIndex + 1 ] = temp;
+			return newMaps;
+		} )() );
+		setSelectedMapIndex( selectedMapIndex + 1 );
+	};
+
 	const exportMap = () => {
 		window.electronAPI.exportMap( maps[ selectedMapIndex ] );
 	};
@@ -554,6 +582,7 @@ const LevelEditor = props => {
 					<select onChange={ onChangeGoal } value={ selectedGoal.id }>
 						{ goals.map( ( goal, i ) => <option
 							key={ i }
+							value={ i }
 						>
 							{ goal.name }
 						</option> ) }
@@ -584,7 +613,20 @@ const LevelEditor = props => {
 				</button>
 			</li> ) }
 		</ul>}
-		<button onClick={ addMap }>Add Map</button>
+		<button disabled={ maps.length >= 255 } onClick={ addMap }>Add Map</button>
+		<button disabled={ selectedMap === null } onClick={ deleteMap }>Delete Map</button>
+		<button
+			disabled={ selectedMapIndex === null || selectedMapIndex === 0 }
+			onClick={ moveMapUp }
+		>
+			↑
+		</button>
+		<button
+			disabled={ selectedMapIndex === null || selectedMapIndex === maps.length - 1 }
+			onClick={ moveMapDown }
+		>
+			↓
+		</button>
 		<button disabled={ selectedMap === null } onClick={ exportMap }>Export Map</button>
 		<button disabled={ maps.length >= 255 } onClick={ importMap }>Import Map</button>
 		{ selectedMap !== null && <div>
@@ -685,7 +727,7 @@ const LevelEditor = props => {
 				</ul>
 			</div>
 			<button disabled={ layers.length >= 255 } onClick={ addLayer }>Add layer</button>
-			<button onClick={ removeLayer }>Delete layer</button>
+			<button disabled={ selectedLayer === null } onClick={ removeLayer }>Delete layer</button>
 			<button disabled={ selectedLayer === null || selectedLayer === 0 } onClick={ moveLayerUp }>↑</button>
 			<button
 				disabled={ selectedLayer === null || selectedLayer === layers.length - 1 }
