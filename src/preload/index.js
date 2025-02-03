@@ -21,10 +21,11 @@ if ( process.contextIsolated ) {
 			exportMap: value => ipcRenderer.send( `exportMap`, value ),
 			importMap: value => ipcRenderer.send( `importMap`, value ),
 			enableSave: value => ipcRenderer.send( `enable-save`, value ),
-			removeNewListener: () => ipcRenderer.removeAllListeners( `new` ),
-			removeOpenListener: () => ipcRenderer.removeAllListeners( `open` ),
-			removeSaveListener: () => ipcRenderer.removeAllListeners( `save` ),
-			removeCloseListener: () => ipcRenderer.removeAllListeners( `close` ),
+			removeNewListener: listener => ipcRenderer.removeListener( `new`, listener ),
+			removeOpenListener: listener => ipcRenderer.removeListener( `open`, listener ),
+			removeSaveListener: listener => ipcRenderer.removeListener( `save`, listener ),
+			removeCloseListener: listener => ipcRenderer.removeListener( `close`, listener ),
+			removeImportMapDataListener: listener => ipcRenderer.removeListener( `importMapData`, listener ),
 		} );
 	} catch ( error ) {
 		console.error( error );

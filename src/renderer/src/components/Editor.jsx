@@ -1,12 +1,14 @@
 import '../assets/editor.scss';
 import { useEffect, useState } from 'react';
-import { encode, decode, testCharacters } from '../../../common/text';
-import LevelEditor from './LevelEditor';
-import LevelList from './LevelList';
+import { encode, decode } from '../../../common/text';
 import goals from '../../../common/goals';
 import types from '../../../common/types';
 import { getDataTypeSize } from '../../../common/utils';
 import { levelCount } from '../../../common/constants';
+import { modeKeys } from '../../../common/modes';
+import LevelMode from './LevelMode';
+import SelectMode from './SelectMode';
+import GraphicsMode from './GraphicsMode';
 
 const splitMapBytes = ( data, count ) => {
 	const buffer = new ArrayBuffer( data.byteLength );
@@ -176,77 +178,56 @@ const generateNewLevel = () => ( {
 
 const Editor = () => {
 	const [ levels, setLevels ] = useState( null );
-	const [ selectedLevel, setSelectedLevel ] = useState( null );
-
-	const closeLevel = () => setSelectedLevel( null );
+	const [ mode, setMode ] = useState( modeKeys.select );
 
 	const onOpen = data => setLevels( loadSaveData( data ) );
 
 	const onSave = () => window.electronAPI.save( generateSaveData( levels ) );
 
-	// Set maps to maps list, but with selected level replaced by updated version.
-	const setMaps = maps => setLevels( levels.map( ( level, i ) => ( i === selectedLevel
-		? { ...level, maps }
-		: level ) ) );
+	const resetMode = () => setMode( modeKeys.select );
 
 	const onNew = () => {
 		setLevels( Array.from( { length: levelCount } ).map( generateNewLevel ) );
-		setSelectedLevel( null );
+		resetMode();
 	};
 
 	const onClose = () => {
 		setLevels( null );
-		setSelectedLevel( null );
+		resetMode();
 	};
-
-	const generateLevelNameUpdater = selectedLevel => name => {
-		const newName = name.toUpperCase();
-
-		// If name contains invalid characters, do not update.
-		if ( ! testCharacters( newName ) ) {
-			return;
-		}
-
-		setLevels( levels.map( ( level, i ) => ( i === selectedLevel
-			? { ...level, name: newName }
-			: level ) ) );
-		window.electronAPI.enableSave();
-	};
-
-	const setSelectedGoal = goal => setLevels( levels.map( ( level, i ) => ( i === selectedLevel
-		? { ...level, goal }
-		: level ) ) );
 
 	useEffect( () => {
 		window.electronAPI.onOpen( onOpen );
-		window.electronAPI.onSave( onSave );
 		window.electronAPI.onNew( onNew );
 		window.electronAPI.onClose( onClose );
 
 		return () => {
-			window.electronAPI.removeNewListener();
-			window.electronAPI.removeCloseListener();
-			window.electronAPI.removeOpenListener();
-			window.electronAPI.removeSaveListener();
+			window.electronAPI.removeNewListener( onNew );
+			window.electronAPI.removeCloseListener( onClose );
+			window.electronAPI.removeOpenListener( onOpen );
+		};
+	}, [] );
+
+	useEffect( () => {
+		window.electronAPI.onSave( onSave );
+
+		return () => {
+			window.electronAPI.removeSaveListener( onSave );
 		};
 	}, [ levels ] ); // Update whene’er levels change so they always reflect latest data.
 
 	return <div>
-		{ levels !== null && selectedLevel === null && <LevelList
-			generateLevelNameUpdater={ generateLevelNameUpdater }
-			levels={ levels }
-			setLevels={ setLevels }
-			setSelectedLevel={ setSelectedLevel }
-		/> }
-		{ levels !== null && selectedLevel !== null && <LevelEditor
-			closeLevel={ closeLevel }
-			maps={ levels[ selectedLevel ].maps }
-			name={ levels[ selectedLevel ].name }
-			setName={ generateLevelNameUpdater( selectedLevel ) }
-			selectedGoal={ levels[ selectedLevel ].goal }
-			setMaps={ setMaps }
-			setSelectedGoal={ setSelectedGoal }
-		/> }
+		{ levels !== null && <div>
+			{ mode === modeKeys.select && <SelectMode setMode={ setMode } /> }
+			{ mode === modeKeys.levelList && <LevelMode
+				exitMode={ resetMode }
+				levels={ levels }
+				setLevels={ setLevels }
+			/> }
+			{ mode === modeKeys.graphics && <GraphicsMode
+				exitMode={ resetMode }
+			/> }
+		</div> }
 	</div>;
 };
 

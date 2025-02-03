@@ -9,8 +9,10 @@ Created by J. J. W. Mezun. Released under GPLv3 license.
 ☑ Menu bar with “New”, “Save”, & “Save As…” options.
 ☑ Multiple layers & layer options.
 ☑ Multiple maps & levels.
-☐ Text translations.
-☐ Tilesets.
+☐ Graphics.
+☐ Palettes.
+☐ Sprites layer.
+☐ Background layer.
 ☐ Object selector.
 
 ## File format

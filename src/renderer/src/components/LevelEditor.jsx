@@ -541,19 +541,51 @@ const LevelEditor = props => {
 	useEffect( render, [ canvasRef ] );
 	useEffect( render );
 
+	const importMapData = data => {
+		const map = transformMapDataToObject( data.buffer );
+		setSelectedMap( map );
+		setSelectedMapIndex( maps.length );
+		setMaps( [ ...maps, data.buffer ] );
+		setSelected( { x: null, y: null } );
+		setSelectedObject( null );
+		setSelectedLayer( null );
+	};
+
+	const onOpen = () => {
+		setSelected( { x: null, y: null } );
+		setSelectedObject( null );
+		setSelectedLayer( null );
+		setSelectedMap( null );
+		setSelectedMapIndex( null );
+	};
+
+	const onClose = () => {
+		setSelected( { x: null, y: null } );
+		setSelectedObject( null );
+		setSelectedLayer( null );
+		setSelectedMap( null );
+		setSelectedMapIndex( null );
+	};
+
+	const onNew = () => {
+		setSelected( { x: null, y: null } );
+		setSelectedObject( null );
+		setSelectedLayer( null );
+		setSelectedMap( null );
+		setSelectedMapIndex( null );
+	};
+
 	useEffect( () => {
-		window.electronAPI.importMapData( data => {
-			const map = transformMapDataToObject( data.buffer );
-			setSelectedMap( map );
-			setSelectedMapIndex( maps.length );
-			setMaps( [ ...maps, data.buffer ] );
-			setSelected( { x: null, y: null } );
-			setSelectedObject( null );
-			setSelectedLayer( null );
-		} );
+		window.electronAPI.importMapData( importMapData );
+		window.electronAPI.onOpen( onOpen );
+		window.electronAPI.onClose( onClose );
+		window.electronAPI.onNew( onNew );
 
 		return () => {
-			window.electronAPI.removeSaveListener();
+			window.electronAPI.removeImportMapDataListener( importMapData );
+			window.electronAPI.removeOpenListener( onOpen );
+			window.electronAPI.removeCloseListener( onClose );
+			window.electronAPI.removeNewListener( onNew );
 		};
 	}, [ maps ] );
 
