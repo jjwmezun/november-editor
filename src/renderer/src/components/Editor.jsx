@@ -1,11 +1,12 @@
 import '../assets/editor.scss';
 import { useEffect, useState } from 'react';
-import { encode, decode } from '../../../common/text';
+import { encode, decode, testCharacters } from '../../../common/text';
 import LevelEditor from './LevelEditor';
 import LevelList from './LevelList';
 import goals from '../../../common/goals';
 import types from '../../../common/types';
 import { getDataTypeSize } from '../../../common/utils';
+import { levelCount } from '../../../common/constants';
 
 const splitMapBytes = ( data, count ) => {
 	const buffer = new ArrayBuffer( data.byteLength );
@@ -115,6 +116,12 @@ const loadSaveData = data => {
 		levels.push( levelData.level );
 		remainingBytes = levelData.remainingBytes;
 	}
+
+	// If there are fewer levels than expected,
+	// add new levels to fill the gap.
+	while ( levels.length < levelCount ) {
+		levels.push( generateNewLevel() );
+	}
 	return levels;
 };
 
@@ -161,6 +168,12 @@ const generateSaveData = levels => {
 	return view;
 };
 
+const generateNewLevel = () => ( {
+	name: `Unnamed Level`,
+	goal: { id: 0 },
+	maps: [],
+} );
+
 const Editor = () => {
 	const [ levels, setLevels ] = useState( null );
 	const [ selectedLevel, setSelectedLevel ] = useState( null );
@@ -177,7 +190,7 @@ const Editor = () => {
 		: level ) ) );
 
 	const onNew = () => {
-		setLevels( [] );
+		setLevels( Array.from( { length: levelCount } ).map( generateNewLevel ) );
 		setSelectedLevel( null );
 	};
 
@@ -186,9 +199,19 @@ const Editor = () => {
 		setSelectedLevel( null );
 	};
 
-	const setName = name => setLevels( levels.map( ( level, i ) => ( i === selectedLevel
-		? { ...level, name }
-		: level ) ) );
+	const generateLevelNameUpdater = selectedLevel => name => {
+		const newName = name.toUpperCase();
+
+		// If name contains invalid characters, do not update.
+		if ( ! testCharacters( newName ) ) {
+			return;
+		}
+
+		setLevels( levels.map( ( level, i ) => ( i === selectedLevel
+			? { ...level, name: newName }
+			: level ) ) );
+		window.electronAPI.enableSave();
+	};
 
 	const setSelectedGoal = goal => setLevels( levels.map( ( level, i ) => ( i === selectedLevel
 		? { ...level, goal }
@@ -210,6 +233,7 @@ const Editor = () => {
 
 	return <div>
 		{ levels !== null && selectedLevel === null && <LevelList
+			generateLevelNameUpdater={ generateLevelNameUpdater }
 			levels={ levels }
 			setLevels={ setLevels }
 			setSelectedLevel={ setSelectedLevel }
@@ -218,7 +242,7 @@ const Editor = () => {
 			closeLevel={ closeLevel }
 			maps={ levels[ selectedLevel ].maps }
 			name={ levels[ selectedLevel ].name }
-			setName={ setName }
+			setName={ generateLevelNameUpdater( selectedLevel ) }
 			selectedGoal={ levels[ selectedLevel ].goal }
 			setMaps={ setMaps }
 			setSelectedGoal={ setSelectedGoal }
