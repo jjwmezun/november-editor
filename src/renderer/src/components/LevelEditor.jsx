@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import urban from '../assets/urban.png';
-import { testCharacters } from '../../../common/text';
 import goals from '../../../common/goals';
 import types from '../../../common/types';
 import { getDataTypeSize } from '../../../common/utils';
@@ -464,15 +463,6 @@ const LevelEditor = props => {
 		}
 	};
 
-	const updateLevelName = e => {
-		const newName = e.target.value.toUpperCase();
-		if ( ! testCharacters( newName ) ) {
-			return;
-		}
-		setName( newName );
-		window.electronAPI.enableSave();
-	};
-
 	const onChangeGoal = e => {
 		setSelectedGoal( createGoal( e.target.selectedIndex ) );
 		window.electronAPI.enableSave();
@@ -573,7 +563,7 @@ const LevelEditor = props => {
 			<div>
 				<label>
 					<span>Name:</span>
-					<input type="text" value={ name } onChange={ updateLevelName } />
+					<input type="text" value={ name } onChange={ e => setName( e.target.value ) } />
 				</label>
 			</div>
 			<div>
@@ -735,10 +725,10 @@ const LevelEditor = props => {
 			>
 				↓
 			</button>
-			<div>
-				<button onClick={ exit }>Back to Level List</button>
-			</div>
 		</div> }
+		<div>
+			<button onClick={ exit }>Back to Level List</button>
+		</div>
 	</div>;
 };
 
