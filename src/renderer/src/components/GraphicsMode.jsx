@@ -27,7 +27,8 @@ const GraphicsMode = props => {
 		const tileX = selectedTile % tileset.getWidthTiles();
 		const pixelY = tileY * tileSize + y;
 		const pixelX = tileX * tileSize + x;
-		setTileset( tileset.updatePixel( selectedColor, pixelX, pixelY ) );
+		tileset.updatePixel( selectedColor, pixelX, pixelY );
+		setTileset( { ...tileset } );
 	};
 
 	return <div>

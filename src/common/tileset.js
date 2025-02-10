@@ -13,27 +13,10 @@ const colors = Object.freeze( [
 	`rgba( 255, 255, 255, 1)`,
 ] );
 
-const createTileset = ( widthTiles, heightTiles, pixels ) => {
+const createTileset = ( widthTiles, heightTiles, pixels, canvas ) => {
 	const getWidthPixels = () => widthTiles * tileSize;
 	const getHeightPixels = () => heightTiles * tileSize;
-	const canvas = document.createElement( `canvas` );
-	canvas.style.imageRendering = `pixelated`;
-	canvas.width = getWidthPixels();
-	canvas.height = getHeightPixels();
 	const ctx = canvas.getContext( `2d` );
-	ctx.imageSmoothingEnabled = false;
-
-	const rerenderPixels = () => {
-		ctx.clearRect( 0, 0, canvas.width, canvas.height );
-		pixels.forEach( ( color, i ) => {
-			const x = i % getWidthPixels();
-			const y = Math.floor( i / getWidthPixels() );
-			ctx.fillStyle = colors[ color ];
-			ctx.fillRect( x, y, 1, 1 );
-		} );
-	};
-
-	rerenderPixels();
 
 	return {
 		getWidthTiles: () => widthTiles,
@@ -47,17 +30,38 @@ const createTileset = ( widthTiles, heightTiles, pixels ) => {
 		drawWhole: ( ctx, ctxWidth, ctxHeight ) => {
 			ctx.drawImage( canvas, 0, 0, getWidthPixels(), getHeightPixels(), 0, 0, ctxWidth, ctxHeight );
 		},
-		updatePixels: newPixels => createTileset( widthTiles, heightTiles, newPixels ),
+		updatePixels: newPixels => createNewTileset( widthTiles, heightTiles, newPixels ),
 		updatePixel: ( color, x, y ) => {
 			const index = y * getWidthPixels() + x;
-			const newPixels = [ ...pixels ];
-			newPixels[ index ] = color;
-			return createTileset( widthTiles, heightTiles, newPixels );
+			pixels[ index ] = color;
+			ctx.fillStyle = colors[ color ];
+			ctx.fillRect( x, y, 1, 1 );
 		},
 	};
 };
 
-const createBlankTileset = ( widthTiles, heightTiles ) => createTileset(
+const createNewTileset = ( widthTiles, heightTiles, pixels ) => {
+	const getWidthPixels = () => widthTiles * tileSize;
+	const getHeightPixels = () => heightTiles * tileSize;
+	const canvas = document.createElement( `canvas` );
+	canvas.style.imageRendering = `pixelated`;
+	canvas.width = getWidthPixels();
+	canvas.height = getHeightPixels();
+	const ctx = canvas.getContext( `2d` );
+	ctx.imageSmoothingEnabled = false;
+
+	ctx.clearRect( 0, 0, canvas.width, canvas.height );
+	pixels.forEach( ( color, i ) => {
+		const x = i % getWidthPixels();
+		const y = Math.floor( i / getWidthPixels() );
+		ctx.fillStyle = colors[ color ];
+		ctx.fillRect( x, y, 1, 1 );
+	} );
+
+	return createTileset( widthTiles, heightTiles, pixels, canvas );
+};
+
+const createBlankTileset = ( widthTiles, heightTiles ) => createNewTileset(
 	widthTiles,
 	heightTiles,
 	new Array( widthTiles * tileSize * heightTiles * tileSize ).fill( 0 ),
