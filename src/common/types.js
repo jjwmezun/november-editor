@@ -147,13 +147,15 @@ export default Object.freeze( [
 			for ( let y = object.yTiles(); y < object.bottomTiles(); y += 2 ) {
 				for ( let x = object.xTiles(); x < object.rightTiles(); x += 2 ) {
 					tileRenderer( {
-						srcx: 67 + animationOffset,
+						srcx: 5 + animationOffset,
+						srcy: 1,
 						x,
 						y,
 						w: 2,
 					} );
 					tileRenderer( {
-						srcx: 79 + animationOffset,
+						srcx: 17 + animationOffset,
+						srcy: 1,
 						x,
 						y: y + 1,
 						w: 2,
