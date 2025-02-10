@@ -8,7 +8,7 @@ const tileSize = 8 * zoom;
 
 const TileGrid = props => {
 	const canvasRef = useRef();
-	const { canvas, selectedTile, setSelectedTile, tileset } = props;
+	const { selectedTile, setSelectedTile, tileset } = props;
 	const [ gridImage, setGridImage ] = useState( null );
 	const [ hovered, setHovered ] = useState( { x: 0, y: 0 } );
 	const width = tileset.getWidthPixels() * zoom;
@@ -24,9 +24,7 @@ const TileGrid = props => {
 		ctx.clearRect( 0, 0, width, height );
 
 		// Render tileset.
-		if ( canvas !== null ) {
-			ctx.drawImage( canvas, 0, 0, tileset.getWidthPixels(), tileset.getHeightPixels(), 0, 0, width, height );
-		}
+		tileset.drawWhole( ctx, width, height );
 
 		// Render highlight o’er selected grid box.
 		const gridXPixels = hovered.x * tileSize;
@@ -126,7 +124,6 @@ const TileGrid = props => {
 };
 
 TileGrid.propTypes = {
-	canvas: propTypes.instanceOf( HTMLCanvasElement ),
 	selectedTile: propTypes.number,
 	setSelectedTile: propTypes.func.isRequired,
 	tileset: tilesetProp.isRequired,

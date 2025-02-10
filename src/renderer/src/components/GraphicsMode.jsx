@@ -1,5 +1,5 @@
 import propTypes from 'prop-types';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import TileGrid from './TileGrid';
 import TileEditor from './TileEditor';
 import ColorSelector from './ColorSelector';
@@ -21,56 +21,26 @@ const GraphicsMode = props => {
 
 	const [ selectedTile, setSelectedTile ] = useState( 0 );
 	const [ selectedColor, setSelectedColor ] = useState( 0 );
-	const [ canvas, setCanvas ] = useState( null );
 
 	const drawPixel = ( x, y ) => {
-		if ( canvas === null ) {
-			return;
-		}
 		const tileY = Math.floor( selectedTile / tileset.getWidthTiles() );
 		const tileX = selectedTile % tileset.getWidthTiles();
 		const pixelY = tileY * tileSize + y;
 		const pixelX = tileX * tileSize + x;
-		const ctx = canvas.getContext( `2d` );
-		ctx.fillStyle = colors[ selectedColor ];
-		ctx.fillRect( pixelX, pixelY, 1, 1 );
 		setTileset( tileset.updatePixel( selectedColor, pixelX, pixelY ) );
 	};
-
-	useEffect( () => {
-		// Setup canvas.
-		const canvas = document.createElement( `canvas` );
-		canvas.style.imageRendering = `pixelated`;
-		canvas.width = tileset.getWidthPixels();
-		canvas.height = tileset.getHeightPixels();
-		const ctx = canvas.getContext( `2d` );
-		ctx.imageSmoothingEnabled = false;
-		ctx.clearRect( 0, 0, canvas.width, canvas.height );
-
-		// Render tileset pixels to canvas.
-		const pixels = tileset.getPixels();
-		pixels.forEach( ( color, i ) => {
-			const x = i % tileset.getWidthPixels();
-			const y = Math.floor( i / tileset.getWidthPixels() );
-			ctx.fillStyle = colors[ color ];
-			ctx.fillRect( x, y, 1, 1 );
-		} );
-
-		setCanvas( canvas );
-	}, [] );
 
 	return <div>
 		<h1>Graphics Editor</h1>
 		<div>
 			<TileGrid
-				canvas={ canvas }
 				selectedTile={ selectedTile }
 				setSelectedTile={ setSelectedTile }
 				tileset={ tileset }
 			/>
 			<TileEditor
-				canvas={ canvas }
 				drawPixel={ drawPixel }
+				tileset={ tileset }
 				tileX={ selectedTile % tileset.getWidthTiles() }
 				tileY={ Math.floor( selectedTile / tileset.getWidthTiles() ) }
 			/>

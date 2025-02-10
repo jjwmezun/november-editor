@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import { testCharacters } from '../../../common/text';
 import LevelEditor from './LevelEditor';
 import LevelList from './LevelList';
+import { tilesetProp } from '../../../common/tileset';
 
 const LevelMode = props => {
-	const { exitMode, levels, setLevels } = props;
+	const { exitMode, levels, setLevels, tileset } = props;
 	const [ selectedLevel, setSelectedLevel ] = useState( null );
 
 	const closeLevel = () => setSelectedLevel( null );
@@ -74,6 +75,7 @@ const LevelMode = props => {
 			selectedGoal={ levels[ selectedLevel ].goal }
 			setMaps={ setMaps }
 			setSelectedGoal={ setSelectedGoal }
+			tileset={ tileset }
 		/> }
 	</div>;
 };
@@ -82,6 +84,7 @@ LevelMode.propTypes = {
 	exitMode: propTypes.func.isRequired,
 	levels: propTypes.array,
 	setLevels: propTypes.func.isRequired,
+	tileset: tilesetProp.isRequired,
 };
 
 export default LevelMode;

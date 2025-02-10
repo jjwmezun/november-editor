@@ -1,16 +1,16 @@
 import propTypes from 'prop-types';
 import { useEffect, useRef, useState } from 'react';
 import { getMousePosition } from '../../../common/utils';
+import { tilesetProp, tileSize } from '../../../common/tileset';
 
 const pixelZoom = 16;
 const halfPixel = pixelZoom / 2;
-const tileSize = 8;
 const width = tileSize * pixelZoom;
 const height = tileSize * pixelZoom;
 
 const TileEditor = props => {
 	const canvasRef = useRef();
-	const { canvas, drawPixel, tileX, tileY } = props;
+	const { drawPixel, tileset, tileX, tileY } = props;
 	const [ gridImage, setGridImage ] = useState( null );
 	const [ transparencyImage, setTransparencyImage ] = useState( null );
 	const [ selected, setSelected ] = useState( { x: 0, y: 0 } );
@@ -32,11 +32,9 @@ const TileEditor = props => {
 			ctx.globalAlpha = 1.0;
 		}
 
-		if ( canvas !== null ) {
-			const srcX = tileX * tileSize;
-			const srcY = tileY * tileSize;
-			ctx.drawImage( canvas, srcX, srcY, tileSize, tileSize, 0, 0, width, height );
-		}
+		const srcX = tileX * tileSize;
+		const srcY = tileY * tileSize;
+		tileset.drawPiece( ctx, srcX, srcY, tileSize, tileSize, 0, 0, width, height );
 
 		// Render highlight o’er selected grid box.
 		const gridXPixels = selected.x * pixelZoom;
@@ -123,7 +121,7 @@ const TileEditor = props => {
 	}, [] );
 
 	// Render on canvas ref or whene’er there is a state change.
-	useEffect( render, [ canvasRef, canvas ] );
+	useEffect( render, [ canvasRef, tileset ] );
 	useEffect( render );
 
 	return <div className="graphics__tile-grid-canvas">
@@ -139,8 +137,8 @@ const TileEditor = props => {
 };
 
 TileEditor.propTypes = {
-	canvas: propTypes.object,
 	drawPixel: propTypes.func.isRequired,
+	tileset: tilesetProp.isRequired,
 	tileX: propTypes.number.isRequired,
 	tileY: propTypes.number.isRequired,
 };

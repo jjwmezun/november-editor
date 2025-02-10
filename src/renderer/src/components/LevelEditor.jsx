@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import urban from '../assets/urban.png';
 import goals from '../../../common/goals';
 import types from '../../../common/types';
 import { getDataTypeSize } from '../../../common/utils';
 import propTypes from 'prop-types';
+import { tilesetProp } from '../../../common/tileset';
 
 const layerTypes = Object.freeze( {
 	block: {
@@ -41,8 +41,8 @@ const createTileRenderer = ( ctx, tileset, layer, windowScrollX ) => args => {
 		h: 1,
 		...args,
 	};
-	ctx.drawImage(
-		tileset,
+	tileset.drawPiece(
+		ctx,
 		srcx * 8,
 		srcy * 8,
 		w * 8,
@@ -193,7 +193,6 @@ const LevelEditor = props => {
 	const [ gridImage, setGridImage ] = useState( null );
 	const [ selected, setSelected ] = useState( { x: null, y: null } );
 	const [ selectedObject, setSelectedObject ] = useState( null );
-	const [ tileset, setTileset ] = useState( null );
 	const [ selectedType, setSelectedType ] = useState( 0 );
 	const [ frame, setFrame ] = useState( 0 );
 	const [ selectedLayer, setSelectedLayer ] = useState( null );
@@ -202,7 +201,7 @@ const LevelEditor = props => {
 	const [ selectedMap, setSelectedMap ] = useState( null );
 	const { height, layers, width } = selectedMap !== null ? selectedMap : { height: 0, layers: [], width: 0 };
 
-	const { closeLevel, maps, name, setName, selectedGoal, setMaps, setSelectedGoal } = props;
+	const { closeLevel, maps, name, setName, selectedGoal, setMaps, setSelectedGoal, tileset } = props;
 
 	const exit = () => {
 		closeLevel();
@@ -429,18 +428,16 @@ const LevelEditor = props => {
 		ctx.clearRect( 0, 0, width * 16, height * 16 );
 
 		// Render objects.
-		if ( tileset !== null ) {
-			layers.forEach( ( layer, i ) => {
-				const tileRenderer = createTileRenderer( ctx, tileset, layer, windowScrollX );
+		layers.forEach( ( layer, i ) => {
+			const tileRenderer = createTileRenderer( ctx, tileset, layer, windowScrollX );
 
-				// Fade out layer if not selected.
-				ctx.globalAlpha = selectedLayer === i ? 1.0 : 0.5;
+			// Fade out layer if not selected.
+			ctx.globalAlpha = selectedLayer === i ? 1.0 : 0.5;
 
-				layer.objects.forEach( object => {
-					types[ object.type ].render( tileRenderer, object, frame );
-				} );
+			layer.objects.forEach( object => {
+				types[ object.type ].render( tileRenderer, object, frame );
 			} );
-		}
+		} );
 
 		// Render highlight o’er selected object.
 		if ( selectedObject !== null ) {
@@ -484,11 +481,6 @@ const LevelEditor = props => {
 	}, [ selectedMap ] );
 
 	useEffect( () => {
-		// Load tileset image on 1st load.
-		const tileset = new Image();
-		tileset.src = urban;
-		tileset.onload = () => setTileset( tileset );
-
 		// Set up animation loop on 1st load.
 		let prevTicks = null;
 		const tick = ticks => {
@@ -772,6 +764,7 @@ LevelEditor.propTypes = {
 	setName: propTypes.func.isRequired,
 	selectedGoal: propTypes.object.isRequired,
 	setSelectedGoal: propTypes.func.isRequired,
+	tileset: tilesetProp.isRequired,
 };
 
 export default LevelEditor;
