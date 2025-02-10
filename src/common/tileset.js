@@ -41,6 +41,27 @@ const createTileset = ( widthTiles, heightTiles, pixels, canvas ) => {
 		getWidthPixels,
 		getHeightPixels,
 		getPixels: () => pixels,
+		importPixels: ( newPixels, importWidth, importHeight, tileIndex ) => {
+			const tileX = tileIndex % widthTiles;
+			const tileY = Math.floor( tileIndex / widthTiles );
+			const x = tileX * tileSize;
+			const y = tileY * tileSize;
+			const endX = Math.min( x + importWidth, getWidthPixels() );
+			const endY = Math.min( y + importHeight, getHeightPixels() );
+			for ( let pixelY = y; pixelY < endY; pixelY++ ) {
+				for ( let pixelX = x; pixelX < endX; pixelX++ ) {
+					const srcIndex = ( pixelY - y ) * importWidth + ( pixelX - x );
+					const destIndex = pixelY * getWidthPixels() + pixelX;
+
+					// Show existent pixels under transparent pixels.
+					if ( newPixels[ srcIndex ] !== 0 ) {
+						pixels[ destIndex ] = newPixels[ srcIndex ];
+						ctx.fillStyle = colors[ newPixels[ srcIndex ] ];
+						ctx.fillRect( pixelX, pixelY, 1, 1 );
+					}
+				}
+			}
+		},
 		updatePixels: newPixels => createNewTileset( widthTiles, heightTiles, newPixels ),
 		updatePixel: ( color, x, y ) => {
 			const index = y * getWidthPixels() + x;

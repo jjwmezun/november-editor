@@ -1,5 +1,5 @@
 import propTypes from 'prop-types';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import TileGrid from './TileGrid';
 import TileEditor from './TileEditor';
 import ColorSelector from './ColorSelector';
@@ -36,6 +36,20 @@ const GraphicsMode = props => {
 		setTileset( { ...tileset } );
 	};
 
+	useEffect( () => {
+		const handleImportTiles = ( _event, data ) => {
+			const { pixels, width, height } = data;
+			tileset.importPixels( pixels, width, height, selectedTile );
+			setTileset( { ...tileset } );
+		};
+
+		window.electronAPI.onImportTiles( handleImportTiles );
+
+		return () => {
+			window.electronAPI.removeImportTilesListeners();
+		};
+	}, [ selectedTile, tileset ] );
+
 	return <div>
 		<h1>Graphics Editor</h1>
 		<div>
@@ -56,6 +70,9 @@ const GraphicsMode = props => {
 				selectedColor={ selectedColor }
 				setSelectedColor={ setSelectedColor }
 			/>
+			<div>
+				<button onClick={ window.electronAPI.openTileImportWindow }>Import tiles</button>
+			</div>
 			<div>
 				<button onClick={ exitMode }>← Back</button>
 			</div>
