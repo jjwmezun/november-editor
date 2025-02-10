@@ -19,17 +19,28 @@ const createTileset = ( widthTiles, heightTiles, pixels, canvas ) => {
 	const ctx = canvas.getContext( `2d` );
 
 	return {
-		getWidthTiles: () => widthTiles,
-		getHeightTiles: () => heightTiles,
-		getWidthPixels,
-		getHeightPixels,
-		getPixels: () => pixels,
+		clearTile: tileIndex => {
+			const tileX = tileIndex % widthTiles;
+			const tileY = Math.floor( tileIndex / widthTiles );
+			const x = tileX * tileSize;
+			const y = tileY * tileSize;
+			ctx.clearRect( x, y, tileSize, tileSize );
+			for ( let pixelY = y; pixelY < y + tileSize; pixelY++ ) {
+				const start = pixelY * getWidthPixels() + x;
+				pixels.fill( 0, start, start + tileSize );
+			}
+		},
 		drawPiece: ( ctx, srcX, srcY, srcW, srcH, destX, destY, destW, destH ) => {
 			ctx.drawImage( canvas, srcX, srcY, srcW, srcH, destX, destY, destW, destH );
 		},
 		drawWhole: ( ctx, ctxWidth, ctxHeight ) => {
 			ctx.drawImage( canvas, 0, 0, getWidthPixels(), getHeightPixels(), 0, 0, ctxWidth, ctxHeight );
 		},
+		getWidthTiles: () => widthTiles,
+		getHeightTiles: () => heightTiles,
+		getWidthPixels,
+		getHeightPixels,
+		getPixels: () => pixels,
 		updatePixels: newPixels => createNewTileset( widthTiles, heightTiles, newPixels ),
 		updatePixel: ( color, x, y ) => {
 			const index = y * getWidthPixels() + x;

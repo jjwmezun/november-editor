@@ -31,6 +31,11 @@ const GraphicsMode = props => {
 		setTileset( { ...tileset } );
 	};
 
+	const clearTile = () => {
+		tileset.clearTile( selectedTile );
+		setTileset( { ...tileset } );
+	};
+
 	return <div>
 		<h1>Graphics Editor</h1>
 		<div>
@@ -40,6 +45,7 @@ const GraphicsMode = props => {
 				tileset={ tileset }
 			/>
 			<TileEditor
+				clearTile={ clearTile }
 				drawPixel={ drawPixel }
 				tileset={ tileset }
 				tileX={ selectedTile % tileset.getWidthTiles() }

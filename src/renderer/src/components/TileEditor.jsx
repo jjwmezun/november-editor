@@ -10,7 +10,7 @@ const height = tileSize * pixelZoom;
 
 const TileEditor = props => {
 	const canvasRef = useRef();
-	const { drawPixel, tileset, tileX, tileY } = props;
+	const { clearTile, drawPixel, tileset, tileX, tileY } = props;
 	const [ gridImage, setGridImage ] = useState( null );
 	const [ transparencyImage, setTransparencyImage ] = useState( null );
 	const [ selected, setSelected ] = useState( { x: 0, y: 0 } );
@@ -133,10 +133,12 @@ const TileEditor = props => {
 			onMouseUp={ onMouseUp }
 			onMouseMove={ onMouseMove }
 		/>
+		<button onClick={ clearTile }>Clear Tile</button>
 	</div>;
 };
 
 TileEditor.propTypes = {
+	clearTile: propTypes.func.isRequired,
 	drawPixel: propTypes.func.isRequired,
 	tileset: tilesetProp.isRequired,
 	tileX: propTypes.number.isRequired,
