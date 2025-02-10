@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getMousePosition } from '../../../common/utils';
 import { tilesetProp } from '../../../common/tileset';
 
+const transparencySquareSize = 4;
 const zoom = 4;
 const tileSize = 8 * zoom;
 
@@ -11,6 +12,7 @@ const TileGrid = props => {
 	const { selectedTile, setSelectedTile, tileset } = props;
 	const [ gridImage, setGridImage ] = useState( null );
 	const [ hovered, setHovered ] = useState( { x: 0, y: 0 } );
+	const [ transparencyImage, setTransparencyImage ] = useState( null );
 	const width = tileset.getWidthPixels() * zoom;
 	const height = tileset.getHeightPixels() * zoom;
 
@@ -22,6 +24,13 @@ const TileGrid = props => {
 		ctx.imageSmoothingEnabled = false;
 
 		ctx.clearRect( 0, 0, width, height );
+
+		// Render transparency checkerboard.
+		if ( transparencyImage !== null ) {
+			ctx.globalAlpha = 0.5;
+			ctx.drawImage( transparencyImage, 0, 0 );
+			ctx.globalAlpha = 1.0;
+		}
 
 		// Render tileset.
 		tileset.drawWhole( ctx, width, height );
@@ -80,9 +89,9 @@ const TileGrid = props => {
 		setSelectedTile( selected );
 	};
 
-	// Init gridline image.
 	useEffect( () => {
 		if ( canvasRef.current ) {
+			// Init gridline image.
 			const gridImage = document.createElement( `canvas` );
 			gridImage.width = width;
 			gridImage.height = height;
@@ -104,6 +113,28 @@ const TileGrid = props => {
 			}
 
 			setGridImage( gridImage );
+
+			// Init transparency checkerboard image.
+			const transparencyImage = document.createElement( `canvas` );
+			transparencyImage.width = width;
+			transparencyImage.height = height;
+			const transparencyImageCtx = transparencyImage.getContext( `2d` );
+
+			transparencyImageCtx.fillStyle = `rgb( 64, 64, 64 )`;
+			transparencyImageCtx.fillRect( 0, 0, transparencyImage.width, transparencyImage.height );
+			transparencyImageCtx.fillStyle = `rgb( 192, 192, 192 )`;
+			for ( let y = 0; y < transparencyImage.height; y += transparencySquareSize ) {
+				for ( let x = 0; x < transparencyImage.width; x += ( transparencySquareSize * 2 ) ) {
+					transparencyImageCtx.fillRect(
+						x + ( y % ( transparencySquareSize * 2 ) ),
+						y,
+						transparencySquareSize,
+						transparencySquareSize,
+					);
+				}
+			}
+
+			setTransparencyImage( transparencyImage );
 		}
 	}, [] );
 
