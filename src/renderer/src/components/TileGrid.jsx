@@ -13,6 +13,7 @@ const TileGrid = props => {
 	const [ gridImage, setGridImage ] = useState( null );
 	const [ hovered, setHovered ] = useState( { x: 0, y: 0 } );
 	const [ transparencyImage, setTransparencyImage ] = useState( null );
+	const [ showGridLines, setShowGridLines ] = useState( true );
 	const width = tileset.getWidthPixels() * zoom;
 	const height = tileset.getHeightPixels() * zoom;
 
@@ -51,7 +52,7 @@ const TileGrid = props => {
 		}
 
 		// Render grid lines.
-		if ( gridImage !== null ) {
+		if ( showGridLines && gridImage !== null ) {
 			ctx.globalAlpha = 0.5;
 			ctx.drawImage( gridImage, 0, 0 );
 			ctx.globalAlpha = 1.0;
@@ -142,15 +143,27 @@ const TileGrid = props => {
 	useEffect( render, [ canvasRef, selectedTile ] );
 	useEffect( render );
 
-	return <div className="graphics__canvas" style={ { width, height } }>
-		<canvas
-			ref={ canvasRef }
-			width={ width }
-			height={ height }
-			style={ { width, height } }
-			onClick={ onClick }
-			onMouseMove={ onMouseMove }
-		/>
+	return <div>
+		<div>
+			<label>
+				<span>Show grid lines</span>
+				<input
+					checked={ showGridLines }
+					type="checkbox"
+					onChange={ e => setShowGridLines( e.target.checked ) }
+				/>
+			</label>
+		</div>
+		<div className="graphics__canvas" style={ { width, height } }>
+			<canvas
+				ref={ canvasRef }
+				width={ width }
+				height={ height }
+				style={ { width, height } }
+				onClick={ onClick }
+				onMouseMove={ onMouseMove }
+			/>
+		</div>
 	</div>;
 };
 
