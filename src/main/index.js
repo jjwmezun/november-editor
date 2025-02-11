@@ -3,6 +3,7 @@ import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import fs from 'fs';
+import { PNG } from 'pngjs';
 
 function createWindow() {
 	let savePath = null;
@@ -99,6 +100,51 @@ function createWindow() {
 					}
 					mainWindow.webContents.send( `importMapData`, data );
 				} );
+			}
+		} );
+	};
+
+	const openTileImportWindow = () => {
+		dialog.showOpenDialog( null, {
+			title: `Import Tiles`,
+			filters: [
+				{ name: `PNG`, extensions: [ `png` ] },
+			],
+		} ).then( result => {
+			if ( !result.canceled ) {
+				fs.createReadStream( result.filePaths[ 0 ] )
+					.pipe( new PNG( {
+						filterType: 4,
+					} ) )
+					.on( `parsed`, function () {
+						const pixels = [];
+						for ( let y = 0; y < this.height; y++ ) {
+							for ( let x = 0; x < this.width; x++ ) {
+								const idx = ( this.width * y + x ) << 2;
+								const alpha = this.data[ idx + 3 ];
+
+								const averageColor = ( (
+									this.data[ idx ] +
+									this.data[ idx + 1 ] +
+									this.data[ idx + 2 ]
+								) / 3 );
+
+								// If the alpha is lower than 128, treat as transparent 0.
+								const index = alpha >= 128
+									? Math.round( averageColor / 42 ) + 1
+									: 0;
+								pixels.push( index );
+							}
+						}
+						mainWindow.webContents.send(
+							`importTiles`,
+							{
+								pixels,
+								width: this.width,
+								height: this.height,
+							},
+						);
+					} );
 			}
 		} );
 	};
@@ -202,6 +248,8 @@ function createWindow() {
 
 	ipcMain.on( `exportMap`, exportMap );
 	ipcMain.on( `importMap`, importMap );
+
+	ipcMain.on( `open-tile-import-window`, openTileImportWindow );
 
 	mainWindow.on( `ready-to-show`, () => {
 		mainWindow.show();

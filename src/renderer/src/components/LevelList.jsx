@@ -8,7 +8,7 @@ import {
 } from '../../../common/circles.js';
 
 const LevelList = props => {
-	const { generateLevelNameUpdater, levels, setLevels, setSelectedLevel } = props;
+	const { exitMode, generateLevelNameUpdater, levels, setLevels, setSelectedLevel } = props;
 	const [ selectedGame, setSelectedGame ] = useState( 0 );
 	const [ selectedCircle, setSelectedCircle ] = useState( 0 );
 	const [ selectedSwitchLevel, setSelectedSwitchLevel ] = useState( null );
@@ -133,10 +133,12 @@ const LevelList = props => {
 				<button onClick={ () => setSelectedSwitchLevel( null ) }>Cancel</button>
 			</div>
 		</div> }
+		<button onClick={ exitMode }>← Back</button>
 	</div>;
 };
 
 LevelList.propTypes = {
+	exitMode: propTypes.func.isRequired,
 	generateLevelNameUpdater: propTypes.func.isRequired,
 	levels: propTypes.array.isRequired,
 	setLevels: propTypes.func.isRequired,

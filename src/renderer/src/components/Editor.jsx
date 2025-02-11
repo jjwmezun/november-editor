@@ -1,12 +1,15 @@
 import '../assets/editor.scss';
 import { useEffect, useState } from 'react';
-import { encode, decode, testCharacters } from '../../../common/text';
-import LevelEditor from './LevelEditor';
-import LevelList from './LevelList';
+import { encode, decode } from '../../../common/text';
 import goals from '../../../common/goals';
 import types from '../../../common/types';
 import { getDataTypeSize } from '../../../common/utils';
 import { levelCount } from '../../../common/constants';
+import { modeKeys } from '../../../common/modes';
+import LevelMode from './LevelMode';
+import SelectMode from './SelectMode';
+import GraphicsMode from './GraphicsMode';
+import { createBlankTileset } from '../../../common/tileset';
 
 const splitMapBytes = ( data, count ) => {
 	const buffer = new ArrayBuffer( data.byteLength );
@@ -108,62 +111,110 @@ const loadLevelFromData = data => {
 	};
 };
 
-const loadSaveData = data => {
-	const levels = [];
-	let remainingBytes = data;
-	while ( remainingBytes.length > 0 ) {
-		const levelData = loadLevelFromData( remainingBytes );
-		levels.push( levelData.level );
-		remainingBytes = levelData.remainingBytes;
+const loadGraphicsFromData = data => {
+	let tileset = createBlankTileset( 64, 64 );
+
+	// Load tileset pixels from bits.
+	const pixels = [];
+	const dataSize = Math.ceil( tileset.getPixels().length * ( 3 / 8 ) );
+
+	const bits = [];
+	for ( let i = 0; i < dataSize; i++ ) {
+		// Get bits from byte.
+		const byte = data[ i ];
+		for ( let j = 7; j >= 0; j-- ) {
+			bits.push( ( byte & ( 1 << j ) ) >> j );
+		}
+
+		// If there are ’nough bits to make a color, add it to pixels.
+		while ( bits.length >= 3 ) {
+			const v = bits.splice( 0, 3 );
+			const color = getColorFromBits( v );
+			pixels.push( color );
+		}
 	}
 
-	// If there are fewer levels than expected,
-	// add new levels to fill the gap.
-	while ( levels.length < levelCount ) {
-		levels.push( generateNewLevel() );
+	if ( bits.length > 0 ) {
+		throw new Error( `Invalid tileset data` );
 	}
-	return levels;
+
+	// Update tileset with new pixels.
+	tileset = tileset.updatePixels( pixels );
+
+	return {
+		tileset,
+		remainingBytes: data.slice( dataSize ),
+	};
 };
 
-const generateSaveData = levels => {
-	let size = 0;
-	let levelData = [];
+// Convert list o’ 3 bits into color index.
+const getColorFromBits = bits => {
+	const color = parseInt( bits.join( `` ), 2 );
+	if ( color < 0 || color > 7 ) {
+		throw new Error( `Invalid color: ${ color }` );
+	}
+	return color;
+};
 
-	// For each level, generate data mo’ useful for deriving bytes & add its size to total.
+// Convert color index into list o’ 3 bits.
+const getBitsFromColor = color => {
+	if ( color < 0 || color > 7 ) {
+		throw new Error( `Invalid color: ${ color }` );
+	}
+	return [ ...color.toString( 2 ).padStart( 3, `0` ) ].map( bit => parseInt( bit ) );
+};
+
+const generateSaveData = ( levels, tileset ) => {
+	const saveData = [];
+
+	// Add tileset data to save data.
+	let bits = [];
+	const pixels = tileset.getPixels();
+	pixels.forEach( pixel => {
+		const pixelBits = getBitsFromColor( pixel );
+		while ( pixelBits.length > 0 ) {
+			bits.push( pixelBits.shift() );
+			if ( bits.length === 8 ) {
+				saveData.push( { type: `Uint8`, value: parseInt( bits.join( `` ), 2 ) } );
+				bits = [];
+			}
+		}
+	} );
+
+	// If there are any remaining bits, add them to save data & fill out rest o’ byte with 0s.
+	if ( bits.length > 0 ) {
+		while ( bits.length < 8 ) {
+			bits.push( 0 );
+		}
+		saveData.push( { type: `Uint8`, value: parseInt( bits.join( `` ), 2 ) } );
+	}
+
+	// For each level, generate bytes for name, goal, and maps.
 	levels.map( level => {
 		const nameBytes = encode( level.name );
-		size += level.maps.reduce(
-			( acc, map ) => acc + map.byteLength,
-			nameBytes.length
-			+ goals[ level.goal.id ].exportData.reduce(
-				( acc, data ) => acc + getDataTypeSize( data.type ),
-				1,
-			) + 1,
-		);
-		levelData.push( {
-			name: nameBytes,
-			goal: level.goal,
-			maps: level.maps,
+		nameBytes.forEach( byte => saveData.push( { type: `Uint8`, value: byte } ) );
+		saveData.push( { type: `Uint8`, value: level.goal.id } );
+		goals[ level.goal.id ].exportData.forEach( data => {
+			saveData.push( { type: data.type, value: level.goal[ data.data ] } );
+		} );
+		saveData.push( { type: `Uint8`, value: level.maps.length } );
+		level.maps.forEach( map => {
+			new Uint8Array( map ).forEach( byte => saveData.push( { type: `Uint8`, value: byte } ) );
 		} );
 	} );
+
+	// Calculate total size o’ save data.
+	const size = saveData.reduce( ( acc, { type } ) => acc + getDataTypeSize( type ), 0 );
 
 	// Generate buffer to save data.
 	const buffer = new ArrayBuffer( size );
 	const view = new DataView( buffer );
 	let i = 0;
 
-	// Add bytes from each level’s data to buffer.
-	levelData.forEach( ( { name, goal, maps } ) => {
-		name.forEach( byte => view.setUint8( i++, byte ) );
-		view.setUint8( i++, goal.id );
-		goals[ goal.id ].exportData.forEach( data => {
-			view[ `set${ data.type }` ]( i, goal[ data.data ] );
-			i += getDataTypeSize( data.type );
-		} );
-		view.setUint8( i++, maps.length );
-		maps.forEach( map => {
-			new Uint8Array( map ).forEach( byte => view.setUint8( i++, byte ) );
-		} );
+	// Add all bytes to buffer.
+	saveData.forEach( ( { type, value } ) => {
+		view[ `set${ type }` ]( i, value );
+		i += getDataTypeSize( type );
 	} );
 	return view;
 };
@@ -176,77 +227,86 @@ const generateNewLevel = () => ( {
 
 const Editor = () => {
 	const [ levels, setLevels ] = useState( null );
-	const [ selectedLevel, setSelectedLevel ] = useState( null );
+	const [ tileset, setTileset ] = useState( null );
+	const [ mode, setMode ] = useState( modeKeys.select );
 
-	const closeLevel = () => setSelectedLevel( null );
+	const onOpen = data => {
+		// Load tileset data.
+		const tilesetData = loadGraphicsFromData( data );
+		setTileset( tilesetData.tileset );
 
-	const onOpen = data => setLevels( loadSaveData( data ) );
+		// Load level data.
+		const levels = [];
+		let remainingBytes = tilesetData.remainingBytes;
+		while ( remainingBytes.length > 0 ) {
+			const levelData = loadLevelFromData( remainingBytes );
+			levels.push( levelData.level );
+			remainingBytes = levelData.remainingBytes;
+		}
 
-	const onSave = () => window.electronAPI.save( generateSaveData( levels ) );
+		// If there are fewer levels than expected,
+		// add new levels to fill the gap.
+		while ( levels.length < levelCount ) {
+			levels.push( generateNewLevel() );
+		}
+		setLevels( levels );
+	};
 
-	// Set maps to maps list, but with selected level replaced by updated version.
-	const setMaps = maps => setLevels( levels.map( ( level, i ) => ( i === selectedLevel
-		? { ...level, maps }
-		: level ) ) );
+	const resetMode = () => setMode( modeKeys.select );
 
 	const onNew = () => {
 		setLevels( Array.from( { length: levelCount } ).map( generateNewLevel ) );
-		setSelectedLevel( null );
+		setTileset( createBlankTileset( 64, 64 ) );
+		resetMode();
 	};
 
 	const onClose = () => {
 		setLevels( null );
-		setSelectedLevel( null );
+		setTileset( null );
+		resetMode();
 	};
-
-	const generateLevelNameUpdater = selectedLevel => name => {
-		const newName = name.toUpperCase();
-
-		// If name contains invalid characters, do not update.
-		if ( ! testCharacters( newName ) ) {
-			return;
-		}
-
-		setLevels( levels.map( ( level, i ) => ( i === selectedLevel
-			? { ...level, name: newName }
-			: level ) ) );
-		window.electronAPI.enableSave();
-	};
-
-	const setSelectedGoal = goal => setLevels( levels.map( ( level, i ) => ( i === selectedLevel
-		? { ...level, goal }
-		: level ) ) );
 
 	useEffect( () => {
 		window.electronAPI.onOpen( onOpen );
-		window.electronAPI.onSave( onSave );
 		window.electronAPI.onNew( onNew );
 		window.electronAPI.onClose( onClose );
 
 		return () => {
-			window.electronAPI.removeNewListener();
-			window.electronAPI.removeCloseListener();
-			window.electronAPI.removeOpenListener();
-			window.electronAPI.removeSaveListener();
+			window.electronAPI.removeNewListener( onNew );
+			window.electronAPI.removeCloseListener( onClose );
+			window.electronAPI.removeOpenListener( onOpen );
 		};
-	}, [ levels ] ); // Update whene’er levels change so they always reflect latest data.
+	}, [] );
+
+	useEffect( () => {
+		const onSave = () => {
+			if ( levels === null || tileset === null ) {
+				return;
+			}
+			window.electronAPI.save( generateSaveData( levels, tileset ) );
+		};
+		window.electronAPI.onSave( onSave );
+
+		return () => {
+			window.electronAPI.removeSaveListener( onSave );
+		};
+	}, [ levels, tileset ] ); // Update whene’er levels change so they always reflect latest data.
 
 	return <div>
-		{ levels !== null && selectedLevel === null && <LevelList
-			generateLevelNameUpdater={ generateLevelNameUpdater }
-			levels={ levels }
-			setLevels={ setLevels }
-			setSelectedLevel={ setSelectedLevel }
-		/> }
-		{ levels !== null && selectedLevel !== null && <LevelEditor
-			closeLevel={ closeLevel }
-			maps={ levels[ selectedLevel ].maps }
-			name={ levels[ selectedLevel ].name }
-			setName={ generateLevelNameUpdater( selectedLevel ) }
-			selectedGoal={ levels[ selectedLevel ].goal }
-			setMaps={ setMaps }
-			setSelectedGoal={ setSelectedGoal }
-		/> }
+		{ levels !== null && tileset !== null && <div>
+			{ mode === modeKeys.select && <SelectMode setMode={ setMode } /> }
+			{ mode === modeKeys.levelList && <LevelMode
+				exitMode={ resetMode }
+				levels={ levels }
+				setLevels={ setLevels }
+				tileset={ tileset }
+			/> }
+			{ mode === modeKeys.graphics && <GraphicsMode
+				exitMode={ resetMode }
+				setTileset={ setTileset }
+				tileset={ tileset }
+			/> }
+		</div> }
 	</div>;
 };
 

@@ -17,14 +17,18 @@ if ( process.contextIsolated ) {
 			onSave: callback => ipcRenderer.on( `save`, ( _event, value ) => callback( value ) ),
 			onClose: callback => ipcRenderer.on( `close`, ( _event, value ) => callback( value ) ),
 			importMapData: callback => ipcRenderer.on( `importMapData`, ( _event, value ) => callback( value ) ),
+			onImportTiles: callback => ipcRenderer.on( `importTiles`, callback ),
 			save: value => ipcRenderer.send( `save`, value ),
 			exportMap: value => ipcRenderer.send( `exportMap`, value ),
 			importMap: value => ipcRenderer.send( `importMap`, value ),
 			enableSave: value => ipcRenderer.send( `enable-save`, value ),
-			removeNewListener: () => ipcRenderer.removeAllListeners( `new` ),
-			removeOpenListener: () => ipcRenderer.removeAllListeners( `open` ),
-			removeSaveListener: () => ipcRenderer.removeAllListeners( `save` ),
-			removeCloseListener: () => ipcRenderer.removeAllListeners( `close` ),
+			openTileImportWindow: () => ipcRenderer.send( `open-tile-import-window` ),
+			removeNewListener: listener => ipcRenderer.removeListener( `new`, listener ),
+			removeOpenListener: listener => ipcRenderer.removeListener( `open`, listener ),
+			removeSaveListener: listener => ipcRenderer.removeListener( `save`, listener ),
+			removeCloseListener: listener => ipcRenderer.removeListener( `close`, listener ),
+			removeImportMapDataListener: listener => ipcRenderer.removeListener( `importMapData`, listener ),
+			removeImportTilesListeners: () => ipcRenderer.removeAllListeners( `importTiles` ),
 		} );
 	} catch ( error ) {
 		console.error( error );

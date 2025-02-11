@@ -9,3 +9,42 @@
     overflow: scroll;
     padding-bottom: 8px;
 }
+
+.graphics__canvas {
+    border: 2px solid #000;
+    display: block;
+    max-width: 100%;
+    max-height: 50vh;
+    overflow: scroll;
+}
+
+.graphics__tile-grid-canvas {
+    display: block;
+
+    canvas {
+        border: 2px solid #000;
+        width: 128px;
+        height: 128px;
+        image-rendering: pixelated;
+    }
+}
+
+.graphics__tile-editor,
+.graphics__color-selector {
+    border: 2px solid #000;
+    //border-collapse: collapse;
+
+    td {
+        width: 16px;
+        height: 16px;
+        border: 1px solid #4488ff;
+
+        &:hover {
+            background-color: #4488ff;
+        }
+    }
+}
+
+td.graphics__color-selector-item--selected {
+    border-color: yellow;
+}
