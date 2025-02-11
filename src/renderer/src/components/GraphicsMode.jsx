@@ -60,7 +60,9 @@ const GraphicsMode = props => {
 			/>
 			<TileEditor
 				clearTile={ clearTile }
+				colors={ colors }
 				drawPixel={ drawPixel }
+				selectedColor={ selectedColor }
 				tileset={ tileset }
 				tileX={ selectedTile % tileset.getWidthTiles() }
 				tileY={ Math.floor( selectedTile / tileset.getWidthTiles() ) }

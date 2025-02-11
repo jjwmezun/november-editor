@@ -66,6 +66,7 @@ const createTileset = ( widthTiles, heightTiles, pixels, canvas ) => {
 		updatePixel: ( color, x, y ) => {
 			const index = y * getWidthPixels() + x;
 			pixels[ index ] = color;
+			ctx.clearRect( x, y, 1, 1 );
 			ctx.fillStyle = colors[ color ];
 			ctx.fillRect( x, y, 1, 1 );
 		},

@@ -8,13 +8,208 @@ const halfPixel = pixelZoom / 2;
 const width = tileSize * pixelZoom;
 const height = tileSize * pixelZoom;
 
+const brushLayouts = Object.freeze( [
+	[ { x: 0, y: 0 } ],
+	[
+		{ x: 0, y: 0 },
+		{ x: 1, y: 0 },
+		{ x: 0, y: 1 },
+		{ x: 1, y: 1 },
+	],
+	[
+		{ x: 0, y: 0 },
+		{ x: -1, y: 0 },
+		{ x: 1, y: 0 },
+		{ x: 0, y: -1 },
+		{ x: 0, y: 1 },
+	],
+	[
+		{ x: 0, y: 0 },
+		{ x: 1, y: 0 },
+		{ x: 0, y: 1 },
+		{ x: 1, y: 1 },
+		{ x: -1, y: 0 },
+		{ x: -1, y: 1 },
+		{ x: 2, y: 0 },
+		{ x: 2, y: 1 },
+		{ x: 0, y: -1 },
+		{ x: 1, y: -1 },
+		{ x: 0, y: 2 },
+		{ x: 1, y: 2 },
+	],
+	[
+		{ x: -1, y: 0 },
+		{ x: 0, y: 0 },
+		{ x: 1, y: 0 },
+		{ x: -1, y: -1 },
+		{ x: 0, y: -1 },
+		{ x: 1, y: -1 },
+		{ x: -1, y: 1 },
+		{ x: 0, y: 1 },
+		{ x: 1, y: 1 },
+		{ x: -2, y: -1 },
+		{ x: -2, y: 0 },
+		{ x: -2, y: 1 },
+		{ x: 2, y: -1 },
+		{ x: 2, y: 0 },
+		{ x: 2, y: 1 },
+		{ x: -1, y: -2 },
+		{ x: 0, y: -2 },
+		{ x: 1, y: -2 },
+		{ x: -1, y: 2 },
+		{ x: 0, y: 2 },
+		{ x: 1, y: 2 },
+	],
+	[
+		{ x: 0, y: 0 },
+		{ x: -1, y: 0 },
+		{ x: 1, y: 0 },
+		{ x: 2, y: 0 },
+		{ x: 0, y: -1 },
+		{ x: -1, y: -1 },
+		{ x: 1, y: -1 },
+		{ x: 2, y: -1 },
+		{ x: 0, y: 1 },
+		{ x: -1, y: 1 },
+		{ x: 1, y: 1 },
+		{ x: 2, y: 1 },
+		{ x: 0, y: 2 },
+		{ x: -1, y: 2 },
+		{ x: 1, y: 2 },
+		{ x: 2, y: 2 },
+		{ x: 0, y: -2 },
+		{ x: 1, y: -2 },
+		{ x: 0, y: 3 },
+		{ x: 1, y: 3 },
+		{ x: -2, y: 0 },
+		{ x: -2, y: 1 },
+		{ x: 3, y: 0 },
+		{ x: 3, y: 1 },
+	],
+	[
+		{ x: -2, y: -2 },
+		{ x: -1, y: -2 },
+		{ x: 0, y: -2 },
+		{ x: 1, y: -2 },
+		{ x: 2, y: -2 },
+		{ x: -2, y: -1 },
+		{ x: -1, y: -1 },
+		{ x: 0, y: -1 },
+		{ x: 1, y: -1 },
+		{ x: 2, y: -1 },
+		{ x: -2, y: 0 },
+		{ x: -1, y: 0 },
+		{ x: 0, y: 0 },
+		{ x: 1, y: 0 },
+		{ x: 2, y: 0 },
+		{ x: -2, y: 1 },
+		{ x: -1, y: 1 },
+		{ x: 0, y: 1 },
+		{ x: 1, y: 1 },
+		{ x: 2, y: 1 },
+		{ x: -2, y: 2 },
+		{ x: -1, y: 2 },
+		{ x: 0, y: 2 },
+		{ x: 1, y: 2 },
+		{ x: 2, y: 2 },
+		{ x: -1, y: -3 },
+		{ x: 0, y: -3 },
+		{ x: 1, y: -3 },
+		{ x: -1, y: 3 },
+		{ x: 0, y: 3 },
+		{ x: 1, y: 3 },
+		{ x: -3, y: -1 },
+		{ x: -3, y: 0 },
+		{ x: -3, y: 1 },
+		{ x: 3, y: -1 },
+		{ x: 3, y: 0 },
+		{ x: 3, y: 1 },
+	],
+	[
+		{ x: -2, y: -2 },
+		{ x: -1, y: -2 },
+		{ x: 0, y: -2 },
+		{ x: 1, y: -2 },
+		{ x: 2, y: -2 },
+		{ x: 3, y: -2 },
+		{ x: -2, y: -1 },
+		{ x: -1, y: -1 },
+		{ x: 0, y: -1 },
+		{ x: 1, y: -1 },
+		{ x: 2, y: -1 },
+		{ x: 3, y: -1 },
+		{ x: -2, y: 0 },
+		{ x: -1, y: 0 },
+		{ x: 0, y: 0 },
+		{ x: 1, y: 0 },
+		{ x: 2, y: 0 },
+		{ x: 3, y: 0 },
+		{ x: -2, y: 1 },
+		{ x: -1, y: 1 },
+		{ x: 0, y: 1 },
+		{ x: 1, y: 1 },
+		{ x: 2, y: 1 },
+		{ x: 3, y: 1 },
+		{ x: -2, y: 2 },
+		{ x: -1, y: 2 },
+		{ x: 0, y: 2 },
+		{ x: 1, y: 2 },
+		{ x: 2, y: 2 },
+		{ x: 3, y: 2 },
+		{ x: -2, y: 3 },
+		{ x: -1, y: 3 },
+		{ x: 0, y: 3 },
+		{ x: 1, y: 3 },
+		{ x: 2, y: 3 },
+		{ x: 3, y: 3 },
+		{ x: -1, y: -3 },
+		{ x: 0, y: -3 },
+		{ x: 1, y: -3 },
+		{ x: 2, y: -3 },
+		{ x: -1, y: 4 },
+		{ x: 0, y: 4 },
+		{ x: 1, y: 4 },
+		{ x: 2, y: 4 },
+		{ x: -3, y: -1 },
+		{ x: -3, y: 0 },
+		{ x: -3, y: 1 },
+		{ x: -3, y: 2 },
+		{ x: 4, y: -1 },
+		{ x: 4, y: 0 },
+		{ x: 4, y: 1 },
+		{ x: 4, y: 2 },
+	],
+] );
+
+const generateBrushLayout = ( size, x, y ) => brushLayouts[ size - 1 ].map( o => ( {
+	x: ( o.x + x ),
+	y: ( o.y + y ),
+} ) );
+
+const generateBrushLayoutForRender = ( size, x, y ) => generateBrushLayout( size, x, y ).map( o => ( {
+	x: o.x * pixelZoom,
+	y: o.y * pixelZoom,
+} ) );
+
 const TileEditor = props => {
 	const canvasRef = useRef();
-	const { clearTile, drawPixel, tileset, tileX, tileY } = props;
+	const { clearTile, colors, drawPixel, selectedColor, tileset, tileX, tileY } = props;
 	const [ gridImage, setGridImage ] = useState( null );
 	const [ transparencyImage, setTransparencyImage ] = useState( null );
 	const [ selected, setSelected ] = useState( { x: 0, y: 0 } );
 	const [ mouseDown, setMouseDown ] = useState( false );
+	const [ brushSize, setBrushSize ] = useState( 1 );
+
+	const drawBrush = () => {
+		const brushPixels = generateBrushLayout( brushSize, selected.x, selected.y );
+		brushPixels.forEach( ( { x, y } ) => {
+			// Make sure to cut off edges o’ brush that’re out o’ bounds.
+			if ( x < 0 || x >= tileSize || y < 0 || y >= tileSize ) {
+				return;
+			}
+			drawPixel( x, y );
+		} );
+	};
 
 	const render = () => {
 		if ( ! canvasRef.current ) {
@@ -36,11 +231,39 @@ const TileEditor = props => {
 		const srcY = tileY * tileSize;
 		tileset.drawPiece( ctx, srcX, srcY, tileSize, tileSize, 0, 0, width, height );
 
-		// Render highlight o’er selected grid box.
-		const gridXPixels = selected.x * pixelZoom;
-		const gridYPixels = selected.y * pixelZoom;
-		ctx.fillStyle = `rgba( 0, 64, 128, 0.5 )`;
-		ctx.fillRect( gridXPixels, gridYPixels, 15, 15 );
+		const brushPixels = generateBrushLayoutForRender( brushSize, selected.x, selected.y );
+
+		// Only clear brush & render transparency if transparent color is selected.
+		if ( selectedColor === 0 ) {
+			brushPixels.forEach( ( { x, y } ) => {
+				ctx.clearRect( x, y, pixelZoom, pixelZoom );
+			} );
+
+			// Render transparency checkerboard.
+			if ( transparencyImage !== null ) {
+				ctx.globalAlpha = 0.5;
+				brushPixels.forEach( ( { x, y } ) => {
+					ctx.drawImage(
+						transparencyImage,
+						0,
+						0,
+						pixelZoom,
+						pixelZoom,
+						x,
+						y,
+						pixelZoom,
+						pixelZoom,
+					);
+				} );
+				ctx.globalAlpha = 1.0;
+			}
+		} else {
+			// Render selected color brush.
+			ctx.fillStyle = colors[ selectedColor ];
+			brushPixels.forEach( ( { x, y } ) => {
+				ctx.fillRect( x, y, pixelZoom, pixelZoom );
+			} );
+		}
 
 		// Render grid lines.
 		if ( gridImage !== null ) {
@@ -53,7 +276,7 @@ const TileEditor = props => {
 	// Select object on left click.
 	const onClick = () => {
 		setMouseDown( true );
-		drawPixel( selected.x, selected.y );
+		drawBrush();
 	};
 
 	const onMouseUp = () => setMouseDown( false );
@@ -73,7 +296,7 @@ const TileEditor = props => {
 
 		document.body.style.cursor = `pointer`;
 		if ( mouseDown ) {
-			drawPixel( selected.x, selected.y );
+			drawBrush();
 		}
 	};
 
@@ -133,13 +356,31 @@ const TileEditor = props => {
 			onMouseUp={ onMouseUp }
 			onMouseMove={ onMouseMove }
 		/>
+		<div>
+			<label>
+				<span>Brush size:</span>
+				<input
+					type="number"
+					min={ 1 }
+					max={ 8 }
+					value={ brushSize }
+					onChange={ e => {
+						// Make sure brush doesn’t go below 1 or above 8 or app will break.
+						const brushSize = Math.max( 1, Math.min( 8, parseInt( e.target.value ) ) );
+						setBrushSize( brushSize );
+					} }
+				/>
+			</label>
+		</div>
 		<button onClick={ clearTile }>Clear Tile</button>
 	</div>;
 };
 
 TileEditor.propTypes = {
 	clearTile: propTypes.func.isRequired,
+	colors: propTypes.array.isRequired,
 	drawPixel: propTypes.func.isRequired,
+	selectedColor: propTypes.number.isRequired,
 	tileset: tilesetProp.isRequired,
 	tileX: propTypes.number.isRequired,
 	tileY: propTypes.number.isRequired,
