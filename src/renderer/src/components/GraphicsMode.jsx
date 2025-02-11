@@ -43,10 +43,10 @@ const GraphicsMode = props => {
 			setTileset( { ...tileset } );
 		};
 
-		window.electronAPI.onImportTiles( handleImportTiles );
+		window.electronAPI.on( `import-tiles__graphics-mode`, handleImportTiles );
 
 		return () => {
-			window.electronAPI.removeImportTilesListeners();
+			window.electronAPI.remove( `import-tiles__graphics-mode` );
 		};
 	}, [ selectedTile, tileset ] );
 

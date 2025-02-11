@@ -48,14 +48,14 @@ const LevelMode = props => {
 	};
 
 	useEffect( () => {
-		window.electronAPI.onNew( onNew );
-		window.electronAPI.onClose( onClose );
-		window.electronAPI.onOpen( onOpen );
+		window.electronAPI.on( `new__level-mode`, onNew );
+		window.electronAPI.on( `open__level-mode`, onOpen );
+		window.electronAPI.on( `close__level-mode`, onClose );
 
 		return () => {
-			window.electronAPI.removeNewListener( onNew );
-			window.electronAPI.removeCloseListener( onClose );
-			window.electronAPI.removeOpenListener( onOpen );
+			window.electronAPI.remove( `new__level-mode` );
+			window.electronAPI.remove( `open__level-mode` );
+			window.electronAPI.remove( `close__level-mode` );
 		};
 	}, [] );
 

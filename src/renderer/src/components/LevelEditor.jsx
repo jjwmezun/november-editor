@@ -531,7 +531,7 @@ const LevelEditor = props => {
 	useEffect( render, [ canvasRef ] );
 	useEffect( render );
 
-	const importMapData = data => {
+	const importMapData = ( _event, data ) => {
 		const map = transformMapDataToObject( data.buffer );
 		setSelectedMap( map );
 		setSelectedMapIndex( maps.length );
@@ -566,16 +566,16 @@ const LevelEditor = props => {
 	};
 
 	useEffect( () => {
-		window.electronAPI.importMapData( importMapData );
-		window.electronAPI.onOpen( onOpen );
-		window.electronAPI.onClose( onClose );
-		window.electronAPI.onNew( onNew );
+		window.electronAPI.on( `import-map__level-editor`, importMapData );
+		window.electronAPI.on( `open__level-editor`, onOpen );
+		window.electronAPI.on( `close__level-editor`, onClose );
+		window.electronAPI.on( `new__level-editor`, onNew );
 
 		return () => {
-			window.electronAPI.removeImportMapDataListener( importMapData );
-			window.electronAPI.removeOpenListener( onOpen );
-			window.electronAPI.removeCloseListener( onClose );
-			window.electronAPI.removeNewListener( onNew );
+			window.electronAPI.remove( `import-map__level-editor` );
+			window.electronAPI.remove( `open__level-editor` );
+			window.electronAPI.remove( `close__level-editor` );
+			window.electronAPI.remove( `new__level-editor` );
 		};
 	}, [ maps ] );
 

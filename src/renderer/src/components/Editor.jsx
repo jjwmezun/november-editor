@@ -230,7 +230,9 @@ const Editor = () => {
 	const [ tileset, setTileset ] = useState( null );
 	const [ mode, setMode ] = useState( modeKeys.select );
 
-	const onOpen = data => {
+	const onOpen = ( _event, data ) => {
+		resetMode();
+
 		// Load tileset data.
 		const tilesetData = loadGraphicsFromData( data );
 		setTileset( tilesetData.tileset );
@@ -267,14 +269,14 @@ const Editor = () => {
 	};
 
 	useEffect( () => {
-		window.electronAPI.onOpen( onOpen );
-		window.electronAPI.onNew( onNew );
-		window.electronAPI.onClose( onClose );
+		window.electronAPI.on( `new__editor`, onNew );
+		window.electronAPI.on( `open__editor`, onOpen );
+		window.electronAPI.on( `close__editor`, onClose );
 
 		return () => {
-			window.electronAPI.removeNewListener( onNew );
-			window.electronAPI.removeCloseListener( onClose );
-			window.electronAPI.removeOpenListener( onOpen );
+			window.electronAPI.remove( `new__editor` );
+			window.electronAPI.remove( `open__editor` );
+			window.electronAPI.remove( `close__editor` );
 		};
 	}, [] );
 
@@ -285,10 +287,10 @@ const Editor = () => {
 			}
 			window.electronAPI.save( generateSaveData( levels, tileset ) );
 		};
-		window.electronAPI.onSave( onSave );
+		window.electronAPI.on( `save__editor`, onSave );
 
 		return () => {
-			window.electronAPI.removeSaveListener( onSave );
+			window.electronAPI.remove( `save__editor` );
 		};
 	}, [ levels, tileset ] ); // Update whene’er levels change so they always reflect latest data.
 
