@@ -71,8 +71,6 @@ const TileGrid = props => {
 		}
 
 		setHovered( { x: gridX, y: gridY } );
-
-		document.body.style.cursor = `pointer`;
 	};
 
 	// Update cursor visuals on mouse move.

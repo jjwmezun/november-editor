@@ -294,7 +294,6 @@ const TileEditor = props => {
 
 		setSelected( { x: gridX, y: gridY } );
 
-		document.body.style.cursor = `pointer`;
 		if ( mouseDown ) {
 			drawBrush();
 		}
