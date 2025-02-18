@@ -51,7 +51,7 @@ function createWindow() {
 	};
 
 	const save = () => {
-		mainWindow.webContents.send( `save`, true );
+		mainWindow.webContents.send( `save__editor`, true );
 		disableSave();
 	};
 
@@ -241,7 +241,7 @@ function createWindow() {
 	] );
 	Menu.setApplicationMenu( menu );
 
-	ipcMain.on( `save`, ( event, data ) => {
+	ipcMain.on( `save`, ( _event, data ) => {
 		fs.writeFile( savePath, data, err => {
 			if ( err ) {
 				console.error( err );

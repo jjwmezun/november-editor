@@ -5,6 +5,7 @@ import { testCharacters } from '../../../common/text';
 import LevelEditor from './LevelEditor';
 import LevelList from './LevelList';
 import { tilesetProp } from '../../../common/tileset';
+import { levelPropType } from '../../../common/levels';
 
 const LevelMode = props => {
 	const { exitMode, levels, setLevels, tileset } = props;
@@ -14,7 +15,7 @@ const LevelMode = props => {
 
 	// Set maps to maps list, but with selected level replaced by updated version.
 	const setMaps = maps => setLevels( levels.map( ( level, i ) => ( i === selectedLevel
-		? { ...level, maps }
+		? level.updateMaps( maps )
 		: level ) ) );
 
 	const generateLevelNameUpdater = selectedLevel => name => {
@@ -26,13 +27,13 @@ const LevelMode = props => {
 		}
 
 		setLevels( levels.map( ( level, i ) => ( i === selectedLevel
-			? { ...level, name: newName }
+			? level.updateName( newName )
 			: level ) ) );
 		window.electronAPI.enableSave();
 	};
 
-	const setSelectedGoal = goal => setLevels( levels.map( ( level, i ) => ( i === selectedLevel
-		? { ...level, goal }
+	const setGoal = goal => setLevels( levels.map( ( level, i ) => ( i === selectedLevel
+		? level.updateGoal( goal )
 		: level ) ) );
 
 	const onNew = () => {
@@ -69,12 +70,12 @@ const LevelMode = props => {
 		/> }
 		{ selectedLevel !== null && <LevelEditor
 			closeLevel={ closeLevel }
-			maps={ levels[ selectedLevel ].maps }
-			name={ levels[ selectedLevel ].name }
+			goal={ levels[ selectedLevel ].getGoal() }
+			maps={ levels[ selectedLevel ].getMaps() }
+			name={ levels[ selectedLevel ].getName() }
+			setGoal={ setGoal }
 			setName={ generateLevelNameUpdater( selectedLevel ) }
-			selectedGoal={ levels[ selectedLevel ].goal }
 			setMaps={ setMaps }
-			setSelectedGoal={ setSelectedGoal }
 			tileset={ tileset }
 		/> }
 	</div>;
@@ -82,7 +83,7 @@ const LevelMode = props => {
 
 LevelMode.propTypes = {
 	exitMode: propTypes.func.isRequired,
-	levels: propTypes.array,
+	levels: propTypes.arrayOf( levelPropType ).isRequired,
 	setLevels: propTypes.func.isRequired,
 	tileset: tilesetProp.isRequired,
 };

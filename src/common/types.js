@@ -1,3 +1,5 @@
+import { tilesPerBlock } from "./constants.js";
+
 export default Object.freeze( [
 	{
 		name: `Ground`,
@@ -9,11 +11,11 @@ export default Object.freeze( [
 		} ),
 		render: ( tileRenderer, object ) => {
 			// Render sidewalk top.
-			for ( let x = object.xTiles(); x < object.rightTiles(); x += 2 ) {
+			for ( let x = object.xTiles(); x < object.rightTiles(); x += tilesPerBlock ) {
 				tileRenderer( {
 					x,
 					y: object.yTiles(),
-					w: 2,
+					w: tilesPerBlock,
 				} );
 				tileRenderer( {
 					srcx: 2,
@@ -28,7 +30,7 @@ export default Object.freeze( [
 			}
 
 			// Render dirt center.
-			for ( let y = object.yTiles() + 2; y < object.bottomTiles(); y++ ) {
+			for ( let y = object.yTiles() + tilesPerBlock; y < object.bottomTiles(); y++ ) {
 				for ( let x = object.xTiles(); x < object.rightTiles(); x++ ) {
 					tileRenderer( {
 						srcx: 3,
@@ -144,21 +146,21 @@ export default Object.freeze( [
 		} ),
 		render: ( tileRenderer, object, frame ) => {
 			const animationOffset = 2 * ( frame % 6 );
-			for ( let y = object.yTiles(); y < object.bottomTiles(); y += 2 ) {
-				for ( let x = object.xTiles(); x < object.rightTiles(); x += 2 ) {
+			for ( let y = object.yTiles(); y < object.bottomTiles(); y += tilesPerBlock ) {
+				for ( let x = object.xTiles(); x < object.rightTiles(); x += tilesPerBlock ) {
 					tileRenderer( {
 						srcx: 5 + animationOffset,
 						srcy: 1,
 						x,
 						y,
-						w: 2,
+						w: tilesPerBlock,
 					} );
 					tileRenderer( {
 						srcx: 17 + animationOffset,
 						srcy: 1,
 						x,
 						y: y + 1,
-						w: 2,
+						w: tilesPerBlock,
 					} );
 				}
 			}
@@ -381,16 +383,16 @@ export default Object.freeze( [
 		} ),
 		render: ( tileRenderer, object ) => {
 			// Render top row.
-			for ( let x = 0; x < object.width; x++ ) {
+			for ( let x = 0; x < object.widthBlocks(); x++ ) {
 				tileRenderer( {
 					srcx: x % 3 === 0 ? 4 : 6,
 					x: object.xTiles() + x * 2,
 					y: object.yTiles(),
-					w: 2,
+					w: tilesPerBlock,
 				} );
 			}
 			for ( let y = 1; y < object.heightTiles(); y++ ) {
-				for ( let x = 0; x < object.width; x += 3 ) {
+				for ( let x = 0; x < object.widthBlocks(); x += 3 ) {
 					// Render leftmost column.
 					tileRenderer( {
 						srcx: y === 1 ? 8 : ( y === 2 ? 11 : 12 ),

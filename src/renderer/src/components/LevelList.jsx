@@ -6,6 +6,7 @@ import {
 	getNthLevelOfCircle,
 	getLastLevelOfCircle,
 } from '../../../common/circles.js';
+import { levelPropType } from '../../../common/levels';
 
 const LevelList = props => {
 	const { exitMode, generateLevelNameUpdater, levels, setLevels, setSelectedLevel } = props;
@@ -66,7 +67,7 @@ const LevelList = props => {
 					{ `${ `0123456789ABCDEF`[ i ] }–${ selectedCircle } –` }
 					<input
 						type="text"
-						value={ level.name }
+						value={ level.getName() }
 						onChange={ e => generateLevelNameUpdater( firstLevel + i )( e.target.value ) }
 					/>
 				</span>
@@ -140,7 +141,7 @@ const LevelList = props => {
 LevelList.propTypes = {
 	exitMode: propTypes.func.isRequired,
 	generateLevelNameUpdater: propTypes.func.isRequired,
-	levels: propTypes.array.isRequired,
+	levels: propTypes.arrayOf( levelPropType ).isRequired,
 	setLevels: propTypes.func.isRequired,
 	setSelectedLevel: propTypes.func.isRequired,
 };

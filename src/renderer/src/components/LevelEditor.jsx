@@ -1,28 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import goals from '../../../common/goals';
+import { createGoal, goalPropType, goals } from '../../../common/goals';
 import types from '../../../common/types';
-import { getDataTypeSize } from '../../../common/utils';
 import propTypes from 'prop-types';
 import { tilesetProp } from '../../../common/tileset';
-
-const layerTypes = Object.freeze( {
-	block: {
-		slug: `block`,
-		title: `Block`,
-	},
-} );
-
-const createGoal = id => {
-	const goal = {
-		id,
-	};
-	if ( Array.isArray( goals[ id ].options ) ) {
-		goals[ id ].options.forEach( option => {
-			goal[ option.slug ] = option.default;
-		} );
-	}
-	return goal;
-};
+import {
+	createMap,
+	generateDataBytes,
+	mapPropType,
+	transformMapDataToObject,
+} from '../../../common/levels';
 
 const createTileRenderer = ( ctx, tileset, layer, windowScrollX ) => args => {
 	const {
@@ -54,139 +40,10 @@ const createTileRenderer = ( ctx, tileset, layer, windowScrollX ) => args => {
 	);
 };
 
-const createObject = object => ( {
-	xTiles: function() {
-		return this.x * 2;
-	},
-	widthTiles: function() {
-		return this.width * 2;
-	},
-	rightTiles: function() {
-		return ( this.x + this.width ) * 2;
-	},
-	yTiles: function() {
-		return this.y * 2;
-	},
-	heightTiles: function() {
-		return this.height * 2;
-	},
-	bottomTiles: function() {
-		return ( this.y + this.height ) * 2;
-	},
-	...object,
-} );
-
-const createNewLayer = () => ( {
-	type: layerTypes.block,
-	objects: [],
-	scrollX: 1.0,
-} );
-
 const getMousePosition = e => ( {
 	x: e.clientX - e.target.offsetLeft,
 	y: e.clientY - e.target.offsetTop,
 } );
-
-const createNewMap = () => ( {
-	width: 20,
-	height: 20,
-	layers: [],
-} );
-
-const transformMapDataToObject = data => {
-	const view = new DataView( data );
-
-	// Read width and height from buffer.
-	const width = view.getUint16( 0 );
-	const height = view.getUint16( 2 );
-
-	// Read layer data from buffer.
-	const layers = [];
-	const layerCount = view.getUint8( 4 );
-	for ( let i = 0; i < layerCount; i++ ) {
-		layers.push( createNewLayer() );
-	}
-	let currentLayer = 0;
-	let state = `readingLayerOptions`;
-	let type = 0;
-	let i = 5; // Initialize to bytes after width, height, & layer count.
-	while ( currentLayer < layerCount ) {
-		if ( state === `readingLayerOptions` ) {
-			layers[ currentLayer ].scrollX = view.getFloat32( i );
-			i += 4; // Move to bytes after layer options.
-			state = `readingType`;
-		} else if ( state === `readingType` ) {
-			type = view.getUint16( i );
-
-			// If type is terminator, move to next layer.
-			if ( type === 0xFFFF ) {
-				++currentLayer;
-				i += 2; // Move to bytes after type.
-				state = `readingLayerOptions`;
-			} else { // Otherwise, interpret bytes as type for next object.
-				if ( layers.length === 0 ) {
-					throw new Error( `No layers found in buffer.` );
-				}
-				state = `readingObjectData`;
-				i += 2; // Move to bytes after type.
-			}
-		} else {
-			// Initialize object with type’s default.
-			const object = types[ type ].create( 0, 0 );
-
-			// Go thru each object data type, read from buffer, then move forward bytes read.
-			const data = types[ type ].exportData;
-			data.forEach( ( { type, data } ) => {
-				object[ data ] = view[ `get${ type }` ]( i );
-				i += getDataTypeSize( type );
-			} );
-			layers[ currentLayer ].objects.push( createObject( { ...object, type } ) );
-
-			// Since object has been fully read, try reading the next object’s type.
-			state = `readingType`;
-		}
-	}
-	return { width, height, layers };
-};
-
-const generateDataBytes = map => {
-	const { width, height, layers } = map;
-
-	// Initialize data list with width, height, & layers count.
-	const dataList = [
-		{ type: `Uint16`, data: width },
-		{ type: `Uint16`, data: height },
-		{ type: `Uint8`, data: layers.length },
-	];
-
-	layers.forEach( layer => {
-		// Add layer options.
-		dataList.push( { type: `Float32`, data: layer.scrollX } );
-
-		// For each object, add 2 bytes for type, then add bytes for each object data type
-		// & add each datum to data list.
-		layer.objects.forEach( object => {
-			dataList.push( { type: `Uint16`, data: object.type } );
-			const data = types[ object.type ].exportData;
-			dataList.push( ...data.map( ( { type, data } ) => ( { type, data: object[ data ] } ) ) );
-		} );
-
-		// Add terminator for layer.
-		dataList.push( { type: `Uint16`, data: 0xFFFF } );
-	} );
-
-	// Having calculated the total size, create a buffer, view, & iterate through data list
-	// to set each datum in the buffer.
-	const size = dataList.reduce( ( acc, { type } ) => acc + getDataTypeSize( type ), 0 );
-	const buffer = new ArrayBuffer( size );
-	const view = new DataView( buffer );
-	let i = 0;
-	dataList.forEach( ( { type, data } ) => {
-		view[ `set${ type }` ]( i, data );
-		i += getDataTypeSize( type );
-	} );
-	return buffer;
-};
 
 const LevelEditor = props => {
 	const canvasRef = useRef();
@@ -199,9 +56,11 @@ const LevelEditor = props => {
 	const [ windowScrollX, setWindowScrollX ] = useState( 0 );
 	const [ selectedMapIndex, setSelectedMapIndex ] = useState( null );
 	const [ selectedMap, setSelectedMap ] = useState( null );
-	const { height, layers, width } = selectedMap !== null ? selectedMap : { height: 0, layers: [], width: 0 };
+	const { height, layers, width } = selectedMap !== null
+		? selectedMap.getProps()
+		: { height: 0, layers: [], width: 0 };
 
-	const { closeLevel, maps, name, setName, selectedGoal, setMaps, setSelectedGoal, tileset } = props;
+	const { closeLevel, maps, name, setName, goal, setMaps, setGoal, tileset } = props;
 
 	const exit = () => {
 		closeLevel();
@@ -212,17 +71,17 @@ const LevelEditor = props => {
 		setSelectedMapIndex( null );
 	};
 
-	const update = ( key, value ) => {
-		setSelectedMap( { ...selectedMap, [ key ]: value } );
+	const updateMap = newMap => {
+		setSelectedMap( newMap );
 		setMaps( maps.map( ( map, i ) => ( i === selectedMapIndex
-			? generateDataBytes( { ...selectedMap, [ key ]: value } )
+			? generateDataBytes( newMap )
 			: map ) ) );
 		window.electronAPI.enableSave();
 	};
 
 	const addMap = () => {
 		setSelectedMapIndex( maps.length );
-		const map = createNewMap();
+		const map = createMap();
 		setSelectedMap( map );
 		setMaps( [ ...maps, generateDataBytes( map ) ] );
 		setSelected( { x: null, y: null } );
@@ -268,45 +127,31 @@ const LevelEditor = props => {
 
 	const objects = selectedLayer === null || layers.length === 0 ? [] : layers[ selectedLayer ].objects;
 
-	const setWidth = width => update( `width`, width );
-	const setHeight = height => update( `height`, height );
+	const setWidth = width => updateMap( selectedMap.updateWidth( width ) );
+	const setHeight = height => updateMap( selectedMap.updateHeight( height ) );
 
 	const addObject = o => {
-		update( `layers`, ( () => {
-			const newLayers = [ ...layers ];
-			newLayers[ selectedLayer ].objects.push( createObject( o ) );
-			return newLayers;
-		} )() );
+		updateMap( selectedMap.updateLayer( selectedLayer ).addObject( o ) );
 	};
 
 	const updateObject = ( index, o ) => {
-		update( `layers`, ( () => {
-			const newLayers = [ ...layers ];
-			newLayers[ selectedLayer ].objects[ index ] = { ...newLayers[ selectedLayer ].objects[ index ], ...o };
-			return newLayers;
-		} )() );
+		updateMap( selectedMap.updateLayer( selectedLayer ).updateObject( index, o ) );
 	};
 
 	const removeObject = () => {
-		update( `layers`, ( () => {
-			const newLayers = [ ...layers ];
-			newLayers[ selectedLayer ].objects = newLayers[ selectedLayer ]
-				.objects
-				.filter( ( _, i ) => i !== selectedObject );
-			return newLayers;
-		} )() );
+		updateMap( selectedMap.updateLayer( selectedLayer ).removeObject( selectedObject ) );
 		setSelectedObject( null );
 	};
 
 	const addLayer = () => {
 		setSelectedLayer( layers.length );
 		setSelectedObject( null );
-		update( `layers`, [ ...layers, createNewLayer() ] );
+		updateMap( selectedMap.addLayer() );
 	};
 
 	const removeLayer = () => {
 		const layersCount = layers.length - 1;
-		update( `layers`, layers.filter( ( _, i ) => i !== selectedLayer ) );
+		updateMap( selectedMap.removeLayer( selectedLayer ) );
 		setSelectedObject( null );
 		setSelectedLayer( selectedLayer === 0
 			? ( selectedLayer === layersCount
@@ -316,11 +161,7 @@ const LevelEditor = props => {
 	};
 
 	const updateLayerOption = ( key, value ) => {
-		update( `layers`, ( () => {
-			const newLayers = [ ...layers ];
-			newLayers[ selectedLayer ][ key ] = value;
-			return newLayers;
-		} )() );
+		updateMap( selectedMap.updateLayer( selectedLayer ).updateOption( key, value ) );
 	};
 
 	const generateLayerSelector = i => () => {
@@ -329,24 +170,12 @@ const LevelEditor = props => {
 	};
 
 	const moveLayerUp = () => {
-		update( `layers`, ( () => {
-			const newLayers = [ ...layers ];
-			const temp = newLayers[ selectedLayer ];
-			newLayers[ selectedLayer ] = newLayers[ selectedLayer - 1 ];
-			newLayers[ selectedLayer - 1 ] = temp;
-			return newLayers;
-		} )() );
+		updateMap( selectedMap.switchLayers( selectedLayer, selectedLayer - 1 ) );
 		setSelectedLayer( selectedLayer - 1 );
 	};
 
 	const moveLayerDown = () => {
-		update( `layers`, ( () => {
-			const newLayers = [ ...layers ];
-			const temp = newLayers[ selectedLayer ];
-			newLayers[ selectedLayer ] = newLayers[ selectedLayer + 1 ];
-			newLayers[ selectedLayer + 1 ] = temp;
-			return newLayers;
-		} )() );
+		updateMap( selectedMap.switchLayers( selectedLayer, selectedLayer + 1 ) );
 		setSelectedLayer( selectedLayer + 1 );
 	};
 
@@ -363,10 +192,10 @@ const LevelEditor = props => {
 		for ( let i = objects.length - 1; i >= 0; i-- ) {
 			const object = objects[ i ];
 			if (
-				gridX >= object.x
-				&& gridX <= object.x + ( object.width ?? 1 )
-				&& gridY >= object.y
-				&& gridY <= object.y + ( object.height ?? 1 )
+				gridX >= object.xBlocks()
+				&& gridX <= object.rightBlocks()
+				&& gridY >= object.yBlocks()
+				&& gridY <= object.bottomBlocks()
 			) {
 				newSelectedObject = i;
 				break;
@@ -433,7 +262,7 @@ const LevelEditor = props => {
 			ctx.globalAlpha = selectedLayer === i ? 1.0 : 0.5;
 
 			layer.objects.forEach( object => {
-				types[ object.type ].render( tileRenderer, object, frame );
+				types[ object.type() ].render( tileRenderer, object, frame );
 			} );
 		} );
 
@@ -441,7 +270,7 @@ const LevelEditor = props => {
 		if ( selectedObject !== null ) {
 			const object = objects[ selectedObject ];
 			ctx.fillStyle = `rgba( 0, 64, 128, 0.5 )`;
-			ctx.fillRect( object.x * 16, object.y * 16, ( object.width ?? 1 ) * 16, ( object.height ?? 1 ) * 16 );
+			ctx.fillRect( object.xPixels(), object.yPixels(), object.widthPixels(), object.heightPixels() );
 		}
 
 		// Render highlight o’er selected grid box.
@@ -459,7 +288,7 @@ const LevelEditor = props => {
 	};
 
 	const onChangeGoal = e => {
-		setSelectedGoal( createGoal( e.target.selectedIndex ) );
+		setGoal( createGoal( e.target.selectedIndex ) );
 		window.electronAPI.enableSave();
 	};
 
@@ -591,7 +420,7 @@ const LevelEditor = props => {
 			<div>
 				<label>
 					<span>Goal:</span>
-					<select onChange={ onChangeGoal } value={ selectedGoal.id }>
+					<select onChange={ onChangeGoal } value={ goal.getId() }>
 						{ goals.map( ( goal, i ) => <option
 							key={ i }
 							value={ i }
@@ -600,15 +429,15 @@ const LevelEditor = props => {
 						</option> ) }
 					</select>
 				</label>
-				{ Array.isArray( goals[ selectedGoal.id ].options ) && goals[ selectedGoal.id ].options.map( (
+				{ Array.isArray( goals[ goal.getId() ].options ) && goals[ goal.getId() ].options.map( (
 					{ atts, slug, title, type },
 					i,
 				) => <label key={ i }>
 					<span>{ title }:</span>
 					<input
 						type={ type }
-						onChange={ e => setSelectedGoal( { ...selectedGoal, [ slug ]: e.target.value } ) }
-						value={ selectedGoal[ slug ] }
+						onChange={ e => setGoal( goal.updateOption( e.target.value ) ) }
+						value={ goal.getOption( slug ) }
 						{ ...atts }
 					/>
 				</label> )
@@ -682,7 +511,7 @@ const LevelEditor = props => {
 			{ selectedLayer !== null && selectedObject !== null && <div>
 				<div>Selected object: { selectedObject }</div>
 				{
-					types[ objects[ selectedObject ].type ].options.map( ( options, i ) => {
+					types[ objects[ selectedObject ].type() ].options.map( ( options, i ) => {
 						const {
 							atts,
 							key,
@@ -709,7 +538,7 @@ const LevelEditor = props => {
 							<span>{ title }:</span>
 							<input
 								type={ type }
-								value={ objects[ selectedObject ][ key ] }
+								value={ objects[ selectedObject ].getProp( key ) }
 								onChange={ e =>
 									updateObject(
 										selectedObject,
@@ -756,12 +585,12 @@ const LevelEditor = props => {
 
 LevelEditor.propTypes = {
 	closeLevel: propTypes.func.isRequired,
-	maps: propTypes.array.isRequired,
+	goal: goalPropType.isRequired,
+	maps: propTypes.arrayOf( mapPropType ).isRequired,
 	name: propTypes.string.isRequired,
+	setGoal: propTypes.func.isRequired,
 	setMaps: propTypes.func.isRequired,
 	setName: propTypes.func.isRequired,
-	selectedGoal: propTypes.object.isRequired,
-	setSelectedGoal: propTypes.func.isRequired,
 	tileset: tilesetProp.isRequired,
 };
 

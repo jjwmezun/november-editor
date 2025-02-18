@@ -18,6 +18,7 @@ if ( process.contextIsolated ) {
 			importMap: value => ipcRenderer.send( `import-map`, value ),
 			enableSave: value => ipcRenderer.send( `enable-save`, value ),
 			openTileImportWindow: () => ipcRenderer.send( `open-tile-import-window` ),
+			save: value => ipcRenderer.send( `save`, value ),
 		} );
 	} catch ( error ) {
 		console.error( error );
