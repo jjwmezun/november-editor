@@ -1,6 +1,7 @@
-import { tilesPerBlock } from "./constants.js";
+import { tilesPerBlock } from "./constants";
+import { MapObjectType } from "./types";
 
-export default Object.freeze( [
+const objectTypes: readonly MapObjectType[] = Object.freeze( [
 	{
 		name: `Ground`,
 		create: ( x, y ) => ( {
@@ -41,10 +42,10 @@ export default Object.freeze( [
 			}
 		},
 		exportData: [
-			{ type: `Uint16`, data: `x` },
-			{ type: `Uint16`, data: `y` },
-			{ type: `Uint16`, data: `width` },
-			{ type: `Uint8`, data: `height` },
+			{ type: `Uint16`, key: `x` },
+			{ type: `Uint16`, key: `y` },
+			{ type: `Uint16`, key: `width` },
+			{ type: `Uint8`, key: `height` },
 		],
 		options: [
 			{
@@ -110,8 +111,8 @@ export default Object.freeze( [
 			} );
 		},
 		exportData: [
-			{ type: `Uint16`, data: `x` },
-			{ type: `Uint16`, data: `y` },
+			{ type: `Uint16`, key: `x` },
+			{ type: `Uint16`, key: `y` },
 		],
 		options: [
 			{
@@ -166,10 +167,10 @@ export default Object.freeze( [
 			}
 		},
 		exportData: [
-			{ type: `Uint16`, data: `x` },
-			{ type: `Uint16`, data: `y` },
-			{ type: `Uint8`, data: `width` },
-			{ type: `Uint8`, data: `height` },
+			{ type: `Uint16`, key: `x` },
+			{ type: `Uint16`, key: `y` },
+			{ type: `Uint8`, key: `width` },
+			{ type: `Uint8`, key: `height` },
 		],
 		options: [
 			{
@@ -221,7 +222,9 @@ export default Object.freeze( [
 			y: y,
 			width: 6,
 			height: 3,
-			door: 2,
+			props: {
+				door: 2,
+			},
 		} ),
 		render: ( tileRenderer, object ) => {
 			const ystart = object.yTiles();
@@ -300,18 +303,18 @@ export default Object.freeze( [
 			for ( let i = 3; i >= 0; i-- ) {
 				tileRenderer( {
 					srcx: 47 - i * 2,
-					x: xstart + object.door * 2,
+					x: xstart + object.getProp( `door` ) * 2,
 					y: yend - i,
 					w: 2,
 				} );
 			}
 		},
 		exportData: [
-			{ type: `Uint16`, data: `x` },
-			{ type: `Uint16`, data: `y` },
-			{ type: `Uint8`, data: `width` },
-			{ type: `Uint8`, data: `height` },
-			{ type: `Uint8`, data: `door` },
+			{ type: `Uint16`, key: `x` },
+			{ type: `Uint16`, key: `y` },
+			{ type: `Uint8`, key: `width` },
+			{ type: `Uint8`, key: `height` },
+			{ type: `Uint8`, key: `door` },
 		],
 		options: [
 			{
@@ -340,7 +343,7 @@ export default Object.freeze( [
 				type: `number`,
 				update: v => parseInt( v ),
 				extraUpdate: ( object, v ) => {
-					const door = object.door;
+					const door = object.getProp( `door` );
 					if ( door >= v - 1 ) {
 						return { door: v - 2 };
 					}
@@ -418,9 +421,9 @@ export default Object.freeze( [
 			}
 		},
 		exportData: [
-			{ type: `Uint16`, data: `x` },
-			{ type: `Uint16`, data: `y` },
-			{ type: `Uint16`, data: `width` },
+			{ type: `Uint16`, key: `x` },
+			{ type: `Uint16`, key: `y` },
+			{ type: `Uint16`, key: `width` },
 		],
 		options: [
 			{
@@ -456,3 +459,7 @@ export default Object.freeze( [
 		],
 	},
 ] );
+
+export {
+	objectTypes,
+};

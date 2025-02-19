@@ -1,65 +1,69 @@
-import propTypes from 'prop-types';
-import types from './types';
-import { getDataTypeSize } from './utils';
+import { objectTypes } from './objects';
+import { getDataTypeSize } from './bytes';
 import { createGoal, goals } from './goals';
 import { encode, decode } from './text';
-import { tilesPerBlock, pixelsPerBlock } from "./constants.js";
+import { tilesPerBlock, pixelsPerBlock } from "./constants";
+import {
+	ByteBlock,
+	DecodedLevelData,
+	Goal,
+	Layer,
+	LayerType,
+	Level,
+	LvMap,
+	LvMapProps,
+	MapObject,
+	MapObjectArgs,
+} from './types';
 
-const layerTypes = Object.freeze( {
-	block: {
-		slug: `block`,
-		title: `Block`,
-	},
+const layerTypeNames = Object.freeze( {
+	[ LayerType.block ]: `Block`,
 } );
 
 const createLayer = (
-	type = layerTypes.block,
-	objects = [],
-	scrollX = 1.0,
-) => Object.freeze( {
+	type: LayerType = LayerType.block,
+	objects: MapObject[] = [],
+	scrollX: number = 1.0,
+): Layer => Object.freeze( {
 	type,
 	objects,
 	scrollX,
 } );
 
 const createLevel = (
-	name = `Unnamed Level`,
-	goal = createGoal( 0 ),
-	maps = [],
-) => {
+	name: string = `Unnamed Level`,
+	goal: Goal = createGoal( 0 ),
+	maps: ArrayBuffer[] = [],
+): Level => {
 	return Object.freeze( {
 		getGoal: () => goal,
 		getMaps: () => maps,
 		getName: () => name,
 		getProps: () => ( { name, goal, maps } ),
-		updateGoal: newGoal => createLevel( name, createGoal( newGoal ), maps ),
+		updateGoal: newGoal => createLevel( name, newGoal, maps ),
 		updateMaps: newMaps => createLevel( name, goal, newMaps ),
 		updateName: newName => createLevel( newName, goal, maps ),
 	} );
 };
 
 const createMap = (
-	width = 20,
-	height = 20,
-	layers = [],
-) => {
+	width: number = 20,
+	height: number = 20,
+	layers: Layer[] = [],
+): LvMap => {
 	return Object.freeze( {
-		addLayer: () => {
-			return createMap( width, height, [ ...layers, createLayer() ] );
-		},
-		getProps: () => {
-			return {
-				width,
-				height,
-				layers,
-			};
-		},
+		addLayer: (): LvMap => createMap( width, height, [ ...layers, createLayer() ] ),
+		getProps: (): LvMapProps => ( {
+			width,
+			height,
+			layers,
+		} ),
 		removeLayer: index => {
 			const newLayers = [ ...layers ];
 			newLayers.splice( index, 1 );
 			return createMap( width, height, newLayers );
 		},
-		switchLayers: ( a, b ) => {
+		switchLayers: ( a: number, b: number ): LvMap => {
 			const newLayers = [ ...layers ];
 			const temp = newLayers[ a ];
 			newLayers[ a ] = newLayers[ b ];
@@ -100,44 +104,16 @@ const createMap = (
 	} );
 };
 
-const layerPropType = propTypes.shape( {
-	type: propTypes.shape( {
-		slug: propTypes.string,
-		title: propTypes.string,
-	} ),
-	objects: propTypes.arrayOf( propTypes.object ),
-	scrollX: propTypes.number,
-} );
-
-const mapPropType = propTypes.shape( {
-	addLayer: propTypes.func,
-	getProps: propTypes.func,
-	removeLayer: propTypes.func,
-	switchLayers: propTypes.func,
-	updateLayer: propTypes.func,
-	updateHeight: propTypes.func,
-	updateWidth: propTypes.func,
-} );
-
-const levelPropType = propTypes.shape( {
-	getGoal: propTypes.func,
-	getMaps: propTypes.func,
-	getName: propTypes.func,
-	updateGoal: propTypes.func,
-	updateMaps: propTypes.func,
-	updateName: propTypes.func,
-} );
-
-const createObject = object => {
+const createObject = ( object: MapObjectArgs ): MapObject => {
 	const {
-		type,
-		x,
-		y,
-		width,
-		height,
+		type = 0,
+		x = 0,
+		y = 0,
+		width = 1,
+		height = 1,
 	} = object;
 	return Object.freeze( {
-		getProp: key => {
+		getProp: ( key: string ) => {
 			if ( !( key in object ) ) {
 				throw new Error( `Key ${ key } not found in object.` );
 			}
@@ -166,7 +142,7 @@ const createObject = object => {
 	} );
 };
 
-const transformMapDataToObject = data => {
+const transformMapDataToObject = ( data: ArrayBuffer ): LvMap => {
 	const view = new DataView( data );
 
 	// Read width and height from buffer.
@@ -174,14 +150,14 @@ const transformMapDataToObject = data => {
 	const height = view.getUint16( 2 );
 
 	// Read layer data from buffer.
-	const layers = [];
+	const layers: Layer[] = [];
 	const layerCount = view.getUint8( 4 );
 	let currentLayer = 0;
 	let state = `readingLayerOptions`;
 	let type = 0;
 	let i = 5; // Initialize to bytes after width, height, & layer count.
-	let scrollX;
-	let objects = [];
+	let scrollX: number = 0;
+	const objects: MapObject[] = [];
 	while ( currentLayer < layerCount ) {
 		if ( state === `readingLayerOptions` ) {
 			scrollX = view.getFloat32( i );
@@ -192,7 +168,7 @@ const transformMapDataToObject = data => {
 
 			// If type is terminator, move to next layer.
 			if ( type === 0xFFFF ) {
-				layers.push( createLayer( layerTypes.block, objects, scrollX ) );
+				layers.push( createLayer( LayerType.block, objects, scrollX ) );
 				++currentLayer;
 				i += 2; // Move to bytes after type.
 				state = `readingLayerOptions`;
@@ -202,12 +178,12 @@ const transformMapDataToObject = data => {
 			}
 		} else {
 			// Initialize object with type’s default.
-			const object = types[ type ].create( 0, 0 );
+			const object = objectTypes[ type ].create( 0, 0 );
 
 			// Go thru each object data type, read from buffer, then move forward bytes read.
-			const data = types[ type ].exportData;
-			data.forEach( ( { type, data } ) => {
-				object[ data ] = view[ `get${ type }` ]( i );
+			const data = objectTypes[ type ].exportData;
+			data.forEach( ( { type, key } ) => {
+				object[ key ] = view[ `get${ type }` ]( i );
 				i += getDataTypeSize( type );
 			} );
 			objects.push( createObject( { ...object, type } ) );
@@ -219,7 +195,7 @@ const transformMapDataToObject = data => {
 	return createMap( width, height, layers );
 };
 
-const generateDataBytes = map => {
+const generateDataBytes = ( map: LvMap ): ArrayBuffer => {
 	const { width, height, layers } = map.getProps();
 
 	// Initialize data list with width, height, & layers count.
@@ -237,8 +213,8 @@ const generateDataBytes = map => {
 		// & add each datum to data list.
 		layer.objects.forEach( object => {
 			dataList.push( { type: `Uint16`, data: object.type() } );
-			const data = types[ object.type() ].exportData;
-			dataList.push( ...data.map( ( { type, data } ) => ( { type, data: object.getProp( data ) } ) ) );
+			const data = objectTypes[ object.type() ].exportData;
+			dataList.push( ...data.map( ( { type, key } ) => ( { type, data: object.getProp( key ) } ) ) );
 		} );
 
 		// Add terminator for layer.
@@ -258,9 +234,9 @@ const generateDataBytes = map => {
 	return buffer;
 };
 
-const splitMapBytes = ( data, count ) => {
+const splitMapBytes = ( data: ArrayBuffer, count: number ) => {
 	const buffer = new ArrayBuffer( data.byteLength );
-	const maps = [];
+	const maps: ArrayBuffer[] = [];
 	const view = new DataView( buffer );
 	new Uint8Array( data ).forEach( ( byte, i ) => view.setUint8( i, byte ) );
 	let i = 0;
@@ -290,7 +266,7 @@ const splitMapBytes = ( data, count ) => {
 				}
 			} else {
 				// Go thru each object data type, read from buffer, then move forward bytes read.
-				const data = types[ type ].exportData;
+				const data = objectTypes[ type ].exportData;
 				data.forEach( ( { type } ) => {
 					i += getDataTypeSize( type );
 				} );
@@ -314,7 +290,7 @@ const splitMapBytes = ( data, count ) => {
 	};
 };
 
-const loadLevelFromData = data => {
+const loadLevelFromData = ( data: Uint8Array ): DecodedLevelData => {
 	// Gather name.
 	const nameData = decode( data );
 	const name = nameData.text;
@@ -325,7 +301,7 @@ const loadLevelFromData = data => {
 	const view = new DataView( buffer );
 	view.setUint8( 0, remainingBytes[ 0 ] );
 	const goalId = view.getUint8( 0 );
-	const goalData = goals[ goalId ].exportData;
+	const goalData = goals[ goalId ].exportData ?? [];
 	const goalDataSize = goalData.reduce( ( acc, { type } ) => acc + getDataTypeSize( type ), 0 );
 	const goalBuffer = new ArrayBuffer( goalDataSize );
 	const goalView = new DataView( goalBuffer );
@@ -333,9 +309,9 @@ const loadLevelFromData = data => {
 		goalView.setUint8( i, remainingBytes[ i + 1 ] );
 	}
 	let i = 0;
-	const goalOptions = [];
-	goalData.forEach( ( { data, type } ) => {
-		goalOptions[ data ] = goalView[ `get${ type }` ]( i );
+	const goalOptions: { [key: string]: string } = {};
+	goalData.forEach( ( { key, type } ) => {
+		goalOptions[ key ] = goalView[ `get${ type }` ]( i ).toString();
 		i += getDataTypeSize( type );
 	} );
 	const goal = createGoal( goalId, goalOptions );
@@ -356,22 +332,23 @@ const loadLevelFromData = data => {
 	};
 };
 
-const encodeLevels = levels => {
-	return levels.map( level => {
+const encodeLevels = ( levels: Level[] ): ByteBlock[] => {
+	return levels.map( ( level: Level ): ByteBlock[] => {
 		const { goal, maps, name } = level.getProps();
-		const data = [];
+		const data: ByteBlock[] = [];
 		const nameBytes = encode( name );
 		nameBytes.forEach( byte => data.push( { type: `Uint8`, value: byte } ) );
 		data.push( { type: `Uint8`, value: goal.getId() } );
-		goals[ goal.getId() ].exportData.forEach( item => {
-			data.push( { type: item.type, value: goal.getOption( item.data ) } );
+		const goalExportData = goals[ goal.getId() ].exportData ?? [];
+		goalExportData.forEach( ( { key, type } ) => {
+			data.push( { type, value: parseInt( goal.getOption( key ) ) } );
 		} );
 		data.push( { type: `Uint8`, value: maps.length } );
 		maps.forEach( map => {
 			new Uint8Array( map ).forEach( byte => data.push( { type: `Uint8`, value: byte } ) );
 		} );
 		return data;
-	} ).flat( Infinity );
+	} ).flat( 1 );
 };
 
 export {
@@ -381,9 +358,7 @@ export {
 	createObject,
 	encodeLevels,
 	generateDataBytes,
-	layerPropType,
-	levelPropType,
+	layerTypeNames,
 	loadLevelFromData,
-	mapPropType,
 	transformMapDataToObject,
 };

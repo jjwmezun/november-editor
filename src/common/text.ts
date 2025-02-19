@@ -1,5 +1,7 @@
+import { CharItem, DecodedTextData, TextTrie } from "./types";
+
 /* eslint max-len: "off" */
-const trie = {
+const trie: TextTrie = Object.freeze( {
 	char: null,
 	frequency: 10211,
 	children: [
@@ -1308,17 +1310,20 @@ const trie = {
 			],
 		},
 	],
-};
+} );
 
-const generateCodeList = trie => {
+const generateCodeList = ( trie: TextTrie ): CharItem[] => {
 	if ( trie.children ) {
-		return trie.children.map( child => generateCodeList( child ) ).flat( Infinity );
+		return trie.children.map( child => generateCodeList( child ) ).flat( 1 );
 	} else {
-		return { char: trie.char, code: trie.code.join( `` ) };
+		if ( trie.char === null || trie.code === undefined ) {
+			throw new Error( `Trie node has no code.` );
+		}
+		return [ { char: trie.char, code: trie.code.join( `` ) } ];
 	}
 };
 
-const codeList = generateCodeList( trie )
+const codeList: CharItem[] = generateCodeList( trie )
 	.sort( ( a, b ) => a.code.length - b.code.length );
 
 const codeMap = {};
@@ -1326,15 +1331,15 @@ codeList.forEach( ( { char, code } ) => {
 	codeMap[ char ] = code;
 } );
 
-export const encode = text => {
-	let list = [ ...text.toUpperCase(), `TERMINAL` ].map( char => codeMap[ char ].split( `` ) ).flat( Infinity );
+export const encode = ( text: string ): Uint8Array => {
+	const list: string[] = [ ...text.toUpperCase(), `TERMINAL` ].map( char => codeMap[ char ].split( `` ) ).flat( Infinity );
 
 	// Pad out bits to fill bytes.
 	while ( list.length % 8 !== 0 ) {
 		list.push( `0` );
 	}
 
-	const byteList = [];
+	const byteList: number[] = [];
 	while ( list.length ) {
 		byteList.push( parseInt( list.splice( 0, 8 ).join( `` ), 2 ) );
 	}
@@ -1342,7 +1347,7 @@ export const encode = text => {
 	return new Uint8Array( byteList );
 };
 
-export const decode = bytes => {
+export const decode = ( bytes: Uint8Array ): DecodedTextData => {
 	let bytesUsed = 1;
 	const decodePiece = ( innerTrie, bitList ) => {
 		if ( innerTrie.children !== null ) {
@@ -1377,6 +1382,6 @@ export const decode = bytes => {
 	};
 };
 
-export const testCharacters = text => {
+export const testCharacters = ( text: string ): boolean => {
 	return text.toUpperCase().split( `` ).every( char => codeMap[ char ] !== undefined );
 };

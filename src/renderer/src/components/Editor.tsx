@@ -1,6 +1,6 @@
 import '../assets/editor.scss';
-import { useEffect, useState } from 'react';
-import { getDataTypeSize } from '../../../common/utils';
+import { ReactElement, useEffect, useState } from 'react';
+import { getDataTypeSize } from '../../../common/bytes';
 import { levelCount } from '../../../common/constants';
 import { modeKeys } from '../../../common/modes';
 import LevelMode from './LevelMode';
@@ -12,15 +12,21 @@ import {
 	encodeLevels,
 	loadLevelFromData,
 }	from '../../../common/levels';
+import {
+	ByteBlock,
+	DecodedTilesetData,
+	Level,
+	Tileset,
+} from '../../../common/types';
 
-const loadGraphicsFromData = data => {
+const loadGraphicsFromData = ( data: Uint8Array ): DecodedTilesetData => {
 	let tileset = createBlankTileset( 64, 64 );
 
 	// Load tileset pixels from bits.
-	const pixels = [];
+	const pixels: number[] = [];
 	const dataSize = Math.ceil( tileset.getPixels().length * ( 3 / 8 ) );
 
-	const bits = [];
+	const bits: number[] = [];
 	for ( let i = 0; i < dataSize; i++ ) {
 		// Get bits from byte.
 		const byte = data[ i ];
@@ -50,7 +56,7 @@ const loadGraphicsFromData = data => {
 };
 
 // Convert list o’ 3 bits into color index.
-const getColorFromBits = bits => {
+const getColorFromBits = ( bits: number[] ): number => {
 	const color = parseInt( bits.join( `` ), 2 );
 	if ( color < 0 || color > 7 ) {
 		throw new Error( `Invalid color: ${ color }` );
@@ -59,23 +65,24 @@ const getColorFromBits = bits => {
 };
 
 // Convert color index into list o’ 3 bits.
-const getBitsFromColor = color => {
+const getBitsFromColor = ( color: number ): number[] => {
 	if ( color < 0 || color > 7 ) {
 		throw new Error( `Invalid color: ${ color }` );
 	}
 	return [ ...color.toString( 2 ).padStart( 3, `0` ) ].map( bit => parseInt( bit ) );
 };
 
-const generateSaveData = ( levels, tileset ) => {
-	let saveData = [];
+const generateSaveData = ( levels: Level[], tileset: Tileset ): DataView => {
+	let saveData: ByteBlock[] = [];
 
 	// Add tileset data to save data.
-	let bits = [];
-	const pixels = tileset.getPixels();
+	let bits: number[] = [];
+	const pixels: number[] = tileset.getPixels();
 	pixels.forEach( pixel => {
-		const pixelBits = getBitsFromColor( pixel );
+		const pixelBits: number[] = getBitsFromColor( pixel );
 		while ( pixelBits.length > 0 ) {
-			bits.push( pixelBits.shift() );
+			// Shift can’t return undefined, as loop stops before list reaches 0 length.
+			bits.push( pixelBits.shift()! );
 			if ( bits.length === 8 ) {
 				saveData.push( { type: `Uint8`, value: parseInt( bits.join( `` ), 2 ) } );
 				bits = [];
@@ -110,12 +117,12 @@ const generateSaveData = ( levels, tileset ) => {
 	return view;
 };
 
-const Editor = () => {
+const Editor = (): ReactElement => {
 	const [ levels, setLevels ] = useState( null );
 	const [ tileset, setTileset ] = useState( null );
 	const [ mode, setMode ] = useState( modeKeys.select );
 
-	const onOpen = ( _event, data ) => {
+	const onOpen = ( _event, data: Uint8Array ) => {
 		resetMode();
 
 		// Load tileset data.
@@ -123,7 +130,7 @@ const Editor = () => {
 		setTileset( tilesetData.tileset );
 
 		// Load level data.
-		const levels = [];
+		const levels: Level[] = [];
 		let remainingBytes = tilesetData.remainingBytes;
 		while ( remainingBytes.length > 0 ) {
 			const levelData = loadLevelFromData( remainingBytes );

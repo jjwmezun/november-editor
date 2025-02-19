@@ -1,13 +1,11 @@
-import propTypes from 'prop-types';
 import '../assets/editor.scss';
-import { useEffect, useState } from 'react';
+import { ReactElement, useEffect, useState } from 'react';
 import { testCharacters } from '../../../common/text';
 import LevelEditor from './LevelEditor';
 import LevelList from './LevelList';
-import { tilesetProp } from '../../../common/tileset';
-import { levelPropType } from '../../../common/levels';
+import { LevelModeProps } from '../../../common/types';
 
-const LevelMode = props => {
+const LevelMode = ( props: LevelModeProps ): ReactElement => {
 	const { exitMode, levels, setLevels, tileset } = props;
 	const [ selectedLevel, setSelectedLevel ] = useState( null );
 
@@ -79,13 +77,6 @@ const LevelMode = props => {
 			tileset={ tileset }
 		/> }
 	</div>;
-};
-
-LevelMode.propTypes = {
-	exitMode: propTypes.func.isRequired,
-	levels: propTypes.arrayOf( levelPropType ).isRequired,
-	setLevels: propTypes.func.isRequired,
-	tileset: tilesetProp.isRequired,
 };
 
 export default LevelMode;

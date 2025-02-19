@@ -1,16 +1,26 @@
-import { useEffect, useRef, useState } from 'react';
-import { createGoal, goalPropType, goals } from '../../../common/goals';
-import types from '../../../common/types';
-import propTypes from 'prop-types';
-import { tilesetProp } from '../../../common/tileset';
+import { ReactElement, SyntheticBaseEvent, useEffect, useRef, useState } from 'react';
+import { createGoal, goals } from '../../../common/goals';
 import {
 	createMap,
 	generateDataBytes,
-	mapPropType,
+	layerTypeNames,
 	transformMapDataToObject,
 } from '../../../common/levels';
+import { objectTypes } from '../../../common/objects';
+import { getMousePosition } from '../../../common/utils';
+import {
+	LevelEditorProps,
+	Layer,
+	TileRendererArgs,
+	Tileset,
+} from '../../../common/types';
 
-const createTileRenderer = ( ctx, tileset, layer, windowScrollX ) => args => {
+const createTileRenderer = (
+	ctx: CanvasRenderingContext2D,
+	tileset: Tileset,
+	layer: Layer,
+	windowScrollX: number,
+) => ( args: TileRendererArgs ): void => {
 	const {
 		srcx,
 		srcy,
@@ -18,7 +28,7 @@ const createTileRenderer = ( ctx, tileset, layer, windowScrollX ) => args => {
 		y,
 		w,
 		h,
-	} = {
+	}: TileRendererArgs = {
 		srcx: 0,
 		srcy: 0,
 		x: 0,
@@ -40,12 +50,7 @@ const createTileRenderer = ( ctx, tileset, layer, windowScrollX ) => args => {
 	);
 };
 
-const getMousePosition = e => ( {
-	x: e.clientX - e.target.offsetLeft,
-	y: e.clientY - e.target.offsetTop,
-} );
-
-const LevelEditor = props => {
+const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 	const canvasRef = useRef();
 	const [ gridImage, setGridImage ] = useState( null );
 	const [ selected, setSelected ] = useState( { x: null, y: null } );
@@ -186,7 +191,7 @@ const LevelEditor = props => {
 		const gridX = Math.floor( x / 16 );
 		const gridY = Math.floor( y / 16 );
 
-		let newSelectedObject = null;
+		let newSelectedObject: number | null = null;
 
 		// Go backwards so that the topmost object is selected first.
 		for ( let i = objects.length - 1; i >= 0; i-- ) {
@@ -217,7 +222,7 @@ const LevelEditor = props => {
 		const gridX = Math.floor( x / 16 );
 		const gridY = Math.floor( y / 16 );
 
-		addObject( { ...types[ selectedType ].create( gridX, gridY ), type: selectedType } );
+		addObject( { ...objectTypes[ selectedType ].create( gridX, gridY ), type: selectedType } );
 	};
 
 	// Update cursor visuals on mouse move.
@@ -262,7 +267,7 @@ const LevelEditor = props => {
 			ctx.globalAlpha = selectedLayer === i ? 1.0 : 0.5;
 
 			layer.objects.forEach( object => {
-				types[ object.type() ].render( tileRenderer, object, frame );
+				objectTypes[ object.type() ].render( tileRenderer, object, frame );
 			} );
 		} );
 
@@ -287,8 +292,8 @@ const LevelEditor = props => {
 		}
 	};
 
-	const onChangeGoal = e => {
-		setGoal( createGoal( e.target.selectedIndex ) );
+	const onChangeGoal = ( e: SyntheticBaseEvent ) => {
+		setGoal( createGoal( e.target.value ) );
 		window.electronAPI.enableSave();
 	};
 
@@ -309,8 +314,8 @@ const LevelEditor = props => {
 
 	useEffect( () => {
 		// Set up animation loop on 1st load.
-		let prevTicks = null;
-		const tick = ticks => {
+		let prevTicks: number | null = null;
+		const tick = ( ticks: number ) => {
 			if ( prevTicks === null ) {
 				prevTicks = ticks;
 			} else {
@@ -322,11 +327,9 @@ const LevelEditor = props => {
 			}
 			window.requestAnimationFrame( tick );
 		};
-		window.requestAnimationFrame( tick );
+		const handle = window.requestAnimationFrame( tick );
 
-		return () => {
-			window.cancelAnimationFrame( tick );
-		};
+		return () => window.cancelAnimationFrame( handle );
 	}, [] );
 
 	// Generate gridline image whene’er width or height changes.
@@ -336,6 +339,10 @@ const LevelEditor = props => {
 			gridImage.width = width * 16;
 			gridImage.height = height * 16;
 			const gridImageCtx = gridImage.getContext( `2d` );
+
+			if ( !gridImageCtx ) {
+				throw new Error( `Could not get 2d context for grid image.` );
+			}
 
 			gridImageCtx.strokeStyle = `#4488ff`;
 			gridImageCtx.lineWidth = 1;
@@ -429,14 +436,16 @@ const LevelEditor = props => {
 						</option> ) }
 					</select>
 				</label>
-				{ Array.isArray( goals[ goal.getId() ].options ) && goals[ goal.getId() ].options.map( (
+				{ goals[ goal.getId() ]?.options
+				&& Array.isArray( goals[ goal.getId() ].options )
+				&& goals[ goal.getId() ].options!.map( (
 					{ atts, slug, title, type },
 					i,
 				) => <label key={ i }>
 					<span>{ title }:</span>
 					<input
 						type={ type }
-						onChange={ e => setGoal( goal.updateOption( e.target.value ) ) }
+						onChange={ e => setGoal( goal.updateOption( slug, e.target.value ) ) }
 						value={ goal.getOption( slug ) }
 						{ ...atts }
 					/>
@@ -445,7 +454,7 @@ const LevelEditor = props => {
 			</div>
 		</div>
 		{ maps.length > 0 && <ul>
-			{ maps.map( ( map, i ) => <li key={ i }>
+			{ maps.map( ( _map, i ) => <li key={ i }>
 				<button
 					disabled={ selectedMapIndex === i }
 					onClick={ generateMapSelector( maps, i ) }
@@ -494,7 +503,7 @@ const LevelEditor = props => {
 				<label>
 					<span>Type:</span>
 					<select value={ selectedType } onChange={ e => setSelectedType( e.target.value ) }>
-						{ types.map( ( type, i ) => <option key={ i } value={ i }>{ type.name }</option> ) }
+						{ objectTypes.map( ( type, i ) => <option key={ i } value={ i }>{ type.name }</option> ) }
 					</select>
 				</label>
 			</div>
@@ -511,7 +520,7 @@ const LevelEditor = props => {
 			{ selectedLayer !== null && selectedObject !== null && <div>
 				<div>Selected object: { selectedObject }</div>
 				{
-					types[ objects[ selectedObject ].type() ].options.map( ( options, i ) => {
+					objectTypes[ objects[ selectedObject ].type() ].options.map( ( options, i ) => {
 						const {
 							atts,
 							key,
@@ -562,7 +571,7 @@ const LevelEditor = props => {
 							disabled={ selectedLayer === i }
 							onClick={ generateLayerSelector( i ) }
 						>
-							Layer { i + 1 } – { layer.type.title }
+							Layer { i + 1 } – { layerTypeNames[ layer.type ] }
 						</button>
 					</li> ) }
 				</ul>
@@ -581,17 +590,6 @@ const LevelEditor = props => {
 			<button onClick={ exit }>Back to Level List</button>
 		</div>
 	</div>;
-};
-
-LevelEditor.propTypes = {
-	closeLevel: propTypes.func.isRequired,
-	goal: goalPropType.isRequired,
-	maps: propTypes.arrayOf( mapPropType ).isRequired,
-	name: propTypes.string.isRequired,
-	setGoal: propTypes.func.isRequired,
-	setMaps: propTypes.func.isRequired,
-	setName: propTypes.func.isRequired,
-	tileset: tilesetProp.isRequired,
 };
 
 export default LevelEditor;

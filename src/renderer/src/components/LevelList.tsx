@@ -1,14 +1,13 @@
-import propTypes from 'prop-types';
-import { useState } from 'react';
+import { ReactElement, useState } from 'react';
 import { circlesPerGame, levelsPerCircle } from '../../../common/constants';
 import {
 	get1stLevelOfCircle,
 	getNthLevelOfCircle,
 	getLastLevelOfCircle,
-} from '../../../common/circles.js';
-import { levelPropType } from '../../../common/levels';
+} from '../../../common/circles';
+import { LevelListProps } from '../../../common/types';
 
-const LevelList = props => {
+const LevelList = ( props: LevelListProps ): ReactElement => {
 	const { exitMode, generateLevelNameUpdater, levels, setLevels, setSelectedLevel } = props;
 	const [ selectedGame, setSelectedGame ] = useState( 0 );
 	const [ selectedCircle, setSelectedCircle ] = useState( 0 );
@@ -136,14 +135,6 @@ const LevelList = props => {
 		</div> }
 		<button onClick={ exitMode }>← Back</button>
 	</div>;
-};
-
-LevelList.propTypes = {
-	exitMode: propTypes.func.isRequired,
-	generateLevelNameUpdater: propTypes.func.isRequired,
-	levels: propTypes.arrayOf( levelPropType ).isRequired,
-	setLevels: propTypes.func.isRequired,
-	setSelectedLevel: propTypes.func.isRequired,
 };
 
 export default LevelList;

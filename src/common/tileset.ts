@@ -1,8 +1,7 @@
-import propTypes from "prop-types";
+import { Tileset } from "./types";
+import { tileSize } from "./constants";
 
-const tileSize = 8;
-
-const colors = Object.freeze( [
+const colors: readonly string[] = Object.freeze( [
 	`rgba( 0, 0, 0, 0)`,
 	`rgba( 0, 0, 0, 1)`,
 	`rgba( 43, 43, 43, 1)`,
@@ -13,10 +12,19 @@ const colors = Object.freeze( [
 	`rgba( 255, 255, 255, 1)`,
 ] );
 
-const createTileset = ( widthTiles, heightTiles, pixels, canvas ) => {
+const createTileset = (
+	widthTiles: number,
+	heightTiles: number,
+	pixels: number[],
+	canvas: HTMLCanvasElement,
+): Tileset => {
 	const getWidthPixels = () => widthTiles * tileSize;
 	const getHeightPixels = () => heightTiles * tileSize;
-	const ctx = canvas.getContext( `2d` );
+	const ctx: CanvasRenderingContext2D | null = canvas.getContext( `2d` );
+
+	if ( !ctx ) {
+		throw new Error( `Canvas 2D context is null.` );
+	}
 
 	return {
 		clearTile: tileIndex => {
@@ -73,14 +81,23 @@ const createTileset = ( widthTiles, heightTiles, pixels, canvas ) => {
 	};
 };
 
-const createNewTileset = ( widthTiles, heightTiles, pixels ) => {
-	const getWidthPixels = () => widthTiles * tileSize;
-	const getHeightPixels = () => heightTiles * tileSize;
-	const canvas = document.createElement( `canvas` );
+const createNewTileset = (
+	widthTiles: number,
+	heightTiles: number,
+	pixels: number[],
+): Tileset => {
+	const getWidthPixels = (): number => widthTiles * tileSize;
+	const getHeightPixels = (): number => heightTiles * tileSize;
+	const canvas: HTMLCanvasElement = document.createElement( `canvas` );
 	canvas.style.imageRendering = `pixelated`;
 	canvas.width = getWidthPixels();
 	canvas.height = getHeightPixels();
-	const ctx = canvas.getContext( `2d` );
+	const ctx: CanvasRenderingContext2D | null = canvas.getContext( `2d` );
+
+	if ( !ctx ) {
+		throw new Error( `Canvas 2D context is null.` );
+	}
+
 	ctx.imageSmoothingEnabled = false;
 
 	ctx.clearRect( 0, 0, canvas.width, canvas.height );
@@ -94,26 +111,12 @@ const createNewTileset = ( widthTiles, heightTiles, pixels ) => {
 	return createTileset( widthTiles, heightTiles, pixels, canvas );
 };
 
-const createBlankTileset = ( widthTiles, heightTiles ) => createNewTileset(
+const createBlankTileset = ( widthTiles: number, heightTiles: number ): Tileset => createNewTileset(
 	widthTiles,
 	heightTiles,
 	new Array( widthTiles * tileSize * heightTiles * tileSize ).fill( 0 ),
 );
 
-const tilesetProp = propTypes.shape( {
-	drawPiece: propTypes.func.isRequired,
-	drawWhole: propTypes.func.isRequired,
-	getWidthTiles: propTypes.func.isRequired,
-	getHeightTiles: propTypes.func.isRequired,
-	getWidthPixels: propTypes.func.isRequired,
-	getHeightPixels: propTypes.func.isRequired,
-	getPixels: propTypes.func.isRequired,
-	updatePixels: propTypes.func.isRequired,
-	updatePixel: propTypes.func.isRequired,
-} );
-
 export {
 	createBlankTileset,
-	tilesetProp,
-	tileSize,
 };

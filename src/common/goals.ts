@@ -1,10 +1,8 @@
-import propTypes from 'prop-types';
+import { Goal, GoalTemplate } from './types';
 
-const goals = Object.freeze( [
+const goals: readonly GoalTemplate[] = Object.freeze( [
 	{
 		name: `Reach Keycane`,
-		exportData: [
-		],
 	},
 	{
 		name: `Collect ₧`,
@@ -13,28 +11,31 @@ const goals = Object.freeze( [
 				slug: `amount`,
 				title: `Amount`,
 				type: `number`,
-				default: 10000,
+				default: `10000`,
 				atts: {
-					min: 1,
-					max: 99999,
+					min: `1`,
+					max: `99999`,
 				},
 			},
 		],
 		exportData: [
-			{ type: `Uint32`, data: `amount` },
+			{ type: `Uint32`, key: `amount` },
 		],
 	},
 ] );
 
-const createGoal = ( id, options = undefined ) => {
+const createGoal = (
+	id: number,
+	options?: { [key: string]: string },
+): Goal => {
 	if ( options === undefined ) {
-		if ( !Array.isArray( goals[ id ].options ) ) {
-			options = [];
-		} else {
+		if ( goals[ id ]?.options && Array.isArray( goals[ id ].options ) ) {
 			options = goals[ id ].options.reduce( ( acc, option ) => {
 				acc[ option.slug ] = option.default;
 				return acc;
 			}, {} );
+		} else {
+			options = {};
 		}
 	}
 
@@ -50,14 +51,7 @@ const createGoal = ( id, options = undefined ) => {
 	} );
 };
 
-const goalPropType = propTypes.shape( {
-	getId: propTypes.func.isRequired,
-	getOption: propTypes.func.isRequired,
-	updateOption: propTypes.func.isRequired,
-} );
-
 export {
 	createGoal,
-	goalPropType,
 	goals,
 };
