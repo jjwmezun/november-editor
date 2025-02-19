@@ -1,14 +1,14 @@
-import propTypes from 'prop-types';
-import { useEffect, useRef, useState } from 'react';
+import { ReactElement, useEffect, useRef, useState } from 'react';
 import { getMousePosition } from '../../../common/utils';
-import { tilesetProp, tileSize } from '../../../common/tileset';
+import { tileSize } from '../../../common/constants';
+import { Coordinates, TileEditorProps } from '../../../common/types';
 
-const pixelZoom = 16;
-const halfPixel = pixelZoom / 2;
-const width = tileSize * pixelZoom;
-const height = tileSize * pixelZoom;
+const pixelZoom: number = 16;
+const halfPixel: number = pixelZoom / 2;
+const width: number = tileSize * pixelZoom;
+const height: number = tileSize * pixelZoom;
 
-const brushLayouts = Object.freeze( [
+const brushLayouts: readonly Coordinates[][] = Object.freeze( [
 	[ { x: 0, y: 0 } ],
 	[
 		{ x: 0, y: 0 },
@@ -181,17 +181,25 @@ const brushLayouts = Object.freeze( [
 	],
 ] );
 
-const generateBrushLayout = ( size, x, y ) => brushLayouts[ size - 1 ].map( o => ( {
+const generateBrushLayout = (
+	size: number,
+	x: number,
+	y: number,
+): Coordinates[] => brushLayouts[ size - 1 ].map( o => ( {
 	x: ( o.x + x ),
 	y: ( o.y + y ),
 } ) );
 
-const generateBrushLayoutForRender = ( size, x, y ) => generateBrushLayout( size, x, y ).map( o => ( {
+const generateBrushLayoutForRender = (
+	size: number,
+	x: number,
+	y: number,
+): Coordinates[] => generateBrushLayout( size, x, y ).map( o => ( {
 	x: o.x * pixelZoom,
 	y: o.y * pixelZoom,
 } ) );
 
-const TileEditor = props => {
+const TileEditor = ( props: TileEditorProps ): ReactElement => {
 	const canvasRef = useRef();
 	const { clearTile, colors, drawPixel, selectedColor, tileset, tileX, tileY } = props;
 	const [ gridImage, setGridImage ] = useState( null );
@@ -294,7 +302,6 @@ const TileEditor = props => {
 
 		setSelected( { x: gridX, y: gridY } );
 
-		document.body.style.cursor = `pointer`;
 		if ( mouseDown ) {
 			drawBrush();
 		}
@@ -307,6 +314,10 @@ const TileEditor = props => {
 			gridImage.width = width;
 			gridImage.height = height;
 			const gridImageCtx = gridImage.getContext( `2d` );
+
+			if ( !gridImageCtx ) {
+				throw new Error( `Could not get 2D context for grid image.` );
+			}
 
 			gridImageCtx.strokeStyle = `#4488ff`;
 			gridImageCtx.lineWidth = 1;
@@ -329,6 +340,10 @@ const TileEditor = props => {
 			transparencyImage.width = tileSize * pixelZoom;
 			transparencyImage.height = tileSize * pixelZoom;
 			const transparencyImageCtx = transparencyImage.getContext( `2d` );
+
+			if ( !transparencyImageCtx ) {
+				throw new Error( `Could not get 2D context for grid image.` );
+			}
 
 			transparencyImageCtx.fillStyle = `rgb( 64, 64, 64 )`;
 			transparencyImageCtx.fillRect( 0, 0, transparencyImage.width, transparencyImage.height );
@@ -374,16 +389,6 @@ const TileEditor = props => {
 		</div>
 		<button onClick={ clearTile }>Clear Tile</button>
 	</div>;
-};
-
-TileEditor.propTypes = {
-	clearTile: propTypes.func.isRequired,
-	colors: propTypes.array.isRequired,
-	drawPixel: propTypes.func.isRequired,
-	selectedColor: propTypes.number.isRequired,
-	tileset: tilesetProp.isRequired,
-	tileX: propTypes.number.isRequired,
-	tileY: propTypes.number.isRequired,
 };
 
 export default TileEditor;

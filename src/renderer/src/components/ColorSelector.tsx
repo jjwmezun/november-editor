@@ -1,6 +1,7 @@
-import propTypes from 'prop-types';
+import { ReactElement } from 'react';
+import { ColorSelectorProps } from '../../../common/types';
 
-const ColorSelector = props => {
+const ColorSelector = ( props: ColorSelectorProps ): ReactElement => {
 	const {
 		colors,
 		selectedColor,
@@ -19,12 +20,6 @@ const ColorSelector = props => {
 			</tr>
 		</tbody>
 	</table>;
-};
-
-ColorSelector.propTypes = {
-	colors: propTypes.arrayOf( propTypes.string ).isRequired,
-	selectedColor: propTypes.number.isRequired,
-	setSelectedColor: propTypes.func.isRequired,
 };
 
 export default ColorSelector;

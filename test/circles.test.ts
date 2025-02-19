@@ -2,7 +2,7 @@ import {
 	get1stLevelOfCircle,
 	getNthLevelOfCircle,
 	getLastLevelOfCircle,
-} from '../src/common/circles.js';
+} from '../src/common/circles';
 
 test( `get1stLevelOfCircle returns correct values.`, () => {
 	expect( get1stLevelOfCircle( 0, 0 ) ).toEqual( 0 );

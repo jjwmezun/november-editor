@@ -1,4 +1,7 @@
-export default Object.freeze( [
+import { tilesPerBlock } from "./constants";
+import { MapObjectType } from "./types";
+
+const objectTypes: readonly MapObjectType[] = Object.freeze( [
 	{
 		name: `Ground`,
 		create: ( x, y ) => ( {
@@ -9,11 +12,11 @@ export default Object.freeze( [
 		} ),
 		render: ( tileRenderer, object ) => {
 			// Render sidewalk top.
-			for ( let x = object.xTiles(); x < object.rightTiles(); x += 2 ) {
+			for ( let x = object.xTiles(); x < object.rightTiles(); x += tilesPerBlock ) {
 				tileRenderer( {
 					x,
 					y: object.yTiles(),
-					w: 2,
+					w: tilesPerBlock,
 				} );
 				tileRenderer( {
 					srcx: 2,
@@ -28,7 +31,7 @@ export default Object.freeze( [
 			}
 
 			// Render dirt center.
-			for ( let y = object.yTiles() + 2; y < object.bottomTiles(); y++ ) {
+			for ( let y = object.yTiles() + tilesPerBlock; y < object.bottomTiles(); y++ ) {
 				for ( let x = object.xTiles(); x < object.rightTiles(); x++ ) {
 					tileRenderer( {
 						srcx: 3,
@@ -39,10 +42,10 @@ export default Object.freeze( [
 			}
 		},
 		exportData: [
-			{ type: `Uint16`, data: `x` },
-			{ type: `Uint16`, data: `y` },
-			{ type: `Uint16`, data: `width` },
-			{ type: `Uint8`, data: `height` },
+			{ type: `Uint16`, key: `x` },
+			{ type: `Uint16`, key: `y` },
+			{ type: `Uint16`, key: `width` },
+			{ type: `Uint8`, key: `height` },
 		],
 		options: [
 			{
@@ -108,8 +111,8 @@ export default Object.freeze( [
 			} );
 		},
 		exportData: [
-			{ type: `Uint16`, data: `x` },
-			{ type: `Uint16`, data: `y` },
+			{ type: `Uint16`, key: `x` },
+			{ type: `Uint16`, key: `y` },
 		],
 		options: [
 			{
@@ -144,30 +147,30 @@ export default Object.freeze( [
 		} ),
 		render: ( tileRenderer, object, frame ) => {
 			const animationOffset = 2 * ( frame % 6 );
-			for ( let y = object.yTiles(); y < object.bottomTiles(); y += 2 ) {
-				for ( let x = object.xTiles(); x < object.rightTiles(); x += 2 ) {
+			for ( let y = object.yTiles(); y < object.bottomTiles(); y += tilesPerBlock ) {
+				for ( let x = object.xTiles(); x < object.rightTiles(); x += tilesPerBlock ) {
 					tileRenderer( {
 						srcx: 5 + animationOffset,
 						srcy: 1,
 						x,
 						y,
-						w: 2,
+						w: tilesPerBlock,
 					} );
 					tileRenderer( {
 						srcx: 17 + animationOffset,
 						srcy: 1,
 						x,
 						y: y + 1,
-						w: 2,
+						w: tilesPerBlock,
 					} );
 				}
 			}
 		},
 		exportData: [
-			{ type: `Uint16`, data: `x` },
-			{ type: `Uint16`, data: `y` },
-			{ type: `Uint8`, data: `width` },
-			{ type: `Uint8`, data: `height` },
+			{ type: `Uint16`, key: `x` },
+			{ type: `Uint16`, key: `y` },
+			{ type: `Uint8`, key: `width` },
+			{ type: `Uint8`, key: `height` },
 		],
 		options: [
 			{
@@ -219,7 +222,9 @@ export default Object.freeze( [
 			y: y,
 			width: 6,
 			height: 3,
-			door: 2,
+			props: {
+				door: 2,
+			},
 		} ),
 		render: ( tileRenderer, object ) => {
 			const ystart = object.yTiles();
@@ -298,18 +303,18 @@ export default Object.freeze( [
 			for ( let i = 3; i >= 0; i-- ) {
 				tileRenderer( {
 					srcx: 47 - i * 2,
-					x: xstart + object.door * 2,
+					x: xstart + object.getProp( `door` ) * 2,
 					y: yend - i,
 					w: 2,
 				} );
 			}
 		},
 		exportData: [
-			{ type: `Uint16`, data: `x` },
-			{ type: `Uint16`, data: `y` },
-			{ type: `Uint8`, data: `width` },
-			{ type: `Uint8`, data: `height` },
-			{ type: `Uint8`, data: `door` },
+			{ type: `Uint16`, key: `x` },
+			{ type: `Uint16`, key: `y` },
+			{ type: `Uint8`, key: `width` },
+			{ type: `Uint8`, key: `height` },
+			{ type: `Uint8`, key: `door` },
 		],
 		options: [
 			{
@@ -338,7 +343,7 @@ export default Object.freeze( [
 				type: `number`,
 				update: v => parseInt( v ),
 				extraUpdate: ( object, v ) => {
-					const door = object.door;
+					const door = object.getProp( `door` );
 					if ( door >= v - 1 ) {
 						return { door: v - 2 };
 					}
@@ -381,16 +386,16 @@ export default Object.freeze( [
 		} ),
 		render: ( tileRenderer, object ) => {
 			// Render top row.
-			for ( let x = 0; x < object.width; x++ ) {
+			for ( let x = 0; x < object.widthBlocks(); x++ ) {
 				tileRenderer( {
 					srcx: x % 3 === 0 ? 4 : 6,
 					x: object.xTiles() + x * 2,
 					y: object.yTiles(),
-					w: 2,
+					w: tilesPerBlock,
 				} );
 			}
 			for ( let y = 1; y < object.heightTiles(); y++ ) {
-				for ( let x = 0; x < object.width; x += 3 ) {
+				for ( let x = 0; x < object.widthBlocks(); x += 3 ) {
 					// Render leftmost column.
 					tileRenderer( {
 						srcx: y === 1 ? 8 : ( y === 2 ? 11 : 12 ),
@@ -416,9 +421,9 @@ export default Object.freeze( [
 			}
 		},
 		exportData: [
-			{ type: `Uint16`, data: `x` },
-			{ type: `Uint16`, data: `y` },
-			{ type: `Uint16`, data: `width` },
+			{ type: `Uint16`, key: `x` },
+			{ type: `Uint16`, key: `y` },
+			{ type: `Uint16`, key: `width` },
 		],
 		options: [
 			{
@@ -454,3 +459,7 @@ export default Object.freeze( [
 		],
 	},
 ] );
+
+export {
+	objectTypes,
+};
