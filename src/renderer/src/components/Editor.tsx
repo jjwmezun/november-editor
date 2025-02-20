@@ -6,47 +6,34 @@ import { modeKeys } from '../../../common/modes';
 import LevelMode from './LevelMode';
 import SelectMode from './SelectMode';
 import GraphicsMode from './GraphicsMode';
-import { createBlankTileset } from '../../../common/tileset';
+import { compressPixels, createBlankTileset, createNewTileset, decompressPixels } from '../../../common/tileset';
 import {
+	createLayer,
 	createLevel,
+	createMap,
 	encodeLevels,
+	generateDataBytes,
+	createObject,
 	loadLevelFromData,
 }	from '../../../common/levels';
 import {
 	ByteBlock,
 	DecodedTilesetData,
+	Layer,
+	LayerType,
 	Level,
+	LvMap,
+	MapObject,
 	Tileset,
 } from '../../../common/types';
+import { createGoal } from '../../../common/goals';
 
 const loadGraphicsFromData = ( data: Uint8Array ): DecodedTilesetData => {
 	let tileset = createBlankTileset( 64, 64 );
 
-	// Load tileset pixels from bits.
-	const pixels: number[] = [];
-	const dataSize = Math.ceil( tileset.getPixels().length * ( 3 / 8 ) );
-
-	const bits: number[] = [];
-	for ( let i = 0; i < dataSize; i++ ) {
-		// Get bits from byte.
-		const byte = data[ i ];
-		for ( let j = 7; j >= 0; j-- ) {
-			bits.push( ( byte & ( 1 << j ) ) >> j );
-		}
-
-		// If there are ’nough bits to make a color, add it to pixels.
-		while ( bits.length >= 3 ) {
-			const v = bits.splice( 0, 3 );
-			const color = getColorFromBits( v );
-			pixels.push( color );
-		}
-	}
-
-	if ( bits.length > 0 ) {
-		throw new Error( `Invalid tileset data` );
-	}
-
 	// Update tileset with new pixels.
+	const dataSize = Math.ceil( tileset.getPixels().length * ( 3 / 8 ) );
+	const pixels: number[] = decompressPixels( Array.from( data ).slice( 0, dataSize ) );
 	tileset = tileset.updatePixels( pixels );
 
 	return {
@@ -55,48 +42,9 @@ const loadGraphicsFromData = ( data: Uint8Array ): DecodedTilesetData => {
 	};
 };
 
-// Convert list o’ 3 bits into color index.
-const getColorFromBits = ( bits: number[] ): number => {
-	const color = parseInt( bits.join( `` ), 2 );
-	if ( color < 0 || color > 7 ) {
-		throw new Error( `Invalid color: ${ color }` );
-	}
-	return color;
-};
-
-// Convert color index into list o’ 3 bits.
-const getBitsFromColor = ( color: number ): number[] => {
-	if ( color < 0 || color > 7 ) {
-		throw new Error( `Invalid color: ${ color }` );
-	}
-	return [ ...color.toString( 2 ).padStart( 3, `0` ) ].map( bit => parseInt( bit ) );
-};
-
 const generateSaveData = ( levels: Level[], tileset: Tileset ): DataView => {
-	let saveData: ByteBlock[] = [];
-
-	// Add tileset data to save data.
-	let bits: number[] = [];
-	const pixels: number[] = tileset.getPixels();
-	pixels.forEach( pixel => {
-		const pixelBits: number[] = getBitsFromColor( pixel );
-		while ( pixelBits.length > 0 ) {
-			// Shift can’t return undefined, as loop stops before list reaches 0 length.
-			bits.push( pixelBits.shift()! );
-			if ( bits.length === 8 ) {
-				saveData.push( { type: `Uint8`, value: parseInt( bits.join( `` ), 2 ) } );
-				bits = [];
-			}
-		}
-	} );
-
-	// If there are any remaining bits, add them to save data & fill out rest o’ byte with 0s.
-	if ( bits.length > 0 ) {
-		while ( bits.length < 8 ) {
-			bits.push( 0 );
-		}
-		saveData.push( { type: `Uint8`, value: parseInt( bits.join( `` ), 2 ) } );
-	}
+	let saveData: ByteBlock[] = compressPixels( tileset.getPixels() )
+		.map( ( byte: number ): ByteBlock => ( { type: `Uint8`, value: byte } ) );
 
 	// For each level, generate bytes for name, goal, and maps.
 	saveData = saveData.concat( encodeLevels( levels ) );
@@ -122,7 +70,7 @@ const Editor = (): ReactElement => {
 	const [ tileset, setTileset ] = useState( null );
 	const [ mode, setMode ] = useState( modeKeys.select );
 
-	const onOpen = ( _event, data: Uint8Array ) => {
+	const onImport = ( _event, data: Uint8Array ) => {
 		resetMode();
 
 		// Load tileset data.
@@ -146,6 +94,168 @@ const Editor = (): ReactElement => {
 		setLevels( levels );
 	};
 
+	const onOpen = ( _event, data: object ) => {
+		resetMode();
+
+		// Import tileset if present.
+		if ( `tileset` in data ) {
+			// Validate data.
+			if ( ! data[ `tileset` ] || typeof data[ `tileset` ] !== `object` ) {
+				throw new Error( `Invalid tileset data` );
+			}
+			if ( ! data[ `tileset` ][ `widthTiles` ] || typeof data[ `tileset` ][ `widthTiles` ] !== `number` ) {
+				throw new Error( `Invalid tileset width` );
+			}
+			if ( ! data[ `tileset` ][ `heightTiles` ] || typeof data[ `tileset` ][ `heightTiles` ] !== `number` ) {
+				throw new Error( `Invalid tileset height` );
+			}
+			if (
+				! data[ `tileset` ][ `pixels` ]
+				|| ! Array.isArray( data[ `tileset` ][ `pixels` ] )
+				|| data[ `tileset` ][ `pixels` ].some( ( pixel: unknown ) => typeof pixel !== `number` )
+			) {
+				data[ `tileset` ][ `pixels` ].map( ( pixel: unknown ) => console.log( typeof pixel ) );
+				throw new Error( `Invalid tileset pixels` );
+			}
+
+			setTileset( createNewTileset(
+				data[ `tileset` ][ `widthTiles` ],
+				data[ `tileset` ][ `heightTiles` ],
+				decompressPixels( data[ `tileset` ][ `pixels` ] ),
+			) );
+		} else {
+			// If no tileset is present, set to default.
+			setTileset( createBlankTileset( 64, 64 ) );
+		}
+
+		// Import levels.
+		if ( `levels` in data ) {
+			// Validate data.
+			if ( ! Array.isArray( data[ `levels` ] ) ) {
+				throw new Error( `Invalid levels data` );
+			}
+			if ( data[ `levels` ].length > levelCount ) {
+				throw new Error( `Too many levels` );
+			}
+
+			// Load levels.
+			setLevels( data[ `levels` ].map( ( level: unknown, i: number ): Level => {
+				if ( ! level || typeof level !== `object` ) {
+					throw new Error( `Invalid level data for level #${ i }` );
+				}
+				if ( typeof level[ `name` ] !== `string` ) {
+					throw new Error( `Invalid level name for level #${ i }` );
+				}
+				if ( ! level[ `goal` ] || typeof level[ `goal` ] !== `object` ) {
+					throw new Error( `Invalid level goal for level #${ i }` );
+				}
+				if ( typeof level[ `goal` ][ `id` ] !== `number` ) {
+					throw new Error( `Invalid goal ID for level #${ i }` );
+				}
+				if ( ! level[ `goal` ][ `options` ] || typeof level[ `goal` ][ `options` ] !== `object` ) {
+					throw new Error( `Invalid goal options for level #${ i }` );
+				}
+				if ( ! Array.isArray( level[ `maps` ] ) ) {
+					throw new Error( `Invalid level maps for level #${ i }` );
+				}
+
+				const maps = level[ `maps` ].map( ( map: unknown, j: number ): ArrayBuffer => {
+					if ( ! map || typeof map !== `object` ) {
+						throw new Error( `Invalid map data for map #${ j } o’ level #${ i }` );
+					}
+					if ( typeof map[ `width` ] !== `number` ) {
+						throw new Error( `Invalid map width for map #${ j } o’ level #${ i }` );
+					}
+					if ( typeof map[ `height` ] !== `number` ) {
+						throw new Error( `Invalid map height for map #${ j } o’ level #${ i }` );
+					}
+					if ( ! Array.isArray( map[ `layers` ] ) ) {
+						throw new Error( `Invalid map layers for map #${ j } o’ level #${ i }` );
+					}
+
+					const layers = map[ `layers` ].map( ( layer: unknown, k: number ): Layer => {
+						if ( ! layer || typeof layer !== `object` ) {
+							throw new Error( `Invalid layer data for layer #${ k } o’ map #${ j } o’ level #${ i }` );
+						}
+						if ( typeof layer[ `type` ] !== `number` ) {
+							throw new Error( `Invalid layer type for layer #${ k } o’ map #${ j } o’ level #${ i }` );
+						}
+						if ( ! Array.isArray( layer[ `objects` ] ) ) {
+							// eslint-disable-next-line max-len
+							throw new Error( `Invalid layer objects for layer #${ k } o’ map #${ j } o’ level #${ i }` );
+						}
+						if ( typeof layer[ `scrollX` ] !== `number` ) {
+							// eslint-disable-next-line max-len
+							throw new Error( `Invalid layer scrollX for layer #${ k } o’ map #${ j } o’ level #${ i }` );
+						}
+
+						const objects = layer[ `objects` ].map( ( object: unknown, l: number ): MapObject => {
+							if ( ! object || typeof object !== `object` ) {
+								// eslint-disable-next-line max-len
+								throw new Error( `Invalid object data for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+							}
+							if ( typeof object[ `type` ] !== `number` ) {
+								// eslint-disable-next-line max-len
+								throw new Error( `Invalid object type for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+							}
+							if ( typeof object[ `x` ] !== `number` ) {
+								// eslint-disable-next-line max-len
+								throw new Error( `Invalid object x for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+							}
+							if ( typeof object[ `y` ] !== `number` ) {
+								// eslint-disable-next-line max-len
+								throw new Error( `Invalid object y for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+							}
+							if ( `width` in object && typeof object[ `width` ] !== `number` ) {
+								// eslint-disable-next-line max-len
+								throw new Error( `Invalid object width for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+							}
+							if ( `height` in object && typeof object[ `height` ] !== `number` ) {
+								// eslint-disable-next-line max-len
+								throw new Error( `Invalid object height for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+							}
+							if ( `props` in object && typeof object[ `props` ] !== `object` ) {
+								// eslint-disable-next-line max-len
+								throw new Error( `Invalid object props for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+							}
+
+							return createObject( {
+								type: object[ `type` ],
+								x: object[ `x` ],
+								y: object[ `y` ],
+								width: object[ `width` ],
+								height: object[ `height` ],
+								...object[ `props` ] ?? {},
+							} );
+						} );
+
+						return createLayer(
+							LayerType.block,
+							objects,
+							layer[ `scrollX` ],
+						);
+					} );
+
+					const mapBlock: LvMap = createMap(
+						map[ `width` ],
+						map[ `height` ],
+						layers,
+					);
+
+					return generateDataBytes( mapBlock );
+				} );
+				return createLevel(
+					level[ `name` ],
+					createGoal( level[ `goal` ][ `id` ], level[ `goal` ][ `options` ] ),
+					maps,
+				);
+			} ) );
+		} else {
+			// If no levels are present, set to default.
+			setLevels( Array.from( { length: levelCount } ).map( () => createLevel() ) );
+		}
+	};
+
 	const resetMode = () => setMode( modeKeys.select );
 
 	const onNew = () => {
@@ -163,11 +273,13 @@ const Editor = (): ReactElement => {
 	useEffect( () => {
 		window.electronAPI.on( `new__editor`, onNew );
 		window.electronAPI.on( `open__editor`, onOpen );
+		window.electronAPI.on( `import__editor`, onImport );
 		window.electronAPI.on( `close__editor`, onClose );
 
 		return () => {
 			window.electronAPI.remove( `new__editor` );
 			window.electronAPI.remove( `open__editor` );
+			window.electronAPI.remove( `import__editor` );
 			window.electronAPI.remove( `close__editor` );
 		};
 	}, [] );
@@ -177,12 +289,23 @@ const Editor = (): ReactElement => {
 			if ( levels === null || tileset === null ) {
 				return;
 			}
-			window.electronAPI.save( generateSaveData( levels, tileset ) );
+			window.electronAPI.save( JSON.stringify( {
+				levels: levels.map( ( level: Level ) => level.toJSON() ),
+				tileset: tileset.toJSON(),
+			}, null, 4 ) );
+		};
+		const onExport = () => {
+			if ( levels === null || tileset === null ) {
+				return;
+			}
+			window.electronAPI.export( generateSaveData( levels, tileset ) );
 		};
 		window.electronAPI.on( `save__editor`, onSave );
+		window.electronAPI.on( `export__editor`, onExport );
 
 		return () => {
 			window.electronAPI.remove( `save__editor` );
+			window.electronAPI.remove( `export__editor` );
 		};
 	}, [ levels, tileset ] ); // Update whene’er levels change so they always reflect latest data.
 

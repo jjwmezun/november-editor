@@ -7,6 +7,7 @@ import { PNG } from 'pngjs';
 
 function createWindow() {
 	let savePath = null;
+	let exportPath = null;
 
 	// Create the browser window.
 	const mainWindow = new BrowserWindow( {
@@ -40,6 +41,16 @@ function createWindow() {
 		saveAs.enabled = false;
 	};
 
+	const enableExport = () => {
+		const exportOption = menu.getMenuItemById( `export` );
+		exportOption.enabled = true;
+	};
+
+	const disableExport = () => {
+		const exportOption = menu.getMenuItemById( `export` );
+		exportOption.enabled = false;
+	};
+
 	const enableClose = () => {
 		const close = menu.getMenuItemById( `close` );
 		close.enabled = true;
@@ -55,11 +66,16 @@ function createWindow() {
 		disableSave();
 	};
 
+	const exportData = path => {
+		exportPath = path;
+		mainWindow.webContents.send( `export__editor`, true );
+	};
+
 	const showSaveDialog = () => {
 		dialog.showSaveDialog( null, {
 			title: `Save`,
 			filters: [
-				{ name: `Boskeopolis Land Data`, extensions: [ `bsld` ] },
+				{ name: `JSON`, extensions: [ `json` ] },
 			],
 		} ).then( result => {
 			if ( !result.canceled ) {
@@ -162,6 +178,7 @@ function createWindow() {
 						savePath = null;
 						enableSave();
 						enableSaveAs();
+						enableExport();
 						enableClose();
 					},
 				},
@@ -171,21 +188,22 @@ function createWindow() {
 						dialog.showOpenDialog( null, {
 							title: `Open`,
 							filters: [
-								{ name: `Boskeopolis Land Data`, extensions: [ `bsld` ] },
+								{ name: `JSON`, extensions: [ `json` ] },
 							],
 						} ).then( result => {
 							if ( !result.canceled ) {
-								fs.readFile( result.filePaths[ 0 ], ( err, data ) => {
+								fs.readFile( result.filePaths[ 0 ], `utf-8`, ( err, data ) => {
 									if ( err ) {
 										console.error( err );
 										return;
 									}
 									savePath = result.filePaths[ 0 ];
-									mainWindow.webContents.send( `open__editor`, data );
-									mainWindow.webContents.send( `open__level-editor`, data );
-									mainWindow.webContents.send( `open__level-mode`, data );
+									mainWindow.webContents.send( `open__editor`, JSON.parse( data ) );
+									mainWindow.webContents.send( `open__level-editor` );
+									mainWindow.webContents.send( `open__level-mode` );
 									enableClose();
 									enableSaveAs();
+									enableExport();
 								} );
 							}
 						} );
@@ -212,6 +230,49 @@ function createWindow() {
 					},
 				},
 				{
+					label: `Import…`,
+					click() {
+						dialog.showOpenDialog( null, {
+							title: `Import`,
+							filters: [
+								{ name: `¡Here’s All the Data!`, extensions: [ `had` ] },
+							],
+						} ).then( result => {
+							if ( !result.canceled ) {
+								fs.readFile( result.filePaths[ 0 ], ( err, data ) => {
+									if ( err ) {
+										console.error( err );
+										return;
+									}
+									savePath = result.filePaths[ 0 ];
+									mainWindow.webContents.send( `import__editor`, data );
+									mainWindow.webContents.send( `open__level-editor` );
+									mainWindow.webContents.send( `open__level-mode` );
+									enableClose();
+									enableSaveAs();
+								} );
+							}
+						} );
+					},
+				},
+				{
+					label: `Export…`,
+					id: `export`,
+					enabled: false,
+					click() {
+						dialog.showSaveDialog( null, {
+							title: `Export`,
+							filters: [
+								{ name: `¡Here’s All the Data!`, extensions: [ `had` ] },
+							],
+						} ).then( result => {
+							if ( !result.canceled ) {
+								exportData( result.filePath );
+							}
+						} );
+					},
+				},
+				{
 					label: `Close`,
 					id: `close`,
 					enabled: false,
@@ -222,6 +283,7 @@ function createWindow() {
 						disableSave();
 						disableSaveAs();
 						disableClose();
+						disableExport();
 						savePath = null;
 					},
 				},
@@ -243,6 +305,15 @@ function createWindow() {
 
 	ipcMain.on( `save`, ( _event, data ) => {
 		fs.writeFile( savePath, data, err => {
+			if ( err ) {
+				console.error( err );
+				return;
+			}
+		} );
+	} );
+
+	ipcMain.on( `export`, ( _event, data ) => {
+		fs.writeFile( exportPath, data, err => {
 			if ( err ) {
 				console.error( err );
 				return;

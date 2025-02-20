@@ -43,6 +43,7 @@ interface DecodedTilesetData {
 interface Goal {
 	getId: () => number,
 	getOption: ( key: string ) => string,
+	toJSON: () => object,
 	updateOption: ( key: string, value: string ) => Goal,
 }
 
@@ -75,6 +76,7 @@ interface Level {
 	getMaps: () => ArrayBuffer[],
 	getName: () => string,
 	getProps: () => LevelProps,
+	toJSON: () => object,
 	updateGoal: ( newGoal: Goal ) => Level,
 	updateMaps: ( newMaps: ArrayBuffer[] ) => Level,
 	updateName: ( newName: string ) => Level,
@@ -113,6 +115,7 @@ interface LvMap {
 	getProps: () => LvMapProps,
 	removeLayer: ( index: number ) => LvMap,
 	switchLayers: ( a: number, b: number ) => LvMap,
+	toJSON: () => object,
 	updateLayer: ( index: number ) => {
 		addObject: ( object: object ) => LvMap,
 		removeObject: ( objectIndex: number ) => LvMap,
@@ -146,6 +149,7 @@ interface MapObject {
 	bottomBlocks: () => number,
 	bottomTiles: () => number,
 	bottomPixels: () => number,
+	toJSON: () => object,
 	update: ( newObject: object ) => MapObject,
 }
 
@@ -254,18 +258,20 @@ interface Tileset {
 	getHeightPixels: () => number,
 	getPixels: () => number[],
 	importPixels: ( newPixels: number[], importWidth: number, importHeight: number, tileIndex: number ) => void,
+	toJSON: () => object,
 	updatePixels: ( newPixels: number[] ) => Tileset,
 	updatePixel: ( color: number, x: number, y: number ) => void,
 }
 
 interface ElectronAPI {
 	enableSave: () => void,
+	export: ( data: DataView ) => void,
 	exportMap: ( map: ArrayBuffer ) => void,
 	importMap: () => void,
 	on: ( channel: string, listener: ( _event, data: object ) => void ) => void,
 	openTileImportWindow: () => void,
 	remove: ( channel: string ) => void,
-	save: ( data: DataView ) => void,
+	save: ( data: string ) => void,
 }
 
 declare global {
