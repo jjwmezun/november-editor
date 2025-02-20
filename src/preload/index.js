@@ -19,6 +19,7 @@ if ( process.contextIsolated ) {
 			enableSave: value => ipcRenderer.send( `enable-save`, value ),
 			openTileImportWindow: () => ipcRenderer.send( `open-tile-import-window` ),
 			save: value => ipcRenderer.send( `save`, value ),
+			export: value => ipcRenderer.send( `export`, value ),
 		} );
 	} catch ( error ) {
 		console.error( error );

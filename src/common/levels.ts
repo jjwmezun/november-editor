@@ -40,6 +40,11 @@ const createLevel = (
 		getMaps: () => maps,
 		getName: () => name,
 		getProps: () => ( { name, goal, maps } ),
+		toJSON: () => ( {
+			name,
+			goal: goal.toJSON(),
+			maps: maps.map( map => transformMapDataToObject( map ).toJSON() ),
+		} ),
 		updateGoal: newGoal => createLevel( name, newGoal, maps ),
 		updateMaps: newMaps => createLevel( name, goal, newMaps ),
 		updateName: newName => createLevel( newName, goal, maps ),
@@ -70,6 +75,15 @@ const createMap = (
 			newLayers[ b ] = temp;
 			return createMap( width, height, newLayers );
 		},
+		toJSON: () => ( {
+			width,
+			height,
+			layers: layers.map( layer => ( {
+				type: 0,
+				objects: layer.objects.map( object => object.toJSON() ),
+				scrollX: layer.scrollX,
+			} ) ),
+		} ),
 		updateLayer: index => {
 			return {
 				addObject: object => {
@@ -138,6 +152,7 @@ const createObject = ( object: MapObjectArgs ): MapObject => {
 		bottomBlocks: () => y + height,
 		bottomTiles: () => ( y + height ) * tilesPerBlock,
 		bottomPixels: () => ( y + height ) * pixelsPerBlock,
+		toJSON: () => object,
 		update: newObject => createObject( { ...object, ...newObject } ),
 	} );
 };
