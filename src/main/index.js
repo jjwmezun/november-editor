@@ -51,7 +51,7 @@ function createWindow() {
 	};
 
 	const save = () => {
-		mainWindow.webContents.send( `save`, true );
+		mainWindow.webContents.send( `save__editor`, true );
 		disableSave();
 	};
 
@@ -98,7 +98,7 @@ function createWindow() {
 						console.error( err );
 						return;
 					}
-					mainWindow.webContents.send( `importMapData`, data );
+					mainWindow.webContents.send( `import-map__level-editor`, data );
 				} );
 			}
 		} );
@@ -137,7 +137,7 @@ function createWindow() {
 							}
 						}
 						mainWindow.webContents.send(
-							`importTiles`,
+							`import-tiles__graphics-mode`,
 							{
 								pixels,
 								width: this.width,
@@ -156,7 +156,9 @@ function createWindow() {
 				{
 					label: `New`,
 					click() {
-						mainWindow.webContents.send( `new`, true );
+						mainWindow.webContents.send( `new__editor`, true );
+						mainWindow.webContents.send( `new__level-editor`, true );
+						mainWindow.webContents.send( `new__level-mode`, true );
 						savePath = null;
 						enableSave();
 						enableSaveAs();
@@ -179,7 +181,9 @@ function createWindow() {
 										return;
 									}
 									savePath = result.filePaths[ 0 ];
-									mainWindow.webContents.send( `open`, data );
+									mainWindow.webContents.send( `open__editor`, data );
+									mainWindow.webContents.send( `open__level-editor`, data );
+									mainWindow.webContents.send( `open__level-mode`, data );
 									enableClose();
 									enableSaveAs();
 								} );
@@ -212,7 +216,9 @@ function createWindow() {
 					id: `close`,
 					enabled: false,
 					click() {
-						mainWindow.webContents.send( `close`, true );
+						mainWindow.webContents.send( `close__editor`, true );
+						mainWindow.webContents.send( `close__level-editor`, true );
+						mainWindow.webContents.send( `close__level-mode`, true );
 						disableSave();
 						disableSaveAs();
 						disableClose();
@@ -235,7 +241,7 @@ function createWindow() {
 	] );
 	Menu.setApplicationMenu( menu );
 
-	ipcMain.on( `save`, ( event, data ) => {
+	ipcMain.on( `save`, ( _event, data ) => {
 		fs.writeFile( savePath, data, err => {
 			if ( err ) {
 				console.error( err );
@@ -246,8 +252,8 @@ function createWindow() {
 
 	ipcMain.on( `enable-save`, enableSave );
 
-	ipcMain.on( `exportMap`, exportMap );
-	ipcMain.on( `importMap`, importMap );
+	ipcMain.on( `export-map`, exportMap );
+	ipcMain.on( `import-map`, importMap );
 
 	ipcMain.on( `open-tile-import-window`, openTileImportWindow );
 

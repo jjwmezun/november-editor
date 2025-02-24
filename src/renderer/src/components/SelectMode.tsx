@@ -1,7 +1,8 @@
-import propTypes from 'prop-types';
+import { ReactElement } from 'react';
 import { modeMap } from '../../../common/modes';
+import { SelectModeProps } from '../../../common/types';
 
-const SelectMode = props => {
+const SelectMode = ( props: SelectModeProps ): ReactElement => {
 	const { setMode } = props;
 
 	return <div>
@@ -12,10 +13,6 @@ const SelectMode = props => {
 			</li> ) }
 		</ul>
 	</div>;
-};
-
-SelectMode.propTypes = {
-	setMode: propTypes.func.isRequired,
 };
 
 export default SelectMode;

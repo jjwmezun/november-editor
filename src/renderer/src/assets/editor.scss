@@ -16,6 +16,7 @@
     max-width: 100%;
     max-height: 50vh;
     overflow: scroll;
+    cursor: pointer;
 }
 
 .graphics__tile-grid-canvas {
@@ -26,13 +27,13 @@
         width: 128px;
         height: 128px;
         image-rendering: pixelated;
+        cursor: crosshair;
     }
 }
 
-.graphics__tile-editor,
 .graphics__color-selector {
     border: 2px solid #000;
-    //border-collapse: collapse;
+    cursor: pointer;
 
     td {
         width: 16px;

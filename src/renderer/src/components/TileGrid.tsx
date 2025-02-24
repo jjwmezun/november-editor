@@ -1,13 +1,12 @@
-import propTypes from 'prop-types';
-import { useEffect, useRef, useState } from 'react';
+import { ReactElement, useEffect, useRef, useState } from 'react';
 import { getMousePosition } from '../../../common/utils';
-import { tilesetProp } from '../../../common/tileset';
+import { TileGridProps } from '../../../common/types';
 
-const transparencySquareSize = 4;
-const zoom = 4;
-const tileSize = 8 * zoom;
+const transparencySquareSize: number = 4;
+const zoom: number = 4;
+const tileSize: number = 8 * zoom;
 
-const TileGrid = props => {
+const TileGrid = ( props: TileGridProps ): ReactElement => {
 	const canvasRef = useRef();
 	const { selectedTile, setSelectedTile, tileset } = props;
 	const [ gridImage, setGridImage ] = useState( null );
@@ -71,8 +70,6 @@ const TileGrid = props => {
 		}
 
 		setHovered( { x: gridX, y: gridY } );
-
-		document.body.style.cursor = `pointer`;
 	};
 
 	// Update cursor visuals on mouse move.
@@ -96,7 +93,11 @@ const TileGrid = props => {
 			const gridImage = document.createElement( `canvas` );
 			gridImage.width = width;
 			gridImage.height = height;
-			const gridImageCtx = gridImage.getContext( `2d` );
+			const gridImageCtx: CanvasRenderingContext2D | null = gridImage.getContext( `2d` );
+
+			if ( !gridImageCtx ) {
+				throw new Error( `Could not get 2d context for gridImage` );
+			}
 
 			gridImageCtx.strokeStyle = `#4488ff`;
 			gridImageCtx.lineWidth = 1;
@@ -119,7 +120,11 @@ const TileGrid = props => {
 			const transparencyImage = document.createElement( `canvas` );
 			transparencyImage.width = width;
 			transparencyImage.height = height;
-			const transparencyImageCtx = transparencyImage.getContext( `2d` );
+			const transparencyImageCtx: CanvasRenderingContext2D | null = transparencyImage.getContext( `2d` );
+
+			if ( !transparencyImageCtx ) {
+				throw new Error( `Could not get 2d context for gridImage` );
+			}
 
 			transparencyImageCtx.fillStyle = `rgb( 64, 64, 64 )`;
 			transparencyImageCtx.fillRect( 0, 0, transparencyImage.width, transparencyImage.height );
@@ -165,12 +170,6 @@ const TileGrid = props => {
 			/>
 		</div>
 	</div>;
-};
-
-TileGrid.propTypes = {
-	selectedTile: propTypes.number,
-	setSelectedTile: propTypes.func.isRequired,
-	tileset: tilesetProp.isRequired,
 };
 
 export default TileGrid;

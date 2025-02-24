@@ -12,23 +12,13 @@ if ( process.contextIsolated ) {
 		contextBridge.exposeInMainWorld( `electron`, electronAPI );
 		contextBridge.exposeInMainWorld( `api`, api );
 		contextBridge.exposeInMainWorld( `electronAPI`, {
-			onNew: callback => ipcRenderer.on( `new`, ( _event, value ) => callback( value ) ),
-			onOpen: callback => ipcRenderer.on( `open`, ( _event, value ) => callback( value ) ),
-			onSave: callback => ipcRenderer.on( `save`, ( _event, value ) => callback( value ) ),
-			onClose: callback => ipcRenderer.on( `close`, ( _event, value ) => callback( value ) ),
-			importMapData: callback => ipcRenderer.on( `importMapData`, ( _event, value ) => callback( value ) ),
-			onImportTiles: callback => ipcRenderer.on( `importTiles`, callback ),
-			save: value => ipcRenderer.send( `save`, value ),
-			exportMap: value => ipcRenderer.send( `exportMap`, value ),
-			importMap: value => ipcRenderer.send( `importMap`, value ),
+			on: ( channel, callback ) => ipcRenderer.on( channel, callback ),
+			remove: channel => ipcRenderer.removeAllListeners( channel ),
+			exportMap: value => ipcRenderer.send( `export-map`, value ),
+			importMap: value => ipcRenderer.send( `import-map`, value ),
 			enableSave: value => ipcRenderer.send( `enable-save`, value ),
 			openTileImportWindow: () => ipcRenderer.send( `open-tile-import-window` ),
-			removeNewListener: listener => ipcRenderer.removeListener( `new`, listener ),
-			removeOpenListener: listener => ipcRenderer.removeListener( `open`, listener ),
-			removeSaveListener: listener => ipcRenderer.removeListener( `save`, listener ),
-			removeCloseListener: listener => ipcRenderer.removeListener( `close`, listener ),
-			removeImportMapDataListener: listener => ipcRenderer.removeListener( `importMapData`, listener ),
-			removeImportTilesListeners: () => ipcRenderer.removeAllListeners( `importTiles` ),
+			save: value => ipcRenderer.send( `save`, value ),
 		} );
 	} catch ( error ) {
 		console.error( error );

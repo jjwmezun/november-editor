@@ -1,11 +1,11 @@
-import propTypes from 'prop-types';
-import { useEffect, useState } from 'react';
+import { ReactElement, useEffect, useState } from 'react';
 import TileGrid from './TileGrid';
 import TileEditor from './TileEditor';
 import ColorSelector from './ColorSelector';
-import { tilesetProp, tileSize } from '../../../common/tileset';
+import { tileSize } from '../../../common/constants';
+import { Tileset } from '../../../common/types';
 
-const colors = Object.freeze( [
+const colors: readonly string[] = Object.freeze( [
 	`rgba( 0, 0, 0, 0)`,
 	`rgba( 0, 0, 0, 1)`,
 	`rgba( 43, 43, 43, 1)`,
@@ -16,7 +16,13 @@ const colors = Object.freeze( [
 	`rgba( 255, 255, 255, 1)`,
 ] );
 
-const GraphicsMode = props => {
+type GraphicsProps = {
+	exitMode: () => void,
+	setTileset: ( tileset: Tileset ) => void,
+	tileset: Tileset,
+};
+
+const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 	const { exitMode, setTileset, tileset } = props;
 
 	const [ selectedTile, setSelectedTile ] = useState( 0 );
@@ -43,11 +49,9 @@ const GraphicsMode = props => {
 			setTileset( { ...tileset } );
 		};
 
-		window.electronAPI.onImportTiles( handleImportTiles );
+		window.electronAPI.on( `import-tiles__graphics-mode`, handleImportTiles );
 
-		return () => {
-			window.electronAPI.removeImportTilesListeners();
-		};
+		return () => window.electronAPI.remove( `import-tiles__graphics-mode` );
 	}, [ selectedTile, tileset ] );
 
 	return <div>
@@ -80,12 +84,6 @@ const GraphicsMode = props => {
 			</div>
 		</div>
 	</div>;
-};
-
-GraphicsMode.propTypes = {
-	exitMode: propTypes.func.isRequired,
-	setTileset: propTypes.func.isRequired,
-	tileset: tilesetProp.isRequired,
 };
 
 export default GraphicsMode;

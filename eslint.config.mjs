@@ -4,6 +4,7 @@ import js from '@eslint/js';
 import { FlatCompat } from '@eslint/eslintrc';
 import stylisticJs from '@stylistic/eslint-plugin-js';
 import pluginJest from 'eslint-plugin-jest';
+import typescript from '@typescript-eslint/eslint-plugin';
 
 const __filename = fileURLToPath( import.meta.url );
 const __dirname = path.dirname( __filename );
@@ -21,15 +22,16 @@ export default [
 		.extends(
 			`eslint:recommended`,
 			`plugin:react/recommended`,
+			`plugin:@typescript-eslint/recommended`,
 			`plugin:react/jsx-runtime`,
 			`@electron-toolkit`,
 		)
 		.map( config => ( {
 			...config,
-			files: [ `**/*.js`, `**/*.jsx`, `**/*.mjs` ],
+			files: [ `**/*.js`, `**/*.jsx`, `**/*.mjs`, `**/*.ts`, `**/*.tsx` ],
 		} ) ),
 	{
-		files: [ `**/*.js`, `**/*.jsx`, `**/*.mjs` ],
+		files: [ `**/*.js`, `**/*.jsx`, `**/*.mjs`, `**/*.ts`, `**/*.tsx` ],
 		settings: {
 			react: {
 				version: `detect`,
@@ -40,6 +42,7 @@ export default [
 		},
 		plugins: {
 			'@stylistic/js': stylisticJs,
+			'@typescript-eslint': typescript,
 		},
 
 		rules: {
