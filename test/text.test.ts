@@ -1,8 +1,8 @@
-import { encode, decode, testCharacters } from '../src/common/text';
+import { encodeText, decodeText, testCharacters } from '../src/common/text';
 
 test( `Text encodes to expected bits.`, () => {
-	expect( encode( `1st We Take Manhattan…` ) )
-		.toEqual( new Uint8Array( [
+	expect( encodeText( `1st We Take Manhattan…` ) )
+		.toEqual( [
 			0x33,
 			0x58,
 			0xB8,
@@ -17,7 +17,7 @@ test( `Text encodes to expected bits.`, () => {
 			0x96,
 			0x35,
 			0x40,
-		] ) );
+		].map( byte => ( { type: `Uint8`, value: byte } ) ) );
 } );
 
 test( `Bits decode to expected text.`, () => {
@@ -41,7 +41,7 @@ test( `Bits decode to expected text.`, () => {
 		0xF3,
 		0xA2,
 	] );
-	const decoded = decode( bytes );
+	const decoded = decodeText( bytes );
 	expect( decoded )
 		.toEqual( {
 			text: `1st We Take Manhattan…`.toUpperCase(),

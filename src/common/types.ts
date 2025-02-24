@@ -13,6 +13,13 @@ interface CharItem {
 	code: string,
 }
 
+interface Color {
+	encode: () => ByteBlock,
+	hex: () => string,
+	rgba: () => string,
+	toJSON: () => object,
+}
+
 interface ColorSelectorProps {
 	colors: string[];
 	selectedColor: number;
@@ -202,6 +209,37 @@ interface MousePosition {
 	y: number,
 }
 
+interface Palette {
+	getName: () => string,
+	encode: () => ByteBlock[],
+	mapColors: <Type>( action: ( color: Color, index: number ) => Type, ignoreFirst: boolean ) => Type[],
+	nthColor: ( index: number ) => Color,
+	toJSON: () => object,
+	updateName: ( newName: string ) => Palette,
+	updateColor: ( index: number, newColor: Color ) => Palette,
+}
+
+interface PaletteData {
+	palettes: PaletteList,
+	remainingBytes: Uint8Array,
+}
+
+interface PaletteList {
+	addBlankPalette: () => PaletteList,
+	encode: () => ByteBlock[],
+	getLength: () => number,
+	map: <Type>( action: ( palette: Palette, index: number ) => Type ) => Type[],
+	nth: ( index: number ) => Palette,
+	removePalette: ( index: number ) => PaletteList,
+	updatePalette: ( index: number, newPalette: Palette ) => PaletteList,
+}
+
+interface PaletteModeProps {
+	palettes: PaletteList,
+	exitMode: () => void,
+	setPalettes: ( palettes: PaletteList ) => void,
+}
+
 interface SelectModeProps {
 	setMode: ( mode: number ) => void;
 }
@@ -282,6 +320,7 @@ export {
 	ByteBlock,
 	ByteBlockRef,
 	CharItem,
+	Color,
 	ColorSelectorProps,
 	Coordinates,
 	DecodedLevelData,
@@ -303,6 +342,10 @@ export {
 	MapObjectType,
 	Mode,
 	MousePosition,
+	Palette,
+	PaletteData,
+	PaletteList,
+	PaletteModeProps,
 	SelectModeProps,
 	TextTrie,
 	TileGridProps,

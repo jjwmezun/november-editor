@@ -1,7 +1,7 @@
 import { objectTypes } from './objects';
 import { getDataTypeSize } from './bytes';
 import { createGoal, goals } from './goals';
-import { encode, decode } from './text';
+import { encodeText, decodeText } from './text';
 import { tilesPerBlock, pixelsPerBlock } from "./constants";
 import {
 	ByteBlock,
@@ -307,7 +307,7 @@ const splitMapBytes = ( data: ArrayBuffer, count: number ) => {
 
 const loadLevelFromData = ( data: Uint8Array ): DecodedLevelData => {
 	// Gather name.
-	const nameData = decode( data );
+	const nameData = decodeText( data );
 	const name = nameData.text;
 
 	// Gather goal.
@@ -350,9 +350,7 @@ const loadLevelFromData = ( data: Uint8Array ): DecodedLevelData => {
 const encodeLevels = ( levels: Level[] ): ByteBlock[] => {
 	return levels.map( ( level: Level ): ByteBlock[] => {
 		const { goal, maps, name } = level.getProps();
-		const data: ByteBlock[] = [];
-		const nameBytes = encode( name );
-		nameBytes.forEach( byte => data.push( { type: `Uint8`, value: byte } ) );
+		const data: ByteBlock[] = encodeText( name );
 		data.push( { type: `Uint8`, value: goal.getId() } );
 		const goalExportData = goals[ goal.getId() ].exportData ?? [];
 		goalExportData.forEach( ( { key, type } ) => {
