@@ -1,4 +1,4 @@
-import { CharItem, DecodedTextData, TextTrie } from "./types";
+import { ByteBlock, CharItem, DecodedTextData, TextTrie } from "./types";
 
 /* eslint max-len: "off" */
 const trie: TextTrie = Object.freeze( {
@@ -1331,7 +1331,7 @@ codeList.forEach( ( { char, code } ) => {
 	codeMap[ char ] = code;
 } );
 
-export const encode = ( text: string ): Uint8Array => {
+export const encodeText = ( text: string ): ByteBlock[] => {
 	const list: string[] = [ ...text.toUpperCase(), `TERMINAL` ].map( char => codeMap[ char ].split( `` ) ).flat( Infinity );
 
 	// Pad out bits to fill bytes.
@@ -1339,15 +1339,18 @@ export const encode = ( text: string ): Uint8Array => {
 		list.push( `0` );
 	}
 
-	const byteList: number[] = [];
+	const byteList: ByteBlock[] = [];
 	while ( list.length ) {
-		byteList.push( parseInt( list.splice( 0, 8 ).join( `` ), 2 ) );
+		byteList.push( {
+			type: `Uint8`,
+			value: parseInt( list.splice( 0, 8 ).join( `` ), 2 ),
+		} );
 	}
 
-	return new Uint8Array( byteList );
+	return byteList;
 };
 
-export const decode = ( bytes: Uint8Array ): DecodedTextData => {
+export const decodeText = ( bytes: Uint8Array ): DecodedTextData => {
 	let bytesUsed = 1;
 	const decodePiece = ( innerTrie, bitList ) => {
 		if ( innerTrie.children !== null ) {

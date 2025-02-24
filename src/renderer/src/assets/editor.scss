@@ -49,3 +49,20 @@
 td.graphics__color-selector-item--selected {
     border-color: yellow;
 }
+
+.palettes__color-selector {
+    border: 2px solid #000;
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+}
+
+.palettes__color-selector--selected {
+    border: 2px solid yellow;
+}
+
+.palettes__selected-color-display {
+    border: 2px solid #000;
+    width: 64px;
+    height: 64px;
+}

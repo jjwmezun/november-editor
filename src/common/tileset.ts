@@ -1,5 +1,6 @@
 import { Tileset } from "./types";
 import { tileSize } from "./constants";
+import { getBitsFromByte } from "./bytes";
 
 const colors: readonly string[] = Object.freeze( [
 	`rgba( 0, 0, 0, 0)`,
@@ -57,13 +58,10 @@ const compressPixels = ( pixels: number[] ): number[] => {
 
 const decompressPixels = ( pixels: number[] ): number[] => {
 	const out: number[] = [];
-	const bits: number[] = [];
-	for ( let i = 0; i < pixels.length; i++ ) {
-		// Get bits from byte.
-		const byte = pixels[ i ];
-		for ( let j = 7; j >= 0; j-- ) {
-			bits.push( ( byte & ( 1 << j ) ) >> j );
-		}
+	let bits: number[] = [];
+	pixels.forEach( byte => {
+		// Get bits from byte & add to total list.
+		bits = bits.concat( getBitsFromByte( byte ) );
 
 		// If there are ’nough bits to make a color, add it to pixels.
 		while ( bits.length >= 3 ) {
@@ -71,7 +69,7 @@ const decompressPixels = ( pixels: number[] ): number[] => {
 			const color = getColorFromBits( v );
 			out.push( color );
 		}
-	}
+	} );
 
 	if ( bits.length > 0 ) {
 		throw new Error( `Invalid tileset data` );
