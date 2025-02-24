@@ -47,6 +47,7 @@ const createGoal = (
 			}
 			return options[ slug ];
 		},
+		toJSON: () => ( { id, options } ),
 		updateOption: ( slug, value ) => createGoal( id, { ...options, [ slug ]: value } ),
 	} );
 };
