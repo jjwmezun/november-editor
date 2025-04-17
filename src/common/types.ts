@@ -294,6 +294,7 @@ interface TextTrie {
 
 interface TileGridProps {
 	palettes: PaletteList,
+	selectedPalette: number,
 	selectedTile: number | null,
 	setSelectedTile: ( tile: number ) => void,
 	tileset: Tileset,
@@ -346,6 +347,7 @@ interface Tileset {
 
 interface WebGL2Program {
 	getAttribLocation: ( name: string ) => number;
+	setUniform1f: ( name: string, value: number ) => void;
 	setUniform1i: ( name: string, value: number ) => void;
 	use: () => void;
 }

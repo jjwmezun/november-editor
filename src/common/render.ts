@@ -25,11 +25,24 @@ const createShaderProgram = ( ctx: WebGLRenderingContext, shaders: Shader[] ): W
 
 	ctx.linkProgram( program );
 
+	const uniformLocations = {};
+
+	// If already cached, return cached location;
+	// otherwise, get location from program and cache it.
+	const getLocation = ( name: string ): number => {
+		if ( ! ( name in uniformLocations ) ) {
+			uniformLocations[ name ] = ctx.getUniformLocation( program, name );
+		}
+		return uniformLocations[ name ];
+	};
+
 	return Object.freeze( {
 		getAttribLocation: ( name: string ) => ctx.getAttribLocation( program, name ),
+		setUniform1f: ( name: string, value: number ) => {
+			ctx.uniform1f( getLocation( name ), value );
+		},
 		setUniform1i: ( name: string, value: number ) => {
-			const location = ctx.getUniformLocation( program, name );
-			ctx.uniform1i( location, value );
+			ctx.uniform1i( getLocation( name ), value );
 		},
 		use: () => ctx.useProgram( program ),
 	} );

@@ -45,7 +45,7 @@ const createTileGridRenderer = (
 	height: number,
 	palettes: PaletteList,
 	tileset: Tileset,
-) => () => {
+) => {
 	ctx.enable( ctx.BLEND );
 	ctx.blendFunc( ctx.SRC_ALPHA, ctx.ONE_MINUS_SRC_ALPHA );
 
@@ -145,7 +145,7 @@ const createTileGridRenderer = (
 		};
 	} )();
 
-	const renderTilemap = ( () => {
+	const tilemapRenderer = ( () => {
 		const program = createShaderProgram(
 			ctx,
 			[
@@ -176,10 +176,10 @@ const createTileGridRenderer = (
 	
 						uniform sampler2D u_palette_texture;
 						uniform sampler2D u_tileset_texture;
+						uniform float u_palette_index;
 	
 						void main() {
-							float u_palette_index = 1.0;
-							float u_palette_count = 2.0;
+							float u_palette_count = ${ palettes.getLength() }.0;
 							frag_color = texture(
 								u_palette_texture,
 								vec2(
@@ -201,7 +201,21 @@ const createTileGridRenderer = (
 		renderObject.addTextureUniform( `u_palette_texture`, 0, paletteTexture );
 		renderObject.addTextureUniform( `u_tileset_texture`, 1, tilesetTexture );
 
-		return renderObject.render;
+		// Init palette index uniform.
+		program.setUniform1f( `u_palette_index`, 0 );
+
+		return {
+			render: renderObject.render,
+			updateSelectedPalette: ( selectedPalette: number ): void => {
+				program.use();
+				program.setUniform1f( `u_palette_index`, selectedPalette );
+			},
+			updateTileset: ( tileset: Tileset ): void => {
+				program.use();
+				const tilesetTexture = tileset.createTexture( ctx );
+				renderObject.addTextureUniform( `u_tileset_texture`, 1, tilesetTexture );
+			},
+		};
 	} )();
 
 	const renderGridLines = ( () => {
@@ -253,18 +267,26 @@ const createTileGridRenderer = (
 		return renderObject.render;
 	} )();
 
-	return ( hovered: Coordinates, selected: Coordinates | null, showGridLines: boolean ): void => {
-		renderTilemap();
-		if ( showGridLines ) {
-			renderGridLines();
-		}
-		renderHighlight( hovered, selected );
+	return {
+		render: ( hovered: Coordinates, selected: Coordinates | null, showGridLines: boolean ): void => {
+			tilemapRenderer.render();
+			if ( showGridLines ) {
+				renderGridLines();
+			}
+			renderHighlight( hovered, selected );
+		},
+		updateSelectedPalette: ( selectedPalette: number ): void => {
+			tilemapRenderer.updateSelectedPalette( selectedPalette );
+		},
+		updateTileset: ( tileset: Tileset ): void => {
+			tilemapRenderer.updateTileset( tileset );
+		},
 	};
 };
 
 const TileGrid = ( props: TileGridProps ): ReactElement => {
 	const canvasRef = useRef();
-	const { palettes, selectedTile, setSelectedTile, tileset } = props;
+	const { palettes, selectedPalette, selectedTile, setSelectedTile, tileset } = props;
 	const [ hovered, setHovered ] = useState( { x: 0, y: 0 } );
 	const [ showGridLines, setShowGridLines ] = useState( true );
 	const [ renderer, setRenderer ] = useState( null );
@@ -290,7 +312,7 @@ const TileGrid = ( props: TileGridProps ): ReactElement => {
 				y: Math.floor( selectedTile / tileset.getWidthTiles() ),
 			} )
 			: null;
-		renderer( hovered, selected, showGridLines );
+		renderer.render( hovered, selected, showGridLines );
 	};
 
 	// Update cursor visuals on mouse move.
@@ -332,11 +354,28 @@ const TileGrid = ( props: TileGridProps ): ReactElement => {
 
 			setRenderer( createTileGridRenderer( ctx, width, height, palettes, tileset ) );
 		}
+	}, [] );
+
+	useEffect( () => {
+		if ( ! renderer ) {
+			return;
+		}
+
+		renderer.updateSelectedPalette( selectedPalette );
+		render();
+	}, [ renderer, selectedPalette ] );
+
+	useEffect( () => {
+		if ( ! renderer ) {
+			return;
+		}
+
+		renderer.updateTileset( tileset );
+		render();
 	}, [ tileset ] );
 
 	// Render on canvas ref or whene’er there is a state change.
-	useEffect( render, [ canvasRef, selectedTile, hovered, showGridLines ] );
-	useEffect( render );
+	useEffect( render, [ canvasRef, selectedTile, hovered, renderer, showGridLines ] );
 
 	return <div>
 		<div>

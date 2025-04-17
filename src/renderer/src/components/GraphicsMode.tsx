@@ -1,4 +1,4 @@
-import { ReactElement, useEffect, useState } from 'react';
+import { ReactElement, SyntheticBaseEvent, useEffect, useState } from 'react';
 import TileGrid from './TileGrid';
 import TileEditor from './TileEditor';
 import ColorSelector from './ColorSelector';
@@ -28,6 +28,7 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 
 	const [ selectedTile, setSelectedTile ] = useState( 0 );
 	const [ selectedColor, setSelectedColor ] = useState( 0 );
+	const [ selectedPalette, setSelectedPalette ] = useState( 0 );
 
 	const drawPixel = ( x, y ) => {
 		const tileY = Math.floor( selectedTile / tileset.getWidthTiles() );
@@ -41,6 +42,12 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 	const clearTile = () => {
 		tileset.clearTile( selectedTile );
 		setTileset( { ...tileset } );
+	};
+
+	const updatePalette = ( e: SyntheticBaseEvent ) => {
+		const target: HTMLSelectElement = e.target;
+		const paletteIndex = parseInt( target.value );
+		setSelectedPalette( paletteIndex );
 	};
 
 	useEffect( () => {
@@ -58,8 +65,19 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 	return <div>
 		<h1>Graphics Editor</h1>
 		<div>
+			<select onChange={ updatePalette }>
+				{ palettes.map( ( palette, index ) => {
+					return <option
+						key={ index }
+						value={ index }
+					>
+						{ palette.getName() }
+					</option>;
+				} ) }
+			</select>
 			<TileGrid
 				palettes={ palettes }
+				selectedPalette={ selectedPalette }
 				selectedTile={ selectedTile }
 				setSelectedTile={ setSelectedTile }
 				tileset={ tileset }
