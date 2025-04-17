@@ -34,7 +34,7 @@ const createColor = ( r: number, g: number, b: number, a: number ): Color => Obj
 		const bits: number[] = encodeColorChannel( r )
 			.concat( encodeColorChannel( g ) )
 			.concat( encodeColorChannel( b ) )
-			.concat( [ 1 ] );
+			.concat( [ a ] );
 
 		// Convert list o’ 16 bits into single Uint16 #.
 		const value = parseInt( bits.join( `` ), 2 );
@@ -43,6 +43,7 @@ const createColor = ( r: number, g: number, b: number, a: number ): Color => Obj
 			value,
 		};
 	},
+	getList: (): number[] => [ r, g, b, a * 255 ],
 	hex: (): string => {
 		const hexR = r.toString( 16 ).padStart( 2, `0` );
 		const hexG = g.toString( 16 ).padStart( 2, `0` );
@@ -60,6 +61,7 @@ const createColor = ( r: number, g: number, b: number, a: number ): Color => Obj
 
 const createPalette = ( name: string, colors: readonly Color[] ): Palette => {
 	return Object.freeze( {
+		getList: (): number[] => colors.map( color => color.encode().value ).flat( 1 ),
 		getName: () => name,
 		encode: (): ByteBlock[] => encodeText( name )
 			.concat( colors.slice( 1 ).map( color => color.encode() ) ),
@@ -99,6 +101,28 @@ const createBlankPalette = (): Palette => createPalette(
 const createPaletteList = ( list: readonly Palette[] ): PaletteList => {
 	return Object.freeze( {
 		addBlankPalette: (): PaletteList => createPaletteList( [ ...list, createBlankPalette() ] ),
+		createTexture: ( ctx: WebGLRenderingContext ): WebGLTexture => {
+			const width = 8;
+			const height = list.length;
+			const texture = ctx.createTexture();
+			ctx.bindTexture( ctx.TEXTURE_2D, texture );
+			ctx.texImage2D(
+				ctx.TEXTURE_2D,
+				0,
+				ctx.RGBA,
+				width,
+				height,
+				0,
+				ctx.RGBA,
+				ctx.UNSIGNED_SHORT_5_5_5_1,
+				new Uint16Array( list.map( p => p.getList() ).flat( 1 ) ),
+			);
+			ctx.texParameteri( ctx.TEXTURE_2D, ctx.TEXTURE_MIN_FILTER, ctx.NEAREST );
+			ctx.texParameteri( ctx.TEXTURE_2D, ctx.TEXTURE_MAG_FILTER, ctx.NEAREST );
+			ctx.texParameteri( ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_S, ctx.CLAMP_TO_EDGE );
+			ctx.texParameteri( ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_T, ctx.CLAMP_TO_EDGE );
+			return texture;
+		},
 		encode: (): ByteBlock[] => [
 			{
 				type: `Uint8`,

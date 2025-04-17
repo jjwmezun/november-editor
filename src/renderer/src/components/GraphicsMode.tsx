@@ -3,7 +3,7 @@ import TileGrid from './TileGrid';
 import TileEditor from './TileEditor';
 import ColorSelector from './ColorSelector';
 import { tileSize } from '../../../common/constants';
-import { Tileset } from '../../../common/types';
+import { PaletteList, Tileset } from '../../../common/types';
 
 const colors: readonly string[] = Object.freeze( [
 	`rgba( 0, 0, 0, 0)`,
@@ -17,13 +17,14 @@ const colors: readonly string[] = Object.freeze( [
 ] );
 
 type GraphicsProps = {
+	palettes: PaletteList,
 	exitMode: () => void,
 	setTileset: ( tileset: Tileset ) => void,
 	tileset: Tileset,
 };
 
 const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
-	const { exitMode, setTileset, tileset } = props;
+	const { exitMode, palettes, setTileset, tileset } = props;
 
 	const [ selectedTile, setSelectedTile ] = useState( 0 );
 	const [ selectedColor, setSelectedColor ] = useState( 0 );
@@ -58,6 +59,7 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 		<h1>Graphics Editor</h1>
 		<div>
 			<TileGrid
+				palettes={ palettes }
 				selectedTile={ selectedTile }
 				setSelectedTile={ setSelectedTile }
 				tileset={ tileset }

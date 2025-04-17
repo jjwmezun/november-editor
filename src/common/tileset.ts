@@ -104,6 +104,26 @@ const createTileset = (
 				pixels.fill( 0, start, start + tileSize );
 			}
 		},
+		createTexture: ( ctx: WebGLRenderingContext ): WebGLTexture => {
+			const texture = ctx.createTexture();
+			ctx.bindTexture( ctx.TEXTURE_2D, texture );
+			ctx.texImage2D(
+				ctx.TEXTURE_2D,
+				0,
+				ctx.LUMINANCE,
+				getWidthPixels(),
+				getHeightPixels(),
+				0,
+				ctx.LUMINANCE,
+				ctx.UNSIGNED_BYTE,
+				new Uint8Array( pixels.map( pixel => pixel * 32 ) ), // Stretch pixel to span 0 – 255.
+			);
+			ctx.texParameteri( ctx.TEXTURE_2D, ctx.TEXTURE_MIN_FILTER, ctx.NEAREST );
+			ctx.texParameteri( ctx.TEXTURE_2D, ctx.TEXTURE_MAG_FILTER, ctx.NEAREST );
+			ctx.texParameteri( ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_S, ctx.CLAMP_TO_EDGE );
+			ctx.texParameteri( ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_T, ctx.CLAMP_TO_EDGE );
+			return texture;
+		},
 		drawPiece: ( ctx, srcX, srcY, srcW, srcH, destX, destY, destW, destH ) => {
 			ctx.drawImage( canvas, srcX, srcY, srcW, srcH, destX, destY, destW, destH );
 		},

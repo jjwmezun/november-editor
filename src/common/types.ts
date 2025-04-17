@@ -15,6 +15,7 @@ interface CharItem {
 
 interface Color {
 	encode: () => ByteBlock,
+	getList: () => number[],
 	hex: () => string,
 	rgba: () => string,
 	toJSON: () => object,
@@ -193,6 +194,12 @@ interface MapObjectType {
 	options: MapObjectTypeOption[],
 }
 
+interface Mat3 {
+	getList: () => number[];
+	scale: ( v: [ number, number ] ) => Mat3;
+	translate: ( v: [ number, number ] ) => Mat3;
+}
+
 interface Mode {
 	name: string;
 	slug: string;
@@ -210,6 +217,7 @@ interface MousePosition {
 }
 
 interface Palette {
+	getList: () => number[],
 	getName: () => string,
 	encode: () => ByteBlock[],
 	mapColors: <Type>( action: ( color: Color, index: number ) => Type, ignoreFirst: boolean ) => Type[],
@@ -226,6 +234,7 @@ interface PaletteData {
 
 interface PaletteList {
 	addBlankPalette: () => PaletteList,
+	createTexture: ( ctx: WebGLRenderingContext ) => WebGLTexture,
 	encode: () => ByteBlock[],
 	getLength: () => number,
 	map: <Type>( action: ( palette: Palette, index: number ) => Type ) => Type[],
@@ -240,8 +249,40 @@ interface PaletteModeProps {
 	setPalettes: ( palettes: PaletteList ) => void,
 }
 
+interface RenderObject {
+	addAttribute: (
+		name: string,
+		size: number,
+		type: GLenum,
+		normalized: boolean,
+		stride: number,
+		offset: number,
+	) => void;
+	addInstanceAttribute: (
+		name: string,
+		size: number,
+		type: GLenum,
+		normalized: boolean,
+		stride: number,
+		offset: number,
+	) => void;
+	addTextureUniform: ( name: string, index: number, texture: WebGLTexture ) => void;
+	render: () => void;
+	renderInstances: ( instances: number ) => void;
+}
+
 interface SelectModeProps {
 	setMode: ( mode: number ) => void;
+}
+
+interface Shader {
+	type: ShaderType;
+	source: string;
+}
+
+enum ShaderType {
+	VERTEX_SHADER = `VERTEX_SHADER`,
+	FRAGMENT_SHADER = `FRAGMENT_SHADER`,
 }
 
 interface TextTrie {
@@ -252,6 +293,7 @@ interface TextTrie {
 }
 
 interface TileGridProps {
+	palettes: PaletteList,
 	selectedTile: number | null,
 	setSelectedTile: ( tile: number ) => void,
 	tileset: Tileset,
@@ -278,6 +320,7 @@ interface TileRendererArgs {
 
 interface Tileset {
 	clearTile: ( tileIndex: number ) => void,
+	createTexture: ( ctx: WebGLRenderingContext ) => WebGLTexture,
 	drawPiece: (
 		ctx: CanvasRenderingContext2D,
 		srcX: number,
@@ -299,6 +342,12 @@ interface Tileset {
 	toJSON: () => object,
 	updatePixels: ( newPixels: number[] ) => Tileset,
 	updatePixel: ( color: number, x: number, y: number ) => void,
+}
+
+interface WebGL2Program {
+	getAttribLocation: ( name: string ) => number;
+	setUniform1i: ( name: string, value: number ) => void;
+	use: () => void;
 }
 
 interface ElectronAPI {
@@ -340,16 +389,21 @@ export {
 	MapObject,
 	MapObjectArgs,
 	MapObjectType,
+	Mat3,
 	Mode,
 	MousePosition,
 	Palette,
 	PaletteData,
 	PaletteList,
 	PaletteModeProps,
+	RenderObject,
 	SelectModeProps,
+	Shader,
+	ShaderType,
 	TextTrie,
 	TileGridProps,
 	TileEditorProps,
 	TileRendererArgs,
 	Tileset,
+	WebGL2Program,
 };

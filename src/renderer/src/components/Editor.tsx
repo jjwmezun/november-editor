@@ -386,6 +386,7 @@ const Editor = (): ReactElement => {
 			/> }
 			{ mode === modeKeys.graphics && <GraphicsMode
 				exitMode={ resetMode }
+				palettes={ palettes }
 				setTileset={ setTileset }
 				tileset={ tileset }
 			/> }
