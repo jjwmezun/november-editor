@@ -44,6 +44,9 @@ const createShaderProgram = ( ctx: WebGLRenderingContext, shaders: Shader[] ): W
 		setUniform1i: ( name: string, value: number ) => {
 			ctx.uniform1i( getLocation( name ), value );
 		},
+		setUniformMatrix3fv: ( name: string, value: Float32Array ) => {
+			ctx.uniformMatrix3fv( getLocation( name ), false, value );
+		},
 		use: () => ctx.useProgram( program ),
 	} );
 };
@@ -114,6 +117,21 @@ const createRenderObject = (
 		program.setUniform1i( name, index );
 		ctx.activeTexture( ctx[ `TEXTURE${ index }` ] );
 		ctx.bindTexture( ctx.TEXTURE_2D, texture );
+	},
+	addUniform: ( name: string, type: string, value: number | Float32Array ) => {
+		switch ( type ) {
+		case `1f`:
+			program.setUniform1f( name, value as number );
+			break;
+		case `1i`:
+			program.setUniform1i( name, value as number );
+			break;
+		case `3fv`:
+			program.setUniformMatrix3fv( name, value as Float32Array );
+			break;
+		default:
+			throw new Error( `Unknown uniform type: ${ type }` );
+		}
 	},
 	render: () => {
 		program.use();

@@ -22,8 +22,9 @@ interface Color {
 }
 
 interface ColorSelectorProps {
-	colors: string[];
+	palettes: PaletteList;
 	selectedColor: number;
+	selectedPalette: number;
 	setSelectedColor: ( color: number ) => void;
 }
 
@@ -234,7 +235,7 @@ interface PaletteData {
 
 interface PaletteList {
 	addBlankPalette: () => PaletteList,
-	createTexture: ( ctx: WebGLRenderingContext ) => WebGLTexture,
+	createTexture: ( ctx: WebGLRenderingContext, index: number ) => WebGLTexture,
 	encode: () => ByteBlock[],
 	getLength: () => number,
 	map: <Type>( action: ( palette: Palette, index: number ) => Type ) => Type[],
@@ -267,6 +268,7 @@ interface RenderObject {
 		offset: number,
 	) => void;
 	addTextureUniform: ( name: string, index: number, texture: WebGLTexture ) => void;
+	addUniform: ( name: string, type: string, value: number | Float32Array ) => void;
 	render: () => void;
 	renderInstances: ( instances: number ) => void;
 }
@@ -302,9 +304,10 @@ interface TileGridProps {
 
 interface TileEditorProps {
 	clearTile: () => void,
-	colors: string[],
 	drawPixel: ( x: number, y: number ) => void,
+	palettes: PaletteList,
 	selectedColor: number,
+	selectedPalette: number,
 	tileset: Tileset,
 	tileX: number,
 	tileY: number,
@@ -321,7 +324,7 @@ interface TileRendererArgs {
 
 interface Tileset {
 	clearTile: ( tileIndex: number ) => void,
-	createTexture: ( ctx: WebGLRenderingContext ) => WebGLTexture,
+	createTexture: ( ctx: WebGLRenderingContext, index: number ) => WebGLTexture,
 	drawPiece: (
 		ctx: CanvasRenderingContext2D,
 		srcX: number,
@@ -349,6 +352,7 @@ interface WebGL2Program {
 	getAttribLocation: ( name: string ) => number;
 	setUniform1f: ( name: string, value: number ) => void;
 	setUniform1i: ( name: string, value: number ) => void;
+	setUniformMatrix3fv: ( name: string, value: Float32Array ) => void;
 	use: () => void;
 }
 

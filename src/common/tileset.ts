@@ -104,8 +104,9 @@ const createTileset = (
 				pixels.fill( 0, start, start + tileSize );
 			}
 		},
-		createTexture: ( ctx: WebGLRenderingContext ): WebGLTexture => {
+		createTexture: ( ctx: WebGLRenderingContext, index: number ): WebGLTexture => {
 			const texture = ctx.createTexture();
+			ctx.activeTexture( ctx[ `TEXTURE${ index }` ] );
 			ctx.bindTexture( ctx.TEXTURE_2D, texture );
 			ctx.texImage2D(
 				ctx.TEXTURE_2D,

@@ -29,26 +29,31 @@
         height: 128px;
         image-rendering: pixelated;
         cursor: crosshair;
+        background-image: url( "./transparency.png" );
     }
 }
 
 .graphics__color-selector {
     border: 2px solid #000;
     cursor: pointer;
+}
 
-    td {
-        width: 16px;
-        height: 16px;
-        border: 1px solid #4488ff;
+.graphics__color-selector-item {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #4488ff;
 
-        &:hover {
-            background-color: #4488ff;
-        }
+    &:hover {
+        background-color: #4488ff;
     }
 }
 
-td.graphics__color-selector-item--selected {
+.graphics__color-selector-item--selected {
     border-color: yellow;
+}
+
+.graphics__color-selector-item--transparent {
+    background-image: url( "./transparency.png" );
 }
 
 .palettes__color-selector {

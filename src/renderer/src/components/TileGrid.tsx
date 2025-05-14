@@ -131,7 +131,7 @@ const createTileGridRenderer = (
 			);
 		};
 
-		updateSelectorGraphics( null, null );
+		updateSelectorGraphics( null, { x: 0, y: 0 } );
 
 		// Instance attributes.
 		renderObject.addInstanceAttribute( `a_color`, 3, ctx.FLOAT, false, 48, 0 );
@@ -196,8 +196,8 @@ const createTileGridRenderer = (
 		const renderObject = createRenderTextureObject( ctx, program );
 
 		// Add textures.
-		const paletteTexture = palettes.createTexture( ctx );
-		const tilesetTexture = tileset.createTexture( ctx );
+		const paletteTexture = palettes.createTexture( ctx, 0 );
+		const tilesetTexture = tileset.createTexture( ctx, 1 );
 		renderObject.addTextureUniform( `u_palette_texture`, 0, paletteTexture );
 		renderObject.addTextureUniform( `u_tileset_texture`, 1, tilesetTexture );
 
@@ -212,7 +212,7 @@ const createTileGridRenderer = (
 			},
 			updateTileset: ( tileset: Tileset ): void => {
 				program.use();
-				const tilesetTexture = tileset.createTexture( ctx );
+				const tilesetTexture = tileset.createTexture( ctx, 1 );
 				renderObject.addTextureUniform( `u_tileset_texture`, 1, tilesetTexture );
 			},
 		};
@@ -311,7 +311,7 @@ const TileGrid = ( props: TileGridProps ): ReactElement => {
 				x: selectedTile % tileset.getWidthTiles(),
 				y: Math.floor( selectedTile / tileset.getWidthTiles() ),
 			} )
-			: null;
+			: { x: 0, y: 0 };
 		renderer.render( hovered, selected, showGridLines );
 	};
 
@@ -354,7 +354,7 @@ const TileGrid = ( props: TileGridProps ): ReactElement => {
 
 			setRenderer( createTileGridRenderer( ctx, width, height, palettes, tileset ) );
 		}
-	}, [] );
+	}, [ canvasRef.current ] );
 
 	useEffect( () => {
 		if ( ! renderer ) {

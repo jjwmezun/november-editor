@@ -5,17 +5,6 @@ import ColorSelector from './ColorSelector';
 import { tileSize } from '../../../common/constants';
 import { PaletteList, Tileset } from '../../../common/types';
 
-const colors: readonly string[] = Object.freeze( [
-	`rgba( 0, 0, 0, 0)`,
-	`rgba( 0, 0, 0, 1)`,
-	`rgba( 43, 43, 43, 1)`,
-	`rgba( 85, 85, 85, 1)`,
-	`rgba( 128, 128, 128, 1)`,
-	`rgba( 170, 170, 170, 1)`,
-	`rgba( 213, 213, 213, 1)`,
-	`rgba( 255, 255, 255, 1)`,
-] );
-
 type GraphicsProps = {
 	palettes: PaletteList,
 	exitMode: () => void,
@@ -84,16 +73,18 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 			/>
 			<TileEditor
 				clearTile={ clearTile }
-				colors={ colors }
 				drawPixel={ drawPixel }
+				palettes={ palettes }
 				selectedColor={ selectedColor }
+				selectedPalette={ selectedPalette }
 				tileset={ tileset }
 				tileX={ selectedTile % tileset.getWidthTiles() }
 				tileY={ Math.floor( selectedTile / tileset.getWidthTiles() ) }
 			/>
 			<ColorSelector
-				colors={ colors }
+				palettes={ palettes }
 				selectedColor={ selectedColor }
+				selectedPalette={ selectedPalette }
 				setSelectedColor={ setSelectedColor }
 			/>
 			<div>

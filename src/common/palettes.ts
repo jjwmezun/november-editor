@@ -101,10 +101,11 @@ const createBlankPalette = (): Palette => createPalette(
 const createPaletteList = ( list: readonly Palette[] ): PaletteList => {
 	return Object.freeze( {
 		addBlankPalette: (): PaletteList => createPaletteList( [ ...list, createBlankPalette() ] ),
-		createTexture: ( ctx: WebGLRenderingContext ): WebGLTexture => {
+		createTexture: ( ctx: WebGLRenderingContext, index: number ): WebGLTexture => {
 			const width = 8;
 			const height = list.length;
 			const texture = ctx.createTexture();
+			ctx.activeTexture( ctx[ `TEXTURE${ index }` ] );
 			ctx.bindTexture( ctx.TEXTURE_2D, texture );
 			ctx.texImage2D(
 				ctx.TEXTURE_2D,
