@@ -1,5 +1,18 @@
 import { tilesPerBlock } from "./constants";
-import { MapObjectType } from "./types";
+import { GraphicTile, MapObject, MapObjectType } from "./types";
+
+const createTile = ( options: object ) => {
+	return {
+		animation: 1,
+		srcHeight: 1,
+		srcWidth: 1,
+		srcx: 0,
+		srcy: 0,
+		x: 0,
+		y: 0,
+		...options,
+	};
+};
 
 const objectTypes: readonly MapObjectType[] = Object.freeze( [
 	{
@@ -10,36 +23,50 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 			width: 1,
 			height: 1,
 		} ),
-		render: ( tileRenderer, object ) => {
-			// Render sidewalk top.
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const list: GraphicTile[] = [];
+
+			// Generate tiles for sidewalk top.
 			for ( let x = object.xTiles(); x < object.rightTiles(); x += tilesPerBlock ) {
-				tileRenderer( {
+				list.push( createTile( {
 					x,
 					y: object.yTiles(),
-					w: tilesPerBlock,
-				} );
-				tileRenderer( {
-					srcx: 2,
+					srcWidth: tilesPerBlock,
+				} ) );
+				list.push( createTile( {
 					x,
 					y: object.yTiles() + 1,
-				} );
-				tileRenderer( {
 					srcx: 2,
+				} ) );
+				list.push( createTile( {
 					x: x + 1,
 					y: object.yTiles() + 1,
-				} );
+					srcx: 2,
+				} ) );
 			}
 
 			// Render dirt center.
 			for ( let y = object.yTiles() + tilesPerBlock; y < object.bottomTiles(); y++ ) {
 				for ( let x = object.xTiles(); x < object.rightTiles(); x++ ) {
-					tileRenderer( {
-						srcx: 3,
+					list.push( createTile( {
 						x,
 						y,
-					} );
+						srcx: 3,
+					} ) );
 				}
 			}
+
+			return list;
 		},
 		exportData: [
 			{ type: `Uint16`, key: `x` },
@@ -96,19 +123,31 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 			x: x,
 			y: y,
 		} ),
-		render: ( tileRenderer, object ) => {
-			tileRenderer( {
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: 1,
+					height: 1,
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+			tiles.push( createTile( {
 				srcx: 13,
 				x: object.xTiles(),
 				y: object.yTiles(),
-				w: 2,
-			} );
-			tileRenderer( {
+				srcWidth: 2,
+			} ) );
+			tiles.push( createTile( {
 				srcx: 15,
 				x: object.xTiles(),
 				y: object.yTiles() + 1,
-				w: 2,
-			} );
+				srcWidth: 2,
+			} ) );
+			return tiles;
 		},
 		exportData: [
 			{ type: `Uint16`, key: `x` },
@@ -145,26 +184,41 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 			width: 1,
 			height: 1,
 		} ),
-		render: ( tileRenderer, object, frame ) => {
-			const animationOffset = 2 * ( frame % 6 );
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+
 			for ( let y = object.yTiles(); y < object.bottomTiles(); y += tilesPerBlock ) {
 				for ( let x = object.xTiles(); x < object.rightTiles(); x += tilesPerBlock ) {
-					tileRenderer( {
-						srcx: 5 + animationOffset,
+					tiles.push( createTile( {
+						animation: 6,
+						srcx: 5,
 						srcy: 1,
 						x,
 						y,
-						w: tilesPerBlock,
-					} );
-					tileRenderer( {
-						srcx: 17 + animationOffset,
+						srcWidth: tilesPerBlock,
+					} ) );
+					tiles.push( createTile( {
+						animation: 6,
+						srcx: 17,
 						srcy: 1,
 						x,
 						y: y + 1,
-						w: tilesPerBlock,
-					} );
+						srcWidth: tilesPerBlock,
+					} ) );
 				}
 			}
+
+			return tiles;
 		},
 		exportData: [
 			{ type: `Uint16`, key: `x` },
@@ -222,92 +276,104 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 			y: y,
 			width: 6,
 			height: 3,
-			props: {
-				door: 2,
-			},
+			door: 2,
 		} ),
-		render: ( tileRenderer, object ) => {
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
 			const ystart = object.yTiles();
 			const xstart = object.xTiles();
 			const yend = object.bottomTiles() - 1;
 			const xend = object.rightTiles() - 1;
 
+			const tiles: GraphicTile[] = [];
+
 			// Render top-left corner.
-			tileRenderer( {
+			tiles.push( createTile( {
 				srcx: 22,
 				x: xstart,
 				y: ystart,
-			} );
+			} ) );
 
 			// Render top-right corner.
-			tileRenderer( {
+			tiles.push( createTile( {
 				srcx: 23,
 				x: xend,
 				y: ystart,
-			} );
+			} ) );
 
 			// Render bottom-left corner.
-			tileRenderer( {
+			tiles.push( createTile( {
 				srcx: 24,
 				x: xstart,
 				y: yend,
-			} );
+			} ) );
 
 			// Render bottom-right corner.
-			tileRenderer( {
+			tiles.push( createTile( {
 				srcx: 25,
 				x: xend,
 				y: yend,
-			} );
+			} ) );
 
 			// Render top & bottom tiles.
 			for ( let x = xstart + 1; x < xend; x++ ) {
-				tileRenderer( {
+				tiles.push( createTile( {
 					srcx: 18,
 					x: x,
 					y: ystart,
-				} );
-				tileRenderer( {
+				} ) );
+				tiles.push( createTile( {
 					srcx: 19,
 					x: x,
 					y: yend,
-				} );
+				} ) );
 			}
 
 			// Render left & right tiles.
 			for ( let y = ystart + 1; y < yend; y++ ) {
-				tileRenderer( {
+				tiles.push( createTile( {
 					srcx: 20,
 					x: xstart,
 					y: y,
-				} );
-				tileRenderer( {
+				} ) );
+				tiles.push( createTile( {
 					srcx: 21,
 					x: xend,
 					y: y,
-				} );
+				} ) );
 			}
 
 			// Render center tiles.
 			for ( let y = ystart + 1; y < yend; y++ ) {
 				for ( let x = xstart + 1; x < xend; x++ ) {
-					tileRenderer( {
+					tiles.push( createTile( {
 						srcx: 17,
 						x: x,
 						y: y,
-					} );
+					} ) );
 				}
 			}
 
 			// Render door.
 			for ( let i = 3; i >= 0; i-- ) {
-				tileRenderer( {
+				tiles.push( createTile( {
 					srcx: 47 - i * 2,
 					x: xstart + object.getProp( `door` ) * 2,
 					y: yend - i,
-					w: 2,
-				} );
+					srcWidth: 2,
+				} ) );
 			}
+
+			return tiles;
 		},
 		exportData: [
 			{ type: `Uint16`, key: `x` },
@@ -371,7 +437,7 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 				update: v => parseInt( v ),
 				atts: {
 					min: 1,
-					max: object => object.width - 2,
+					max: ( object: MapObject ) => object.widthBlocks() - 2,
 				},
 			},
 		],
@@ -384,41 +450,55 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 			width: 4,
 			height: 3,
 		} ),
-		render: ( tileRenderer, object ) => {
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+
 			// Render top row.
 			for ( let x = 0; x < object.widthBlocks(); x++ ) {
-				tileRenderer( {
+				tiles.push( createTile( {
 					srcx: x % 3 === 0 ? 4 : 6,
 					x: object.xTiles() + x * 2,
 					y: object.yTiles(),
-					w: tilesPerBlock,
-				} );
+					srcWidth: tilesPerBlock,
+				} ) );
 			}
 			for ( let y = 1; y < object.heightTiles(); y++ ) {
 				for ( let x = 0; x < object.widthBlocks(); x += 3 ) {
 					// Render leftmost column.
-					tileRenderer( {
+					tiles.push( createTile( {
 						srcx: y === 1 ? 8 : ( y === 2 ? 11 : 12 ),
 						x: object.xTiles() + x * 2,
 						y: object.yTiles() + y,
-					} );
+					} ) );
 
 					// Render center.
-					tileRenderer( {
+					tiles.push( createTile( {
 						srcx: 9,
 						x: object.xTiles() + x * 2 + 1,
 						y: object.yTiles() + y,
-						w: 2,
-					} );
+						srcWidth: 2,
+					} ) );
 					for ( let i = 3; i < 6; i++ ) {
-						tileRenderer( {
+						tiles.push( createTile( {
 							srcx: 10,
 							x: object.xTiles() + x * 2 + i,
 							y: object.yTiles() + y,
-						} );
+						} ) );
 					}
 				}
 			}
+
+			return tiles;
 		},
 		exportData: [
 			{ type: `Uint16`, key: `x` },

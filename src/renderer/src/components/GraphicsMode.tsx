@@ -1,32 +1,23 @@
-import { ReactElement, useEffect, useState } from 'react';
+import { ReactElement, SyntheticBaseEvent, useEffect, useState } from 'react';
 import TileGrid from './TileGrid';
 import TileEditor from './TileEditor';
 import ColorSelector from './ColorSelector';
 import { tileSize } from '../../../common/constants';
-import { Tileset } from '../../../common/types';
-
-const colors: readonly string[] = Object.freeze( [
-	`rgba( 0, 0, 0, 0)`,
-	`rgba( 0, 0, 0, 1)`,
-	`rgba( 43, 43, 43, 1)`,
-	`rgba( 85, 85, 85, 1)`,
-	`rgba( 128, 128, 128, 1)`,
-	`rgba( 170, 170, 170, 1)`,
-	`rgba( 213, 213, 213, 1)`,
-	`rgba( 255, 255, 255, 1)`,
-] );
+import { PaletteList, Tileset } from '../../../common/types';
 
 type GraphicsProps = {
+	palettes: PaletteList,
 	exitMode: () => void,
 	setTileset: ( tileset: Tileset ) => void,
 	tileset: Tileset,
 };
 
 const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
-	const { exitMode, setTileset, tileset } = props;
+	const { exitMode, palettes, setTileset, tileset } = props;
 
 	const [ selectedTile, setSelectedTile ] = useState( 0 );
 	const [ selectedColor, setSelectedColor ] = useState( 0 );
+	const [ selectedPalette, setSelectedPalette ] = useState( 0 );
 
 	const drawPixel = ( x, y ) => {
 		const tileY = Math.floor( selectedTile / tileset.getWidthTiles() );
@@ -40,6 +31,12 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 	const clearTile = () => {
 		tileset.clearTile( selectedTile );
 		setTileset( { ...tileset } );
+	};
+
+	const updatePalette = ( e: SyntheticBaseEvent ) => {
+		const target: HTMLSelectElement = e.target;
+		const paletteIndex = parseInt( target.value );
+		setSelectedPalette( paletteIndex );
 	};
 
 	useEffect( () => {
@@ -57,23 +54,37 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 	return <div>
 		<h1>Graphics Editor</h1>
 		<div>
+			<select onChange={ updatePalette }>
+				{ palettes.map( ( palette, index ) => {
+					return <option
+						key={ index }
+						value={ index }
+					>
+						{ palette.getName() }
+					</option>;
+				} ) }
+			</select>
 			<TileGrid
+				palettes={ palettes }
+				selectedPalette={ selectedPalette }
 				selectedTile={ selectedTile }
 				setSelectedTile={ setSelectedTile }
 				tileset={ tileset }
 			/>
 			<TileEditor
 				clearTile={ clearTile }
-				colors={ colors }
 				drawPixel={ drawPixel }
+				palettes={ palettes }
 				selectedColor={ selectedColor }
+				selectedPalette={ selectedPalette }
 				tileset={ tileset }
 				tileX={ selectedTile % tileset.getWidthTiles() }
 				tileY={ Math.floor( selectedTile / tileset.getWidthTiles() ) }
 			/>
 			<ColorSelector
-				colors={ colors }
+				palettes={ palettes }
 				selectedColor={ selectedColor }
+				selectedPalette={ selectedPalette }
 				setSelectedColor={ setSelectedColor }
 			/>
 			<div>

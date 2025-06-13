@@ -1,7 +1,7 @@
 import { objectTypes } from './objects';
 import { getDataTypeSize } from './bytes';
 import { createGoal, goals } from './goals';
-import { encode, decode } from './text';
+import { encodeText, decodeText } from './text';
 import { tilesPerBlock, pixelsPerBlock } from "./constants";
 import {
 	ByteBlock,
@@ -11,10 +11,40 @@ import {
 	LayerType,
 	Level,
 	LvMap,
+	LvMapByteProps,
 	LvMapProps,
 	MapObject,
 	MapObjectArgs,
 } from './types';
+
+const generateDataList = (
+	width: number = 0,
+	height: number = 0,
+	layerCount: number = 0,
+	palette: number = 0,
+): ByteBlock[] => {
+	return [
+		{ type: `Uint16`, value: width },
+		{ type: `Uint16`, value: height },
+		{ type: `Uint8`, value: palette },
+		{ type: `Uint8`, value: layerCount },
+	];
+};
+
+const getDataFromMapHeader = ( view: DataView ): LvMapByteProps => {
+	const width = view.getUint16( 0 );
+	const height = view.getUint16( 2 );
+	const palette = view.getUint8( 4 );
+	const layerCount = view.getUint8( 5 );
+	return {
+		width,
+		height,
+		palette,
+		layerCount,
+	};
+};
+
+const getMapHeaderSize = () => generateDataList().reduce( ( acc, { type } ) => acc + getDataTypeSize( type ), 0 );
 
 const layerTypeNames = Object.freeze( {
 	[ LayerType.block ]: `Block`,
@@ -55,25 +85,27 @@ const createMap = (
 	width: number = 20,
 	height: number = 20,
 	layers: Layer[] = [],
+	palette: number = 0,
 ): LvMap => {
 	return Object.freeze( {
-		addLayer: (): LvMap => createMap( width, height, [ ...layers, createLayer() ] ),
+		addLayer: (): LvMap => createMap( width, height, [ ...layers, createLayer() ], palette ),
 		getProps: (): LvMapProps => ( {
 			width,
 			height,
 			layers,
+			palette,
 		} ),
 		removeLayer: index => {
 			const newLayers = [ ...layers ];
 			newLayers.splice( index, 1 );
-			return createMap( width, height, newLayers );
+			return createMap( width, height, newLayers, palette );
 		},
 		switchLayers: ( a: number, b: number ): LvMap => {
 			const newLayers = [ ...layers ];
 			const temp = newLayers[ a ];
 			newLayers[ a ] = newLayers[ b ];
 			newLayers[ b ] = temp;
-			return createMap( width, height, newLayers );
+			return createMap( width, height, newLayers, palette );
 		},
 		toJSON: () => ( {
 			width,
@@ -83,37 +115,41 @@ const createMap = (
 				objects: layer.objects.map( object => object.toJSON() ),
 				scrollX: layer.scrollX,
 			} ) ),
+			palette,
 		} ),
 		updateLayer: index => {
 			return {
 				addObject: object => {
 					const newLayers = [ ...layers ];
 					newLayers[ index ].objects.push( createObject( object ) );
-					return createMap( width, height, newLayers );
+					return createMap( width, height, newLayers, palette );
 				},
 				removeObject: objectIndex => {
 					const newLayers = [ ...layers ];
 					newLayers[ index ].objects.splice( objectIndex, 1 );
-					return createMap( width, height, newLayers );
+					return createMap( width, height, newLayers, palette );
 				},
 				updateObject: ( objectIndex, newObject ) => {
 					const newLayers = [ ...layers ];
 					newLayers[ index ].objects[ objectIndex ] =
 						newLayers[ index ].objects[ objectIndex ].update( newObject );
-					return createMap( width, height, newLayers );
+					return createMap( width, height, newLayers, palette );
 				},
 				updateOption: ( key, value ) => {
 					const newLayers = [ ...layers ];
 					newLayers[ index ] = { ...newLayers[ index ], [ key ]: value };
-					return createMap( width, height, newLayers );
+					return createMap( width, height, newLayers, palette );
 				},
 			};
 		},
 		updateHeight: newHeight => {
-			return createMap( width, newHeight, layers );
+			return createMap( width, newHeight, layers, palette );
 		},
 		updateWidth: newWidth => {
-			return createMap( newWidth, height, layers );
+			return createMap( newWidth, height, layers, palette );
+		},
+		updatePalette: newPalette => {
+			return createMap( width, height, layers, newPalette );
 		},
 	} );
 };
@@ -161,18 +197,16 @@ const transformMapDataToObject = ( data: ArrayBuffer ): LvMap => {
 	const view = new DataView( data );
 
 	// Read width and height from buffer.
-	const width = view.getUint16( 0 );
-	const height = view.getUint16( 2 );
+	const { height, layerCount, palette, width } = getDataFromMapHeader( view );
 
 	// Read layer data from buffer.
 	const layers: Layer[] = [];
-	const layerCount = view.getUint8( 4 );
 	let currentLayer = 0;
 	let state = `readingLayerOptions`;
 	let type = 0;
-	let i = 5; // Initialize to bytes after width, height, & layer count.
+	let i = getMapHeaderSize(); // Initialize to bytes after width, height, palette, & layer count.
 	let scrollX: number = 0;
-	const objects: MapObject[] = [];
+	let objects: MapObject[] = [];
 	while ( currentLayer < layerCount ) {
 		if ( state === `readingLayerOptions` ) {
 			scrollX = view.getFloat32( i );
@@ -184,6 +218,7 @@ const transformMapDataToObject = ( data: ArrayBuffer ): LvMap => {
 			// If type is terminator, move to next layer.
 			if ( type === 0xFFFF ) {
 				layers.push( createLayer( LayerType.block, objects, scrollX ) );
+				objects = [];
 				++currentLayer;
 				i += 2; // Move to bytes after type.
 				state = `readingLayerOptions`;
@@ -207,33 +242,29 @@ const transformMapDataToObject = ( data: ArrayBuffer ): LvMap => {
 			state = `readingType`;
 		}
 	}
-	return createMap( width, height, layers );
+	return createMap( width, height, layers, palette );
 };
 
 const generateDataBytes = ( map: LvMap ): ArrayBuffer => {
-	const { width, height, layers } = map.getProps();
+	const { height, layers, palette, width } = map.getProps();
 
-	// Initialize data list with width, height, & layers count.
-	const dataList = [
-		{ type: `Uint16`, data: width },
-		{ type: `Uint16`, data: height },
-		{ type: `Uint8`, data: layers.length },
-	];
+	// Initialize data list with width, height, palette, & layers count.
+	const dataList = generateDataList( width, height, layers.length, palette );
 
 	layers.forEach( layer => {
 		// Add layer options.
-		dataList.push( { type: `Float32`, data: layer.scrollX } );
+		dataList.push( { type: `Float32`, value: layer.scrollX } );
 
 		// For each object, add 2 bytes for type, then add bytes for each object data type
 		// & add each datum to data list.
 		layer.objects.forEach( object => {
-			dataList.push( { type: `Uint16`, data: object.type() } );
+			dataList.push( { type: `Uint16`, value: object.type() } );
 			const data = objectTypes[ object.type() ].exportData;
-			dataList.push( ...data.map( ( { type, key } ) => ( { type, data: object.getProp( key ) } ) ) );
+			dataList.push( ...data.map( ( { type, key } ) => ( { type, value: object.getProp( key ) } ) ) );
 		} );
 
 		// Add terminator for layer.
-		dataList.push( { type: `Uint16`, data: 0xFFFF } );
+		dataList.push( { type: `Uint16`, value: 0xFFFF } );
 	} );
 
 	// Having calculated the total size, create a buffer, view, & iterate through data list
@@ -242,10 +273,11 @@ const generateDataBytes = ( map: LvMap ): ArrayBuffer => {
 	const buffer = new ArrayBuffer( size );
 	const view = new DataView( buffer );
 	let i = 0;
-	dataList.forEach( ( { type, data } ) => {
-		view[ `set${ type }` ]( i, data );
+	dataList.forEach( ( { type, value } ) => {
+		view[ `set${ type }` ]( i, value );
 		i += getDataTypeSize( type );
 	} );
+
 	return buffer;
 };
 
@@ -258,11 +290,11 @@ const splitMapBytes = ( data: ArrayBuffer, count: number ) => {
 	let start = i;
 	let currentMap = 0;
 	while ( currentMap < count ) {
-		const layerCount = view.getUint8( i + 4 );
+		const layerCount = view.getUint8( i + 5 );
 		let currentLayer = 0;
 		let state = `readingLayerOptions`;
 		let type = 0;
-		i += 5; // Move to bytes after width, height, & layer count.
+		i += getMapHeaderSize(); // Move to bytes after width, height, palette, & layer count.
 		while ( currentLayer < layerCount ) {
 			if ( state === `readingLayerOptions` ) {
 				i += 4; // Move to bytes after layer options.
@@ -307,7 +339,7 @@ const splitMapBytes = ( data: ArrayBuffer, count: number ) => {
 
 const loadLevelFromData = ( data: Uint8Array ): DecodedLevelData => {
 	// Gather name.
-	const nameData = decode( data );
+	const nameData = decodeText( data );
 	const name = nameData.text;
 
 	// Gather goal.
@@ -350,9 +382,7 @@ const loadLevelFromData = ( data: Uint8Array ): DecodedLevelData => {
 const encodeLevels = ( levels: Level[] ): ByteBlock[] => {
 	return levels.map( ( level: Level ): ByteBlock[] => {
 		const { goal, maps, name } = level.getProps();
-		const data: ByteBlock[] = [];
-		const nameBytes = encode( name );
-		nameBytes.forEach( byte => data.push( { type: `Uint8`, value: byte } ) );
+		const data: ByteBlock[] = encodeText( name );
 		data.push( { type: `Uint8`, value: goal.getId() } );
 		const goalExportData = goals[ goal.getId() ].exportData ?? [];
 		goalExportData.forEach( ( { key, type } ) => {

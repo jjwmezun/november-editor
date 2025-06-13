@@ -6,6 +6,7 @@ import { modeKeys } from '../../../common/modes';
 import LevelMode from './LevelMode';
 import SelectMode from './SelectMode';
 import GraphicsMode from './GraphicsMode';
+import PaletteMode from './PaletteMode';
 import { compressPixels, createBlankTileset, createNewTileset, decompressPixels } from '../../../common/tileset';
 import {
 	createLayer,
@@ -18,15 +19,25 @@ import {
 }	from '../../../common/levels';
 import {
 	ByteBlock,
+	Color,
 	DecodedTilesetData,
 	Layer,
 	LayerType,
 	Level,
 	LvMap,
 	MapObject,
+	Palette,
+	PaletteList,
 	Tileset,
 } from '../../../common/types';
 import { createGoal } from '../../../common/goals';
+import {
+	createBlankPaletteList,
+	createColor,
+	createPalette,
+	createPaletteList,
+	decodePaletteData,
+} from '../../../common/palettes';
 
 const loadGraphicsFromData = ( data: Uint8Array ): DecodedTilesetData => {
 	let tileset = createBlankTileset( 64, 64 );
@@ -42,9 +53,11 @@ const loadGraphicsFromData = ( data: Uint8Array ): DecodedTilesetData => {
 	};
 };
 
-const generateSaveData = ( levels: Level[], tileset: Tileset ): DataView => {
-	let saveData: ByteBlock[] = compressPixels( tileset.getPixels() )
-		.map( ( byte: number ): ByteBlock => ( { type: `Uint8`, value: byte } ) );
+const generateExportData = ( levels: Level[], palettes: PaletteList, tileset: Tileset ): DataView => {
+	let saveData: ByteBlock[] = palettes.encode();
+
+	saveData = saveData.concat( compressPixels( tileset.getPixels() )
+		.map( ( byte: number ): ByteBlock => ( { type: `Uint8`, value: byte } ) ) );
 
 	// For each level, generate bytes for name, goal, and maps.
 	saveData = saveData.concat( encodeLevels( levels ) );
@@ -68,13 +81,17 @@ const generateSaveData = ( levels: Level[], tileset: Tileset ): DataView => {
 const Editor = (): ReactElement => {
 	const [ levels, setLevels ] = useState( null );
 	const [ tileset, setTileset ] = useState( null );
+	const [ palettes, setPalettes ] = useState( null );
 	const [ mode, setMode ] = useState( modeKeys.select );
 
 	const onImport = ( _event, data: Uint8Array ) => {
 		resetMode();
 
+		const paletteData = decodePaletteData( data );
+		setPalettes( paletteData.palettes );
+
 		// Load tileset data.
-		const tilesetData = loadGraphicsFromData( data );
+		const tilesetData = loadGraphicsFromData( paletteData.remainingBytes );
 		setTileset( tilesetData.tileset );
 
 		// Load level data.
@@ -96,6 +113,53 @@ const Editor = (): ReactElement => {
 
 	const onOpen = ( _event, data: object ) => {
 		resetMode();
+
+		// Import palettes if present.
+		if ( `palettes` in data ) {
+			// Validate data.
+			if ( ! Array.isArray( data[ `palettes` ] ) ) {
+				throw new Error( `Invalid palettes data` );
+			}
+
+			// Load palettes.
+			const palettes: Palette[] = data[ `palettes` ].map( ( palette: unknown, i: number ): Palette => {
+				if ( ! palette || typeof palette !== `object` ) {
+					throw new Error( `Invalid palette data for palette #${ i }` );
+				}
+				if ( typeof palette[ `name` ] !== `string` ) {
+					throw new Error( `Invalid palette name for palette #${ i }` );
+				}
+				if ( ! Array.isArray( palette[ `colors` ] ) ) {
+					throw new Error( `Invalid palette colors for palette #${ i }` );
+				}
+				if ( palette[ `colors` ].length !== 8 ) {
+					throw new Error( `Invalid palette color count for palette #${ i }` );
+				}
+
+				const colors: Color[] = palette[ `colors` ].map( ( color: unknown, j: number ): Color => {
+					if ( ! color || typeof color !== `object` ) {
+						throw new Error( `Invalid color data for color #${ j } o’ palette #${ i }` );
+					}
+					if ( typeof color[ `r` ] !== `number` ) {
+						throw new Error( `Invalid color red for color #${ j } o’ palette #${ i }` );
+					}
+					if ( typeof color[ `g` ] !== `number` ) {
+						throw new Error( `Invalid color green for color #${ j } o’ palette #${ i }` );
+					}
+					if ( typeof color[ `b` ] !== `number` ) {
+						throw new Error( `Invalid color blue for color #${ j } o’ palette #${ i }` );
+					}
+					if ( typeof color[ `a` ] !== `number` ) {
+						throw new Error( `Invalid color alpha for color #${ j } o’ palette #${ i }` );
+					}
+					return createColor( color[ `r` ], color[ `g` ], color[ `b` ], color[ `a` ] );
+				} );
+
+				return createPalette( palette[ `name` ], colors );
+			} );
+
+			setPalettes( createPaletteList( palettes ) );
+		}
 
 		// Import tileset if present.
 		if ( `tileset` in data ) {
@@ -169,6 +233,9 @@ const Editor = (): ReactElement => {
 					if ( typeof map[ `height` ] !== `number` ) {
 						throw new Error( `Invalid map height for map #${ j } o’ level #${ i }` );
 					}
+					if ( typeof map[ `palette` ] !== `number` ) {
+						throw new Error( `Invalid map palette for map #${ j } o’ level #${ i }` );
+					}
 					if ( ! Array.isArray( map[ `layers` ] ) ) {
 						throw new Error( `Invalid map layers for map #${ j } o’ level #${ i }` );
 					}
@@ -214,10 +281,6 @@ const Editor = (): ReactElement => {
 								// eslint-disable-next-line max-len
 								throw new Error( `Invalid object height for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
 							}
-							if ( `props` in object && typeof object[ `props` ] !== `object` ) {
-								// eslint-disable-next-line max-len
-								throw new Error( `Invalid object props for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
-							}
 
 							return createObject( {
 								type: object[ `type` ],
@@ -225,7 +288,7 @@ const Editor = (): ReactElement => {
 								y: object[ `y` ],
 								width: object[ `width` ],
 								height: object[ `height` ],
-								...object[ `props` ] ?? {},
+								...object,
 							} );
 						} );
 
@@ -240,6 +303,7 @@ const Editor = (): ReactElement => {
 						map[ `width` ],
 						map[ `height` ],
 						layers,
+						map[ `palette` ],
 					);
 
 					return generateDataBytes( mapBlock );
@@ -261,6 +325,7 @@ const Editor = (): ReactElement => {
 	const onNew = () => {
 		setLevels( Array.from( { length: levelCount } ).map( () => createLevel() ) );
 		setTileset( createBlankTileset( 64, 64 ) );
+		setPalettes( createBlankPaletteList );
 		resetMode();
 	};
 
@@ -286,19 +351,20 @@ const Editor = (): ReactElement => {
 
 	useEffect( () => {
 		const onSave = () => {
-			if ( levels === null || tileset === null ) {
+			if ( levels === null || tileset === null || palettes === null ) {
 				return;
 			}
 			window.electronAPI.save( JSON.stringify( {
+				palettes: palettes.map( ( palette: Palette ) => palette.toJSON() ),
 				levels: levels.map( ( level: Level ) => level.toJSON() ),
 				tileset: tileset.toJSON(),
 			}, null, 4 ) );
 		};
 		const onExport = () => {
-			if ( levels === null || tileset === null ) {
+			if ( levels === null || tileset === null || palettes === null ) {
 				return;
 			}
-			window.electronAPI.export( generateSaveData( levels, tileset ) );
+			window.electronAPI.export( generateExportData( levels, palettes, tileset ) );
 		};
 		window.electronAPI.on( `save__editor`, onSave );
 		window.electronAPI.on( `export__editor`, onExport );
@@ -307,21 +373,28 @@ const Editor = (): ReactElement => {
 			window.electronAPI.remove( `save__editor` );
 			window.electronAPI.remove( `export__editor` );
 		};
-	}, [ levels, tileset ] ); // Update whene’er levels change so they always reflect latest data.
+	}, [ levels, palettes, tileset ] ); // Update whene’er levels change so they always reflect latest data.
 
 	return <div>
-		{ levels !== null && tileset !== null && <div>
+		{ levels !== null && tileset !== null && palettes !== null && <div>
 			{ mode === modeKeys.select && <SelectMode setMode={ setMode } /> }
 			{ mode === modeKeys.levelList && <LevelMode
 				exitMode={ resetMode }
 				levels={ levels }
+				palettes={ palettes }
 				setLevels={ setLevels }
 				tileset={ tileset }
 			/> }
 			{ mode === modeKeys.graphics && <GraphicsMode
 				exitMode={ resetMode }
+				palettes={ palettes }
 				setTileset={ setTileset }
 				tileset={ tileset }
+			/> }
+			{ mode === modeKeys.palettes && <PaletteMode
+				exitMode={ resetMode }
+				palettes={ palettes }
+				setPalettes={ setPalettes }
 			/> }
 		</div> }
 	</div>;
