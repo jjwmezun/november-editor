@@ -68,6 +68,16 @@ interface GoalTemplate {
 	exportData?: ByteBlockRef[],
 }
 
+interface GraphicTile {
+	animation: number;
+	srcHeight: number;
+	srcWidth: number;
+	srcx: number;
+	srcy: number;
+	x: number;
+	y: number;
+}
+
 interface BlockLayer {
 	type: LayerType.block,
 	objects: MapObject[],
@@ -97,6 +107,7 @@ interface LevelEditorProps {
 	name: string;
 	setName: ( name: string ) => void;
 	goal: Goal;
+	palettes: PaletteList;
 	setMaps: ( maps: ArrayBuffer[] ) => void;
 	setGoal: ( goal: Goal ) => void;
 	tileset: Tileset;
@@ -113,6 +124,7 @@ interface LevelListProps {
 interface LevelModeProps {
 	exitMode: () => void;
 	levels: Level[];
+	palettes: PaletteList;
 	setLevels: ( levels: Level[] ) => void;
 	tileset: Tileset;
 }
@@ -134,6 +146,7 @@ interface LvMap {
 	},
 	updateHeight: ( newHeight: number ) => LvMap,
 	updateWidth: ( newWidth: number ) => LvMap,
+	updatePalette: ( newPalette: number ) => LvMap,
 }
 
 interface MapObject {
@@ -186,11 +199,8 @@ interface MapObjectTypeOption {
 interface MapObjectType {
 	name: string,
 	create: ( x: number, y: number ) => object,
-	render: (
-		tileRenderer: ( args: TileRendererArgs ) => void,
-		object: MapObject,
-		frame: number
-	) => void,
+	generateHighlight: ( object: MapObject ) => Rect[],
+	generateTiles: ( object: MapObject ) => GraphicTile[],
 	exportData: ByteBlockRef[],
 	options: MapObjectTypeOption[],
 }
@@ -206,10 +216,18 @@ interface Mode {
 	slug: string;
 }
 
+interface LvMapByteProps {
+	width: number,
+	height: number,
+	layerCount: number,
+	palette: number,
+}
+
 interface LvMapProps {
 	width: number,
 	height: number,
 	layers: Layer[],
+	palette: number,
 }
 
 interface MousePosition {
@@ -250,6 +268,13 @@ interface PaletteModeProps {
 	setPalettes: ( palettes: PaletteList ) => void,
 }
 
+interface Rect {
+	x: number,
+	y: number,
+	width: number,
+	height: number,
+}
+
 interface RenderObject {
 	addAttribute: (
 		name: string,
@@ -268,7 +293,7 @@ interface RenderObject {
 		offset: number,
 	) => void;
 	addTextureUniform: ( name: string, index: number, texture: WebGLTexture ) => void;
-	addUniform: ( name: string, type: string, value: number | Float32Array ) => void;
+	addUniform: ( name: string, type: string, value: number | Float32Array | number[] ) => void;
 	render: () => void;
 	renderInstances: ( instances: number ) => void;
 }
@@ -352,6 +377,7 @@ interface WebGL2Program {
 	getAttribLocation: ( name: string ) => number;
 	setUniform1f: ( name: string, value: number ) => void;
 	setUniform1i: ( name: string, value: number ) => void;
+	setUniform2f: ( name: string, v1: number, v2: number ) => void;
 	setUniformMatrix3fv: ( name: string, value: Float32Array ) => void;
 	use: () => void;
 }
@@ -383,6 +409,7 @@ export {
 	DecodedTilesetData,
 	Goal,
 	GoalTemplate,
+	GraphicTile,
 	Layer,
 	LayerType,
 	Level,
@@ -391,6 +418,7 @@ export {
 	LevelModeProps,
 	LevelProps,
 	LvMap,
+	LvMapByteProps,
 	LvMapProps,
 	MapObject,
 	MapObjectArgs,
@@ -402,6 +430,7 @@ export {
 	PaletteData,
 	PaletteList,
 	PaletteModeProps,
+	Rect,
 	RenderObject,
 	SelectModeProps,
 	Shader,

@@ -344,7 +344,7 @@ const TileGrid = ( props: TileGridProps ): ReactElement => {
 		setSelectedTile( selected );
 	};
 
-	// On canvas load, generate renderer & update when tileset changes.
+	// On canvas load, generate renderer.
 	useEffect( () => {
 		if ( canvasRef.current ) {
 			const ctx: WebGL2RenderingContext | null = canvasRef.current.getContext( `webgl2` );

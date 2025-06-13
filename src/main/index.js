@@ -250,6 +250,7 @@ function createWindow() {
 									mainWindow.webContents.send( `open__level-mode` );
 									enableClose();
 									enableSaveAs();
+									enableExport();
 								} );
 							}
 						} );

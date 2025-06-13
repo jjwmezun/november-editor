@@ -233,6 +233,9 @@ const Editor = (): ReactElement => {
 					if ( typeof map[ `height` ] !== `number` ) {
 						throw new Error( `Invalid map height for map #${ j } o’ level #${ i }` );
 					}
+					if ( typeof map[ `palette` ] !== `number` ) {
+						throw new Error( `Invalid map palette for map #${ j } o’ level #${ i }` );
+					}
 					if ( ! Array.isArray( map[ `layers` ] ) ) {
 						throw new Error( `Invalid map layers for map #${ j } o’ level #${ i }` );
 					}
@@ -278,10 +281,6 @@ const Editor = (): ReactElement => {
 								// eslint-disable-next-line max-len
 								throw new Error( `Invalid object height for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
 							}
-							if ( `props` in object && typeof object[ `props` ] !== `object` ) {
-								// eslint-disable-next-line max-len
-								throw new Error( `Invalid object props for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
-							}
 
 							return createObject( {
 								type: object[ `type` ],
@@ -289,7 +288,7 @@ const Editor = (): ReactElement => {
 								y: object[ `y` ],
 								width: object[ `width` ],
 								height: object[ `height` ],
-								...object[ `props` ] ?? {},
+								...object,
 							} );
 						} );
 
@@ -304,6 +303,7 @@ const Editor = (): ReactElement => {
 						map[ `width` ],
 						map[ `height` ],
 						layers,
+						map[ `palette` ],
 					);
 
 					return generateDataBytes( mapBlock );
@@ -381,6 +381,7 @@ const Editor = (): ReactElement => {
 			{ mode === modeKeys.levelList && <LevelMode
 				exitMode={ resetMode }
 				levels={ levels }
+				palettes={ palettes }
 				setLevels={ setLevels }
 				tileset={ tileset }
 			/> }

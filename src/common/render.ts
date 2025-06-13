@@ -41,6 +41,9 @@ const createShaderProgram = ( ctx: WebGLRenderingContext, shaders: Shader[] ): W
 		setUniform1f: ( name: string, value: number ) => {
 			ctx.uniform1f( getLocation( name ), value );
 		},
+		setUniform2f: ( name: string, v1: number, v2: number ) => {
+			ctx.uniform2f( getLocation( name ), v1, v2 );
+		},
 		setUniform1i: ( name: string, value: number ) => {
 			ctx.uniform1i( getLocation( name ), value );
 		},
@@ -118,7 +121,7 @@ const createRenderObject = (
 		ctx.activeTexture( ctx[ `TEXTURE${ index }` ] );
 		ctx.bindTexture( ctx.TEXTURE_2D, texture );
 	},
-	addUniform: ( name: string, type: string, value: number | Float32Array ) => {
+	addUniform: ( name: string, type: string, value: number | Float32Array | number[] ) => {
 		switch ( type ) {
 		case `1f`:
 			program.setUniform1f( name, value as number );
@@ -126,6 +129,11 @@ const createRenderObject = (
 		case `1i`:
 			program.setUniform1i( name, value as number );
 			break;
+		case `2f`: {
+			const [ v1, v2 ] = value as number[];
+			program.setUniform2f( name, v1, v2 );
+			break;
+		}
 		case `3fv`:
 			program.setUniformMatrix3fv( name, value as Float32Array );
 			break;

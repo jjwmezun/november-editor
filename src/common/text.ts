@@ -1353,7 +1353,10 @@ export const encodeText = ( text: string ): ByteBlock[] => {
 export const decodeText = ( bytes: Uint8Array ): DecodedTextData => {
 	let bytesUsed = 1;
 	const decodePiece = ( innerTrie, bitList ) => {
-		if ( innerTrie.children !== null ) {
+		if ( innerTrie?.children === undefined ) {
+			throw new Error( `No character.` );
+		}
+		if ( innerTrie?.children !== null ) {
 			if ( bitList.head.length === 0 ) {
 				bitList.head = bitList.tail.shift().toString( 2 ).padStart( 8, `0` ).split( `` );
 				++bytesUsed;
