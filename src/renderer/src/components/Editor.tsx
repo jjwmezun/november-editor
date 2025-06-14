@@ -181,6 +181,11 @@ const Editor = (): ReactElement => {
 				throw new Error( `Invalid graphics data` );
 			}
 
+			const graphics = {
+				blocks: createBlankGraphicsEntry( 64, 64 ),
+				sprites: createBlankGraphicsEntry( 64, 64 ),
+			};
+
 			[ `blocks`, `sprites` ].forEach( ( type: string ) => {
 				if ( ! data[ `graphics` ] || typeof data[ `graphics` ] !== `object` ) {
 					throw new Error( `Invalid graphics data` );
@@ -197,28 +202,25 @@ const Editor = (): ReactElement => {
 				if ( ! dataItem[ `heightTiles` ] || typeof dataItem[ `heightTiles` ] !== `number` ) {
 					throw new Error( `Invalid graphics height` );
 				}
-				if (
-					! dataItem[ `pixels` ]
-					|| ! Array.isArray( dataItem[ `pixels` ] )
-					|| dataItem[ `pixels` ].some( ( pixel: unknown ) => typeof pixel !== `number` )
-				) {
+				if ( ! dataItem[ `pixels` ] || typeof dataItem[ `pixels` ] !== `string` ) {
 					dataItem[ `pixels` ].map( ( pixel: unknown ) => console.log( typeof pixel ) );
 					throw new Error( `Invalid graphics pixels` );
 				}
+
+				// Convert base 64 string to byte array.
+				const pixelList: number[] = [];
+				for ( const letter of atob( dataItem[ `pixels` ] ) ) {
+					pixelList.push( letter.charCodeAt( 0 ) );
+				}
+
+				graphics[ type ] = createGraphicsEntry(
+					dataItem[ `widthTiles` ],
+					dataItem[ `heightTiles` ],
+					decompressPixels( pixelList ),
+				);
 			} );
 
-			setGraphics( {
-				blocks: createGraphicsEntry(
-					data[ `graphics` ][ `blocks` ][ `widthTiles` ],
-					data[ `graphics` ][ `blocks` ][ `heightTiles` ],
-					decompressPixels( data[ `graphics` ][ `blocks` ][ `pixels` ] ),
-				),
-				sprites: createGraphicsEntry(
-					data[ `graphics` ][ `sprites` ][ `widthTiles` ],
-					data[ `graphics` ][ `sprites` ][ `heightTiles` ],
-					decompressPixels( data[ `graphics` ][ `sprites` ][ `pixels` ] ),
-				),
-			} );
+			setGraphics( graphics );
 		} else {
 			// If no graphics is present, set to default.
 			setGraphics( createNewGraphics() );

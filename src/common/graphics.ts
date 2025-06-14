@@ -133,7 +133,21 @@ const createGraphicsEntry = (
 			}
 			return createGraphicsEntry( widthTiles, heightTiles, pixels );
 		},
-		toJSON: () => ( { widthTiles, heightTiles, pixels: compressPixels( pixels ) } ),
+		toJSON: () => {
+			// Compress pixels & convert to base64 string.
+			const pixelList = compressPixels( pixels );
+			let pixelString = ``;
+			for ( let i = 0; i < pixelList.length; i++ ) {
+				pixelString += String.fromCharCode( pixelList[ i ] );
+			}
+			const pixelData = btoa( pixelString );
+
+			return {
+				widthTiles,
+				heightTiles,
+				pixels: pixelData,
+			};
+		},
 		updatePixels: newPixels => createGraphicsEntry( widthTiles, heightTiles, newPixels ),
 		updatePixel: ( color, x, y ) => {
 			const index = y * getWidthPixels() + x;
