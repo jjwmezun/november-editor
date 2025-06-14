@@ -3,34 +3,45 @@ import TileGrid from './TileGrid';
 import TileEditor from './TileEditor';
 import ColorSelector from './ColorSelector';
 import { tileSize } from '../../../common/constants';
-import { PaletteList, Tileset } from '../../../common/types';
+import { Graphics, PaletteList } from '../../../common/types';
 
 type GraphicsProps = {
-	palettes: PaletteList,
 	exitMode: () => void,
-	setTileset: ( tileset: Tileset ) => void,
-	tileset: Tileset,
+	graphics: Graphics,
+	palettes: PaletteList,
+	setGraphics: ( graphics: Graphics ) => void,
 };
 
 const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
-	const { exitMode, palettes, setTileset, tileset } = props;
+	const { exitMode, graphics, palettes, setGraphics } = props;
 
+	const [ selectedGraphicType, setSelectedGraphicType ] = useState( `blocks` );
 	const [ selectedTile, setSelectedTile ] = useState( 0 );
 	const [ selectedColor, setSelectedColor ] = useState( 0 );
 	const [ selectedPalette, setSelectedPalette ] = useState( 0 );
 
+	const selectedGraphicsEntry = graphics[ selectedGraphicType ];
+
 	const drawPixel = ( x, y ) => {
-		const tileY = Math.floor( selectedTile / tileset.getWidthTiles() );
-		const tileX = selectedTile % tileset.getWidthTiles();
+		const tileY = Math.floor( selectedTile / selectedGraphicsEntry.getWidthTiles() );
+		const tileX = selectedTile % selectedGraphicsEntry.getWidthTiles();
 		const pixelY = tileY * tileSize + y;
 		const pixelX = tileX * tileSize + x;
-		tileset.updatePixel( selectedColor, pixelX, pixelY );
-		setTileset( { ...tileset } );
+		setGraphics( {
+			...graphics,
+			[ selectedGraphicType ]: selectedGraphicsEntry.updatePixel(
+				selectedColor,
+				pixelX,
+				pixelY,
+			),
+		} );
 	};
 
 	const clearTile = () => {
-		tileset.clearTile( selectedTile );
-		setTileset( { ...tileset } );
+		setGraphics( {
+			...graphics,
+			[ selectedGraphicType ]: selectedGraphicsEntry.clearTile( selectedTile ),
+		} );
 	};
 
 	const updatePalette = ( e: SyntheticBaseEvent ) => {
@@ -39,17 +50,26 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 		setSelectedPalette( paletteIndex );
 	};
 
+	const changeGraphicEntry = ( e: SyntheticBaseEvent ) => {
+		const target: HTMLSelectElement = e.target;
+		const graphicType = target.value as keyof Graphics;
+		setSelectedGraphicType( graphicType );
+		setSelectedTile( 0 );
+	};
+
 	useEffect( () => {
 		const handleImportTiles = ( _event, data ) => {
 			const { pixels, width, height } = data;
-			tileset.importPixels( pixels, width, height, selectedTile );
-			setTileset( { ...tileset } );
+			setGraphics( {
+				...graphics,
+				[ selectedGraphicType ]: selectedGraphicsEntry.importPixels( pixels, width, height, selectedTile ),
+			} );
 		};
 
 		window.electronAPI.on( `import-tiles__graphics-mode`, handleImportTiles );
 
 		return () => window.electronAPI.remove( `import-tiles__graphics-mode` );
-	}, [ selectedTile, tileset ] );
+	}, [ selectedTile, graphics, selectedGraphicType ] );
 
 	return <div>
 		<h1>Graphics Editor</h1>
@@ -64,22 +84,26 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 					</option>;
 				} ) }
 			</select>
+			<select onChange={ changeGraphicEntry }>
+				<option value="blocks">Blocks</option>
+				<option value="sprites">Sprites</option>
+			</select>
 			<TileGrid
+				graphics={ selectedGraphicsEntry }
 				palettes={ palettes }
 				selectedPalette={ selectedPalette }
 				selectedTile={ selectedTile }
 				setSelectedTile={ setSelectedTile }
-				tileset={ tileset }
 			/>
 			<TileEditor
 				clearTile={ clearTile }
 				drawPixel={ drawPixel }
+				graphics={ selectedGraphicsEntry }
 				palettes={ palettes }
 				selectedColor={ selectedColor }
 				selectedPalette={ selectedPalette }
-				tileset={ tileset }
-				tileX={ selectedTile % tileset.getWidthTiles() }
-				tileY={ Math.floor( selectedTile / tileset.getWidthTiles() ) }
+				tileX={ selectedTile % selectedGraphicsEntry.getWidthTiles() }
+				tileY={ Math.floor( selectedTile / selectedGraphicsEntry.getWidthTiles() ) }
 			/>
 			<ColorSelector
 				palettes={ palettes }

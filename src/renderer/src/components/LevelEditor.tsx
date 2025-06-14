@@ -9,6 +9,7 @@ import {
 import { objectTypes } from '../../../common/objects';
 import { getMousePosition } from '../../../common/utils';
 import {
+	Graphics,
 	GraphicTile,
 	LevelEditorProps,
 	Layer,
@@ -17,7 +18,6 @@ import {
 	PaletteList,
 	Rect,
 	ShaderType,
-	Tileset,
 } from '../../../common/types';
 import { createMat3 } from '../../../common/mat';
 import {
@@ -39,7 +39,7 @@ interface ObjectRenderer {
 const createObjectRenderer = (
 	ctx: WebGL2RenderingContext,
 	palettes: PaletteList,
-	tileset: Tileset,
+	graphics: Graphics,
 ): ObjectRenderer => {
 	const program = createShaderProgram(
 		ctx,
@@ -119,7 +119,7 @@ const createObjectRenderer = (
 
 	// Setup textures.
 	const paletteTexture = palettes.createTexture( ctx, 0 );
-	const tilesetTexture = tileset.createTexture( ctx, 1 );
+	const tilesetTexture = graphics.blocks.createTexture( ctx, 1 );
 	renderObject.addTextureUniform( `u_palette_texture`, 0, paletteTexture );
 	renderObject.addTextureUniform( `u_tileset_texture`, 1, tilesetTexture );
 
@@ -231,7 +231,7 @@ const createObjectRenderer = (
 const createMapRenderer = (
 	ctx: WebGL2RenderingContext,
 	palettes: PaletteList,
-	tileset: Tileset,
+	graphics: Graphics,
 	layerObjects: MapObject[][],
 	selectedPalette: number,
 ) => {
@@ -240,7 +240,7 @@ const createMapRenderer = (
 	ctx.viewport( 0, 0, ctx.canvas.width, ctx.canvas.height );
 
 	let objectRenderers = [ ...Array( layerObjects.length ).keys() ]
-		.map( () => createObjectRenderer( ctx, palettes, tileset ) );
+		.map( () => createObjectRenderer( ctx, palettes, graphics ) );
 
 	objectRenderers.forEach( ( objectRenderer: ObjectRenderer, i: number ) => {
 		objectRenderer.updateObjects( layerObjects[ i ] );
@@ -491,7 +491,7 @@ const createMapRenderer = (
 			gridLines.updateDimensions( width, height );
 
 			objectRenderers = [ ...Array( layers.length ).keys() ]
-				.map( () => createObjectRenderer( ctx, palettes, tileset ) );
+				.map( () => createObjectRenderer( ctx, palettes, graphics ) );
 
 			objectRenderers.forEach( ( objectRenderer: ObjectRenderer, i: number ) => {
 				objectRenderer.updateObjects( layers[ i ].objects );
@@ -536,7 +536,7 @@ const createMapRenderer = (
 			} );
 		},
 		addLayer: () => {
-			objectRenderers.push( createObjectRenderer( ctx, palettes, tileset ) );
+			objectRenderers.push( createObjectRenderer( ctx, palettes, graphics ) );
 		},
 		removeLayer: ( layer: number ) => {
 			objectRenderers.splice( layer, 1 );
@@ -589,7 +589,7 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 		? selectedMap.getProps()
 		: { height: 0, layers: [], width: 0 };
 
-	const { closeLevel, maps, name, setName, goal, palettes, setMaps, setGoal, tileset } = props;
+	const { closeLevel, graphics, maps, name, setName, goal, palettes, setMaps, setGoal } = props;
 
 	const exit = () => {
 		closeLevel();
@@ -834,7 +834,7 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 			setRenderer( createMapRenderer(
 				ctx,
 				palettes,
-				tileset,
+				graphics,
 				layers.map( ( l: Layer ) => l.objects ),
 				palette,
 			) );

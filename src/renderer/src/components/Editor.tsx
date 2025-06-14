@@ -7,7 +7,13 @@ import LevelMode from './LevelMode';
 import SelectMode from './SelectMode';
 import GraphicsMode from './GraphicsMode';
 import PaletteMode from './PaletteMode';
-import { compressPixels, createBlankTileset, createNewTileset, decompressPixels } from '../../../common/tileset';
+import {
+	compressPixels,
+	createBlankGraphicsEntry,
+	createGraphicsEntry,
+	createNewGraphics,
+	decompressPixels,
+} from '../../../common/graphics';
 import {
 	createLayer,
 	createLevel,
@@ -20,7 +26,8 @@ import {
 import {
 	ByteBlock,
 	Color,
-	DecodedTilesetData,
+	DecodedGraphicsData,
+	Graphics,
 	Layer,
 	LayerType,
 	Level,
@@ -28,7 +35,6 @@ import {
 	MapObject,
 	Palette,
 	PaletteList,
-	Tileset,
 } from '../../../common/types';
 import { createGoal } from '../../../common/goals';
 import {
@@ -39,24 +45,31 @@ import {
 	decodePaletteData,
 } from '../../../common/palettes';
 
-const loadGraphicsFromData = ( data: Uint8Array ): DecodedTilesetData => {
-	let tileset = createBlankTileset( 64, 64 );
+const loadGraphicsFromData = ( data: Uint8Array ): DecodedGraphicsData => {
+	const graphics: Graphics = createNewGraphics();
 
-	// Update tileset with new pixels.
-	const dataSize = Math.ceil( tileset.getPixels().length * ( 3 / 8 ) );
-	const pixels: number[] = decompressPixels( Array.from( data ).slice( 0, dataSize ) );
-	tileset = tileset.updatePixels( pixels );
+	[ `blocks`, `sprites` ].forEach( ( type: string ) => {
+		let entry = createBlankGraphicsEntry( 64, 64 );
+
+		// Update graphics entry with new pixels.
+		const dataSize = Math.ceil( entry.getPixels().length * ( 3 / 8 ) );
+		const pixels: number[] = decompressPixels( Array.from( data ).slice( 0, dataSize ) );
+		entry = entry.updatePixels( pixels );
+		data = data.slice( dataSize );
+		graphics[ type ] = entry;
+	} );
 
 	return {
-		tileset,
-		remainingBytes: data.slice( dataSize ),
+		graphics,
+		remainingBytes: data,
 	};
 };
 
-const generateExportData = ( levels: Level[], palettes: PaletteList, tileset: Tileset ): DataView => {
+const generateExportData = ( levels: Level[], palettes: PaletteList, graphics: Graphics ): DataView => {
 	let saveData: ByteBlock[] = palettes.encode();
 
-	saveData = saveData.concat( compressPixels( tileset.getPixels() )
+	saveData = saveData.concat( compressPixels( graphics.blocks.getPixels() )
+		.concat( compressPixels( graphics.sprites.getPixels() ) )
 		.map( ( byte: number ): ByteBlock => ( { type: `Uint8`, value: byte } ) ) );
 
 	// For each level, generate bytes for name, goal, and maps.
@@ -79,8 +92,8 @@ const generateExportData = ( levels: Level[], palettes: PaletteList, tileset: Ti
 };
 
 const Editor = (): ReactElement => {
+	const [ graphics, setGraphics ] = useState( null );
 	const [ levels, setLevels ] = useState( null );
-	const [ tileset, setTileset ] = useState( null );
 	const [ palettes, setPalettes ] = useState( null );
 	const [ mode, setMode ] = useState( modeKeys.select );
 
@@ -90,13 +103,13 @@ const Editor = (): ReactElement => {
 		const paletteData = decodePaletteData( data );
 		setPalettes( paletteData.palettes );
 
-		// Load tileset data.
-		const tilesetData = loadGraphicsFromData( paletteData.remainingBytes );
-		setTileset( tilesetData.tileset );
+		// Load graphics data.
+		const graphicsData = loadGraphicsFromData( paletteData.remainingBytes );
+		setGraphics( graphicsData.graphics );
 
 		// Load level data.
 		const levels: Level[] = [];
-		let remainingBytes = tilesetData.remainingBytes;
+		let remainingBytes = graphicsData.remainingBytes;
 		while ( remainingBytes.length > 0 ) {
 			const levelData = loadLevelFromData( remainingBytes );
 			levels.push( levelData.level );
@@ -161,35 +174,54 @@ const Editor = (): ReactElement => {
 			setPalettes( createPaletteList( palettes ) );
 		}
 
-		// Import tileset if present.
-		if ( `tileset` in data ) {
+		// Import graphics if present.
+		if ( `graphics` in data ) {
 			// Validate data.
-			if ( ! data[ `tileset` ] || typeof data[ `tileset` ] !== `object` ) {
-				throw new Error( `Invalid tileset data` );
-			}
-			if ( ! data[ `tileset` ][ `widthTiles` ] || typeof data[ `tileset` ][ `widthTiles` ] !== `number` ) {
-				throw new Error( `Invalid tileset width` );
-			}
-			if ( ! data[ `tileset` ][ `heightTiles` ] || typeof data[ `tileset` ][ `heightTiles` ] !== `number` ) {
-				throw new Error( `Invalid tileset height` );
-			}
-			if (
-				! data[ `tileset` ][ `pixels` ]
-				|| ! Array.isArray( data[ `tileset` ][ `pixels` ] )
-				|| data[ `tileset` ][ `pixels` ].some( ( pixel: unknown ) => typeof pixel !== `number` )
-			) {
-				data[ `tileset` ][ `pixels` ].map( ( pixel: unknown ) => console.log( typeof pixel ) );
-				throw new Error( `Invalid tileset pixels` );
+			if ( ! data[ `graphics` ] || typeof data[ `graphics` ] !== `object` ) {
+				throw new Error( `Invalid graphics data` );
 			}
 
-			setTileset( createNewTileset(
-				data[ `tileset` ][ `widthTiles` ],
-				data[ `tileset` ][ `heightTiles` ],
-				decompressPixels( data[ `tileset` ][ `pixels` ] ),
-			) );
+			[ `blocks`, `sprites` ].forEach( ( type: string ) => {
+				if ( ! data[ `graphics` ] || typeof data[ `graphics` ] !== `object` ) {
+					throw new Error( `Invalid graphics data` );
+				}
+				if ( ! ( type in data[ `graphics` ] ) || typeof data[ `graphics` ][ type ] !== `object` ) {
+					throw new Error( `Invalid graphics ${ type } data` );
+				}
+
+				const dataItem = data[ `graphics` ][ type ];
+
+				if ( ! dataItem[ `widthTiles` ] || typeof dataItem[ `widthTiles` ] !== `number` ) {
+					throw new Error( `Invalid graphics width` );
+				}
+				if ( ! dataItem[ `heightTiles` ] || typeof dataItem[ `heightTiles` ] !== `number` ) {
+					throw new Error( `Invalid graphics height` );
+				}
+				if (
+					! dataItem[ `pixels` ]
+					|| ! Array.isArray( dataItem[ `pixels` ] )
+					|| dataItem[ `pixels` ].some( ( pixel: unknown ) => typeof pixel !== `number` )
+				) {
+					dataItem[ `pixels` ].map( ( pixel: unknown ) => console.log( typeof pixel ) );
+					throw new Error( `Invalid graphics pixels` );
+				}
+			} );
+
+			setGraphics( {
+				blocks: createGraphicsEntry(
+					data[ `graphics` ][ `blocks` ][ `widthTiles` ],
+					data[ `graphics` ][ `blocks` ][ `heightTiles` ],
+					decompressPixels( data[ `graphics` ][ `blocks` ][ `pixels` ] ),
+				),
+				sprites: createGraphicsEntry(
+					data[ `graphics` ][ `sprites` ][ `widthTiles` ],
+					data[ `graphics` ][ `sprites` ][ `heightTiles` ],
+					decompressPixels( data[ `graphics` ][ `sprites` ][ `pixels` ] ),
+				),
+			} );
 		} else {
-			// If no tileset is present, set to default.
-			setTileset( createBlankTileset( 64, 64 ) );
+			// If no graphics is present, set to default.
+			setGraphics( createNewGraphics() );
 		}
 
 		// Import levels.
@@ -324,14 +356,14 @@ const Editor = (): ReactElement => {
 
 	const onNew = () => {
 		setLevels( Array.from( { length: levelCount } ).map( () => createLevel() ) );
-		setTileset( createBlankTileset( 64, 64 ) );
+		setGraphics( createNewGraphics() );
 		setPalettes( createBlankPaletteList );
 		resetMode();
 	};
 
 	const onClose = () => {
 		setLevels( null );
-		setTileset( null );
+		setGraphics( null );
 		resetMode();
 	};
 
@@ -351,20 +383,23 @@ const Editor = (): ReactElement => {
 
 	useEffect( () => {
 		const onSave = () => {
-			if ( levels === null || tileset === null || palettes === null ) {
+			if ( graphics === null || levels === null || palettes === null ) {
 				return;
 			}
 			window.electronAPI.save( JSON.stringify( {
+				graphics: {
+					blocks: graphics.blocks.toJSON(),
+					sprites: graphics.sprites.toJSON(),
+				},
 				palettes: palettes.map( ( palette: Palette ) => palette.toJSON() ),
 				levels: levels.map( ( level: Level ) => level.toJSON() ),
-				tileset: tileset.toJSON(),
 			}, null, 4 ) );
 		};
 		const onExport = () => {
-			if ( levels === null || tileset === null || palettes === null ) {
+			if ( graphics === null || levels === null || palettes === null ) {
 				return;
 			}
-			window.electronAPI.export( generateExportData( levels, palettes, tileset ) );
+			window.electronAPI.export( generateExportData( levels, palettes, graphics ) );
 		};
 		window.electronAPI.on( `save__editor`, onSave );
 		window.electronAPI.on( `export__editor`, onExport );
@@ -373,23 +408,23 @@ const Editor = (): ReactElement => {
 			window.electronAPI.remove( `save__editor` );
 			window.electronAPI.remove( `export__editor` );
 		};
-	}, [ levels, palettes, tileset ] ); // Update whene’er levels change so they always reflect latest data.
+	}, [ graphics, levels, palettes ] ); // Update whene’er levels change so they always reflect latest data.
 
 	return <div>
-		{ levels !== null && tileset !== null && palettes !== null && <div>
+		{ graphics !== null && levels !== null && palettes !== null && <div>
 			{ mode === modeKeys.select && <SelectMode setMode={ setMode } /> }
 			{ mode === modeKeys.levelList && <LevelMode
 				exitMode={ resetMode }
+				graphics={ graphics }
 				levels={ levels }
 				palettes={ palettes }
 				setLevels={ setLevels }
-				tileset={ tileset }
 			/> }
 			{ mode === modeKeys.graphics && <GraphicsMode
 				exitMode={ resetMode }
+				graphics={ graphics }
 				palettes={ palettes }
-				setTileset={ setTileset }
-				tileset={ tileset }
+				setGraphics={ setGraphics }
 			/> }
 			{ mode === modeKeys.palettes && <PaletteMode
 				exitMode={ resetMode }
