@@ -3,10 +3,10 @@ import { getMousePosition } from '../../../common/utils';
 import { tileSize } from '../../../common/constants';
 import {
 	Coordinates,
+	GraphicsEntry,
 	PaletteList,
 	ShaderType,
 	TileEditorProps,
-	Tileset,
 } from '../../../common/types';
 import { createMat3 } from '../../../common/mat';
 import {
@@ -204,7 +204,7 @@ const generateBrushLayout = (
 const createRenderer = (
 	ctx: WebGL2RenderingContext,
 	palettes: PaletteList,
-	tileset: Tileset,
+	graphics: GraphicsEntry,
 ) => {
 	ctx.enable( ctx.BLEND );
 	ctx.blendFunc( ctx.SRC_ALPHA, ctx.ONE_MINUS_SRC_ALPHA );
@@ -263,7 +263,7 @@ const createRenderer = (
 
 		// Setup textures.
 		const paletteTexture = palettes.createTexture( ctx, 0 );
-		const tilesetTexture = tileset.createTexture( ctx, 1 );
+		const tilesetTexture = graphics.createTexture( ctx, 1 );
 		renderObject.addTextureUniform( `u_palette_texture`, 0, paletteTexture );
 		renderObject.addTextureUniform( `u_tileset_texture`, 1, tilesetTexture );
 
@@ -284,7 +284,7 @@ const createRenderer = (
 			updateSelected: ( x: number, y: number ): void => {
 				program.use();
 				const model = createMat3()
-					.translate( [ x / tileset.getWidthTiles(), y / tileset.getHeightTiles() ] )
+					.translate( [ x / graphics.getWidthTiles(), y / graphics.getHeightTiles() ] )
 					.scale( [ 1 / ( tileSize * 8 ), 1 / ( tileSize * 8 ) ] );
 				renderObject.addUniform( `u_model`, `3fv`, new Float32Array( model.getList() ) );
 			},
@@ -292,9 +292,9 @@ const createRenderer = (
 				program.use();
 				program.setUniform1f( `u_palette_index`, selectedPalette );
 			},
-			updateTileset: ( tileset: Tileset ): void => {
+			updateGraphicsEntry: ( graphics: GraphicsEntry ): void => {
 				program.use();
-				const tilesetTexture = tileset.createTexture( ctx, 1 );
+				const tilesetTexture = graphics.createTexture( ctx, 1 );
 				renderObject.addTextureUniform( `u_tileset_texture`, 1, tilesetTexture );
 			},
 		} );
@@ -629,15 +629,15 @@ const createRenderer = (
 			tilemapRenderer.updateSelectedPalette( selectedPalette );
 			renderBrush.updateSelectedPalette( selectedPalette );
 		},
-		updateTileset: ( tileset: Tileset ): void => {
-			tilemapRenderer.updateTileset( tileset );
+		updateGraphicsEntry: ( graphics: GraphicsEntry ): void => {
+			tilemapRenderer.updateGraphicsEntry( graphics );
 		},
 	};
 };
 
 const TileEditor = ( props: TileEditorProps ): ReactElement => {
 	const canvasRef = useRef();
-	const { clearTile, drawPixel, palettes, selectedColor, selectedPalette, tileset, tileX, tileY } = props;
+	const { clearTile, drawPixel, graphics, palettes, selectedColor, selectedPalette, tileX, tileY } = props;
 	const [ selected, setSelected ] = useState( { x: 0, y: 0 } );
 	const [ mouseDown, setMouseDown ] = useState( false );
 	const [ brushSize, setBrushSize ] = useState( 1 );
@@ -707,11 +707,11 @@ const TileEditor = ( props: TileEditorProps ): ReactElement => {
 			throw new Error( `Could not get webgl context for canvas` );
 		}
 
-		setRenderer( createRenderer( ctx, palettes, tileset ) );
+		setRenderer( createRenderer( ctx, palettes, graphics ) );
 	}, [ canvasRef.current ] );
 
 	// Render on init or whenever relevant state changes.
-	useEffect( render, [ renderer, tileset ] );
+	useEffect( render, [ renderer, graphics ] );
 	useEffect( render );
 
 	useEffect( () => {
@@ -750,9 +750,9 @@ const TileEditor = ( props: TileEditorProps ): ReactElement => {
 		if ( ! renderer ) {
 			return;
 		}
-		renderer.updateTileset( tileset );
+		renderer.updateGraphicsEntry( graphics );
 		render();
-	}, [ tileset ] );
+	}, [ graphics ] );
 
 	return <div className="graphics__tile-grid-canvas">
 		<canvas

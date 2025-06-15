@@ -1,17 +1,6 @@
-import { Tileset } from "./types";
+import { Graphics, GraphicsEntry } from "./types";
 import { tileSize } from "./constants";
 import { getBitsFromByte } from "./bytes";
-
-const colors: readonly string[] = Object.freeze( [
-	`rgba( 0, 0, 0, 0)`,
-	`rgba( 0, 0, 0, 1)`,
-	`rgba( 43, 43, 43, 1)`,
-	`rgba( 85, 85, 85, 1)`,
-	`rgba( 128, 128, 128, 1)`,
-	`rgba( 170, 170, 170, 1)`,
-	`rgba( 213, 213, 213, 1)`,
-	`rgba( 255, 255, 255, 1)`,
-] );
 
 // Convert color index into list o’ 3 bits.
 const getBitsFromColor = ( color: number ): number[] => {
@@ -78,19 +67,13 @@ const decompressPixels = ( pixels: number[] ): number[] => {
 	return out;
 };
 
-const createTileset = (
+const createGraphicsEntry = (
 	widthTiles: number,
 	heightTiles: number,
 	pixels: number[],
-	canvas: HTMLCanvasElement,
-): Tileset => {
+): GraphicsEntry => {
 	const getWidthPixels = () => widthTiles * tileSize;
 	const getHeightPixels = () => heightTiles * tileSize;
-	const ctx: CanvasRenderingContext2D | null = canvas.getContext( `2d` );
-
-	if ( !ctx ) {
-		throw new Error( `Canvas 2D context is null.` );
-	}
 
 	return {
 		clearTile: tileIndex => {
@@ -98,11 +81,11 @@ const createTileset = (
 			const tileY = Math.floor( tileIndex / widthTiles );
 			const x = tileX * tileSize;
 			const y = tileY * tileSize;
-			ctx.clearRect( x, y, tileSize, tileSize );
 			for ( let pixelY = y; pixelY < y + tileSize; pixelY++ ) {
 				const start = pixelY * getWidthPixels() + x;
 				pixels.fill( 0, start, start + tileSize );
 			}
+			return createGraphicsEntry( widthTiles, heightTiles, pixels );
 		},
 		createTexture: ( ctx: WebGLRenderingContext, index: number ): WebGLTexture => {
 			const texture = ctx.createTexture();
@@ -125,12 +108,6 @@ const createTileset = (
 			ctx.texParameteri( ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_T, ctx.REPEAT );
 			return texture;
 		},
-		drawPiece: ( ctx, srcX, srcY, srcW, srcH, destX, destY, destW, destH ) => {
-			ctx.drawImage( canvas, srcX, srcY, srcW, srcH, destX, destY, destW, destH );
-		},
-		drawWhole: ( ctx, ctxWidth, ctxHeight ) => {
-			ctx.drawImage( canvas, 0, 0, getWidthPixels(), getHeightPixels(), 0, 0, ctxWidth, ctxHeight );
-		},
 		getWidthTiles: () => widthTiles,
 		getHeightTiles: () => heightTiles,
 		getWidthPixels,
@@ -151,63 +128,50 @@ const createTileset = (
 					// Show existent pixels under transparent pixels.
 					if ( newPixels[ srcIndex ] !== 0 ) {
 						pixels[ destIndex ] = newPixels[ srcIndex ];
-						ctx.fillStyle = colors[ newPixels[ srcIndex ] ];
-						ctx.fillRect( pixelX, pixelY, 1, 1 );
 					}
 				}
 			}
+			return createGraphicsEntry( widthTiles, heightTiles, pixels );
 		},
-		toJSON: () => ( { widthTiles, heightTiles, pixels: compressPixels( pixels ) } ),
-		updatePixels: newPixels => createNewTileset( widthTiles, heightTiles, newPixels ),
+		toJSON: () => {
+			// Compress pixels & convert to base64 string.
+			const pixelList = compressPixels( pixels );
+			let pixelString = ``;
+			for ( let i = 0; i < pixelList.length; i++ ) {
+				pixelString += String.fromCharCode( pixelList[ i ] );
+			}
+			const pixelData = btoa( pixelString );
+
+			return {
+				widthTiles,
+				heightTiles,
+				pixels: pixelData,
+			};
+		},
+		updatePixels: newPixels => createGraphicsEntry( widthTiles, heightTiles, newPixels ),
 		updatePixel: ( color, x, y ) => {
 			const index = y * getWidthPixels() + x;
 			pixels[ index ] = color;
-			ctx.clearRect( x, y, 1, 1 );
-			ctx.fillStyle = colors[ color ];
-			ctx.fillRect( x, y, 1, 1 );
+			return createGraphicsEntry( widthTiles, heightTiles, pixels );
 		},
 	};
 };
 
-const createNewTileset = (
-	widthTiles: number,
-	heightTiles: number,
-	pixels: number[],
-): Tileset => {
-	const getWidthPixels = (): number => widthTiles * tileSize;
-	const getHeightPixels = (): number => heightTiles * tileSize;
-	const canvas: HTMLCanvasElement = document.createElement( `canvas` );
-	canvas.style.imageRendering = `pixelated`;
-	canvas.width = getWidthPixels();
-	canvas.height = getHeightPixels();
-	const ctx: CanvasRenderingContext2D | null = canvas.getContext( `2d` );
-
-	if ( !ctx ) {
-		throw new Error( `Canvas 2D context is null.` );
-	}
-
-	ctx.imageSmoothingEnabled = false;
-
-	ctx.clearRect( 0, 0, canvas.width, canvas.height );
-	pixels.forEach( ( color, i ) => {
-		const x = i % getWidthPixels();
-		const y = Math.floor( i / getWidthPixels() );
-		ctx.fillStyle = colors[ color ];
-		ctx.fillRect( x, y, 1, 1 );
-	} );
-
-	return createTileset( widthTiles, heightTiles, pixels, canvas );
-};
-
-const createBlankTileset = ( widthTiles: number, heightTiles: number ): Tileset => createNewTileset(
+const createBlankGraphicsEntry = ( widthTiles: number, heightTiles: number ): GraphicsEntry => createGraphicsEntry(
 	widthTiles,
 	heightTiles,
 	new Array( widthTiles * tileSize * heightTiles * tileSize ).fill( 0 ),
 );
 
+const createNewGraphics = (): Graphics => ( {
+	blocks: createBlankGraphicsEntry( 64, 64 ),
+	sprites: createBlankGraphicsEntry( 64, 64 ),
+} );
+
 export {
 	compressPixels,
-	createBlankTileset,
-	createNewTileset,
+	createBlankGraphicsEntry,
+	createGraphicsEntry,
+	createNewGraphics,
 	decompressPixels,
 };

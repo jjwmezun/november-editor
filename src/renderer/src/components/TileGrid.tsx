@@ -2,11 +2,11 @@ import { ReactElement, useEffect, useRef, useState } from 'react';
 import { getMousePosition } from '../../../common/utils';
 import {
 	Coordinates,
+	GraphicsEntry,
 	Mat3,
 	PaletteList,
 	ShaderType,
 	TileGridProps,
-	Tileset,
 } from '../../../common/types';
 import { createMat3 } from '../../../common/mat';
 import {
@@ -44,7 +44,7 @@ const createTileGridRenderer = (
 	width: number,
 	height: number,
 	palettes: PaletteList,
-	tileset: Tileset,
+	graphics: GraphicsEntry,
 ) => {
 	ctx.enable( ctx.BLEND );
 	ctx.blendFunc( ctx.SRC_ALPHA, ctx.ONE_MINUS_SRC_ALPHA );
@@ -197,7 +197,7 @@ const createTileGridRenderer = (
 
 		// Add textures.
 		const paletteTexture = palettes.createTexture( ctx, 0 );
-		const tilesetTexture = tileset.createTexture( ctx, 1 );
+		const tilesetTexture = graphics.createTexture( ctx, 1 );
 		renderObject.addTextureUniform( `u_palette_texture`, 0, paletteTexture );
 		renderObject.addTextureUniform( `u_tileset_texture`, 1, tilesetTexture );
 
@@ -210,9 +210,9 @@ const createTileGridRenderer = (
 				program.use();
 				program.setUniform1f( `u_palette_index`, selectedPalette );
 			},
-			updateTileset: ( tileset: Tileset ): void => {
+			updateGraphics: ( graphics: GraphicsEntry ): void => {
 				program.use();
-				const tilesetTexture = tileset.createTexture( ctx, 1 );
+				const tilesetTexture = graphics.createTexture( ctx, 1 );
 				renderObject.addTextureUniform( `u_tileset_texture`, 1, tilesetTexture );
 			},
 		};
@@ -278,20 +278,20 @@ const createTileGridRenderer = (
 		updateSelectedPalette: ( selectedPalette: number ): void => {
 			tilemapRenderer.updateSelectedPalette( selectedPalette );
 		},
-		updateTileset: ( tileset: Tileset ): void => {
-			tilemapRenderer.updateTileset( tileset );
+		updateGraphics: ( graphics: GraphicsEntry ): void => {
+			tilemapRenderer.updateGraphics( graphics );
 		},
 	};
 };
 
 const TileGrid = ( props: TileGridProps ): ReactElement => {
 	const canvasRef = useRef();
-	const { palettes, selectedPalette, selectedTile, setSelectedTile, tileset } = props;
+	const { graphics, palettes, selectedPalette, selectedTile, setSelectedTile } = props;
 	const [ hovered, setHovered ] = useState( { x: 0, y: 0 } );
 	const [ showGridLines, setShowGridLines ] = useState( true );
 	const [ renderer, setRenderer ] = useState( null );
-	const width = tileset.getWidthPixels() * zoom;
-	const height = tileset.getHeightPixels() * zoom;
+	const width = graphics.getWidthPixels() * zoom;
+	const height = graphics.getHeightPixels() * zoom;
 
 	const render = () => {
 		if ( ! canvasRef.current ) {
@@ -308,8 +308,8 @@ const TileGrid = ( props: TileGridProps ): ReactElement => {
 
 		const selected = selectedTile ?
 			Object.freeze( {
-				x: selectedTile % tileset.getWidthTiles(),
-				y: Math.floor( selectedTile / tileset.getWidthTiles() ),
+				x: selectedTile % graphics.getWidthTiles(),
+				y: Math.floor( selectedTile / graphics.getWidthTiles() ),
 			} )
 			: { x: 0, y: 0 };
 		renderer.render( hovered, selected, showGridLines );
@@ -335,7 +335,7 @@ const TileGrid = ( props: TileGridProps ): ReactElement => {
 
 		const gridX = Math.floor( x / tileSize );
 		const gridY = Math.floor( y / tileSize );
-		const selected = gridY * tileset.getWidthTiles() + gridX;
+		const selected = gridY * graphics.getWidthTiles() + gridX;
 
 		if ( selectedTile === selected ) {
 			return;
@@ -352,7 +352,7 @@ const TileGrid = ( props: TileGridProps ): ReactElement => {
 				throw new Error( `Could not get webgl context for canvas` );
 			}
 
-			setRenderer( createTileGridRenderer( ctx, width, height, palettes, tileset ) );
+			setRenderer( createTileGridRenderer( ctx, width, height, palettes, graphics ) );
 		}
 	}, [ canvasRef.current ] );
 
@@ -370,9 +370,9 @@ const TileGrid = ( props: TileGridProps ): ReactElement => {
 			return;
 		}
 
-		renderer.updateTileset( tileset );
+		renderer.updateGraphics( graphics );
 		render();
-	}, [ tileset ] );
+	}, [ graphics ] );
 
 	// Render on canvas ref or whene’er there is a state change.
 	useEffect( render, [ canvasRef, selectedTile, hovered, renderer, showGridLines ] );

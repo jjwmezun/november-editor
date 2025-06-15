@@ -35,6 +35,30 @@ const createMat3 = ( values: number[] = identity ): Mat3 => {
 				0, 0, 1,
 			],
 		) ),
+		rotateY: ( angle: number ) => createMat3( mat3Multiply(
+			values,
+			[
+				Math.cos( angle ), 0, Math.sin( angle ),
+				0, 1, 0,
+				-Math.sin( angle ), 0, Math.cos( angle ),
+			],
+		) ),
+		rotateX: ( angle: number ) => createMat3( mat3Multiply(
+			values,
+			[
+				1, 0, 0,
+				0, Math.cos( angle ), -Math.sin( angle ),
+				0, Math.sin( angle ), Math.cos( angle ),
+			],
+		) ),
+		rotateZ: ( angle: number ) => createMat3( mat3Multiply(
+			values,
+			[
+				Math.cos( angle ), -Math.sin( angle ), 0,
+				Math.sin( angle ), Math.cos( angle ), 0,
+				0, 0, 1,
+			],
+		) ),
 	} );
 };
 

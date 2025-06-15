@@ -44,8 +44,8 @@ interface DecodedTextData {
 	remainingBytes: Uint8Array,
 }
 
-interface DecodedTilesetData {
-	tileset: Tileset,
+interface DecodedGraphicsData {
+	graphics: Graphics,
 	remainingBytes: Uint8Array,
 }
 
@@ -68,6 +68,25 @@ interface GoalTemplate {
 	exportData?: ByteBlockRef[],
 }
 
+interface Graphics {
+	blocks: GraphicsEntry,
+	sprites: GraphicsEntry,
+}
+
+interface GraphicsEntry {
+	clearTile: ( tileIndex: number ) => void,
+	createTexture: ( ctx: WebGLRenderingContext, index: number ) => WebGLTexture,
+	getWidthTiles: () => number,
+	getHeightTiles: () => number,
+	getWidthPixels: () => number,
+	getHeightPixels: () => number,
+	getPixels: () => number[],
+	importPixels: ( newPixels: number[], importWidth: number, importHeight: number, tileIndex: number ) => void,
+	toJSON: () => object,
+	updatePixels: ( newPixels: number[] ) => GraphicsEntry,
+	updatePixel: ( color: number, x: number, y: number ) => void,
+}
+
 interface GraphicTile {
 	animation: number;
 	srcHeight: number;
@@ -76,10 +95,12 @@ interface GraphicTile {
 	srcy: number;
 	x: number;
 	y: number;
+	flipx: boolean;
+	flipy: boolean;
 }
 
 interface BlockLayer {
-	type: LayerType.block,
+	type: LayerType,
 	objects: MapObject[],
 	scrollX: number,
 }
@@ -88,6 +109,7 @@ type Layer = BlockLayer;
 
 enum LayerType {
 	block = `block`,
+	sprite = `sprite`,
 }
 
 interface Level {
@@ -103,6 +125,7 @@ interface Level {
 
 interface LevelEditorProps {
 	closeLevel: () => void;
+	graphics: Graphics;
 	maps: ArrayBuffer[];
 	name: string;
 	setName: ( name: string ) => void;
@@ -110,7 +133,6 @@ interface LevelEditorProps {
 	palettes: PaletteList;
 	setMaps: ( maps: ArrayBuffer[] ) => void;
 	setGoal: ( goal: Goal ) => void;
-	tileset: Tileset;
 }
 
 interface LevelListProps {
@@ -123,16 +145,16 @@ interface LevelListProps {
 
 interface LevelModeProps {
 	exitMode: () => void;
+	graphics: Graphics;
 	levels: Level[];
 	palettes: PaletteList;
 	setLevels: ( levels: Level[] ) => void;
-	tileset: Tileset;
 }
 
 interface LevelProps { name: string, goal: Goal, maps: ArrayBuffer[] }
 
 interface LvMap {
-	addLayer: () => LvMap,
+	addLayer: ( type: LayerType ) => LvMap,
 	getProps: () => LvMapProps,
 	removeLayer: ( index: number ) => LvMap,
 	switchLayers: ( a: number, b: number ) => LvMap,
@@ -320,20 +342,20 @@ interface TextTrie {
 }
 
 interface TileGridProps {
+	graphics: GraphicsEntry,
 	palettes: PaletteList,
 	selectedPalette: number,
 	selectedTile: number | null,
 	setSelectedTile: ( tile: number ) => void,
-	tileset: Tileset,
 }
 
 interface TileEditorProps {
 	clearTile: () => void,
 	drawPixel: ( x: number, y: number ) => void,
+	graphics: GraphicsEntry,
 	palettes: PaletteList,
 	selectedColor: number,
 	selectedPalette: number,
-	tileset: Tileset,
 	tileX: number,
 	tileY: number,
 }
@@ -345,32 +367,6 @@ interface TileRendererArgs {
 	y?: number,
 	w?: number,
 	h?: number,
-}
-
-interface Tileset {
-	clearTile: ( tileIndex: number ) => void,
-	createTexture: ( ctx: WebGLRenderingContext, index: number ) => WebGLTexture,
-	drawPiece: (
-		ctx: CanvasRenderingContext2D,
-		srcX: number,
-		srcY: number,
-		srcW: number,
-		srcH: number,
-		destX: number,
-		destY: number,
-		destW: number,
-		destH: number
-	) => void,
-	drawWhole: ( ctx: CanvasRenderingContext2D, ctxWidth: number, ctxHeight: number ) => void,
-	getWidthTiles: () => number,
-	getHeightTiles: () => number,
-	getWidthPixels: () => number,
-	getHeightPixels: () => number,
-	getPixels: () => number[],
-	importPixels: ( newPixels: number[], importWidth: number, importHeight: number, tileIndex: number ) => void,
-	toJSON: () => object,
-	updatePixels: ( newPixels: number[] ) => Tileset,
-	updatePixel: ( color: number, x: number, y: number ) => void,
 }
 
 interface WebGL2Program {
@@ -406,9 +402,11 @@ export {
 	Coordinates,
 	DecodedLevelData,
 	DecodedTextData,
-	DecodedTilesetData,
+	DecodedGraphicsData,
 	Goal,
 	GoalTemplate,
+	Graphics,
+	GraphicsEntry,
 	GraphicTile,
 	Layer,
 	LayerType,
@@ -439,6 +437,5 @@ export {
 	TileGridProps,
 	TileEditorProps,
 	TileRendererArgs,
-	Tileset,
 	WebGL2Program,
 };

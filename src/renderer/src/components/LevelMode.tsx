@@ -6,7 +6,7 @@ import LevelList from './LevelList';
 import { LevelModeProps } from '../../../common/types';
 
 const LevelMode = ( props: LevelModeProps ): ReactElement => {
-	const { exitMode, levels, palettes, setLevels, tileset } = props;
+	const { exitMode, graphics, levels, palettes, setLevels } = props;
 	const [ selectedLevel, setSelectedLevel ] = useState( null );
 
 	const closeLevel = () => setSelectedLevel( null );
@@ -69,13 +69,13 @@ const LevelMode = ( props: LevelModeProps ): ReactElement => {
 		{ selectedLevel !== null && <LevelEditor
 			closeLevel={ closeLevel }
 			goal={ levels[ selectedLevel ].getGoal() }
+			graphics={ graphics }
 			maps={ levels[ selectedLevel ].getMaps() }
 			name={ levels[ selectedLevel ].getName() }
 			palettes={ palettes }
 			setGoal={ setGoal }
 			setName={ generateLevelNameUpdater( selectedLevel ) }
 			setMaps={ setMaps }
-			tileset={ tileset }
 		/> }
 	</div>;
 };
