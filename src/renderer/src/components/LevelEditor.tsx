@@ -6,13 +6,14 @@ import {
 	layerTypeNames,
 	transformMapDataToObject,
 } from '../../../common/levels';
-import { objectTypes } from '../../../common/objects';
+import { getTypeFactory } from '../../../common/objects';
 import { getMousePosition } from '../../../common/utils';
 import {
 	Graphics,
 	GraphicTile,
 	LevelEditorProps,
 	Layer,
+	LayerType,
 	LvMap,
 	MapObject,
 	PaletteList,
@@ -40,6 +41,8 @@ const createObjectRenderer = (
 	ctx: WebGL2RenderingContext,
 	palettes: PaletteList,
 	graphics: Graphics,
+	layerType: LayerType,
+	selectedPalette: number,
 ): ObjectRenderer => {
 	const program = createShaderProgram(
 		ctx,
@@ -119,12 +122,14 @@ const createObjectRenderer = (
 
 	// Setup textures.
 	const paletteTexture = palettes.createTexture( ctx, 0 );
-	const tilesetTexture = graphics.blocks.createTexture( ctx, 1 );
+	const graphicsType: string = layerType === LayerType.block ? `blocks` : `sprites`;
+	const textureIndex = layerType === LayerType.block ? 1 : 2;
+	const tilesetTexture = graphics[ graphicsType ].createTexture( ctx, textureIndex );
 	renderObject.addTextureUniform( `u_palette_texture`, 0, paletteTexture );
-	renderObject.addTextureUniform( `u_tileset_texture`, 1, tilesetTexture );
+	renderObject.addTextureUniform( `u_tileset_texture`, textureIndex, tilesetTexture );
 
 	// Init palette index uniform.
-	program.setUniform1f( `u_palette_index`, 0 );
+	program.setUniform1f( `u_palette_index`, selectedPalette );
 	program.setUniform1f( `u_alpha`, 0.5 );
 	program.setUniform1f( `u_animation`, 0 );
 
@@ -208,9 +213,10 @@ const createObjectRenderer = (
 		},
 		updateObjects: ( objects: MapObject[] ) => {
 			program.use();
+			const typeFactory = getTypeFactory( layerType );
 			tiles = objects.reduce(
 				( acc: GraphicTile[], object: MapObject ) => {
-					return acc.concat( objectTypes[ object.type() ].generateTiles( object ) );
+					return acc.concat( typeFactory[ object.type() ].generateTiles( object ) );
 				},
 				[],
 			);
@@ -232,18 +238,18 @@ const createMapRenderer = (
 	ctx: WebGL2RenderingContext,
 	palettes: PaletteList,
 	graphics: Graphics,
-	layerObjects: MapObject[][],
+	layers: Layer[],
 	selectedPalette: number,
 ) => {
 	ctx.enable( ctx.BLEND );
 	ctx.blendFunc( ctx.SRC_ALPHA, ctx.ONE_MINUS_SRC_ALPHA );
 	ctx.viewport( 0, 0, ctx.canvas.width, ctx.canvas.height );
 
-	let objectRenderers = [ ...Array( layerObjects.length ).keys() ]
-		.map( () => createObjectRenderer( ctx, palettes, graphics ) );
+	let objectRenderers = layers
+		.map( ( layer: Layer ) => createObjectRenderer( ctx, palettes, graphics, layer.type, selectedPalette ) );
 
 	objectRenderers.forEach( ( objectRenderer: ObjectRenderer, i: number ) => {
-		objectRenderer.updateObjects( layerObjects[ i ] );
+		objectRenderer.updateObjects( layers[ i ].objects );
 		objectRenderer.updatePalette( selectedPalette );
 	} );
 
@@ -398,11 +404,12 @@ const createMapRenderer = (
 				canvasHeight = newHeight;
 				updateModels();
 			},
-			setSelected: ( i: number | null, objects: MapObject[] ) => {
+			setSelected: ( i: number | null, objects: MapObject[], layerType: LayerType ) => {
 				program.use();
+				const typeFactory = getTypeFactory( layerType );
 				rects = i === null
 					? []
-					: objectTypes[ objects[ i ].type() ].generateHighlight( objects[ i ] );
+					: typeFactory[ objects[ i ].type() ].generateHighlight( objects[ i ] );
 				updateModels();
 			},
 		} );
@@ -490,8 +497,8 @@ const createMapRenderer = (
 			ctx.viewport( 0, 0, width * 16, height * 16 );
 			gridLines.updateDimensions( width, height );
 
-			objectRenderers = [ ...Array( layers.length ).keys() ]
-				.map( () => createObjectRenderer( ctx, palettes, graphics ) );
+			objectRenderers = layers
+				.map( ( layer: Layer ) => createObjectRenderer( ctx, palettes, graphics, layer.type, palette ) );
 
 			objectRenderers.forEach( ( objectRenderer: ObjectRenderer, i: number ) => {
 				objectRenderer.updateObjects( layers[ i ].objects );
@@ -535,8 +542,8 @@ const createMapRenderer = (
 				objectRenderer.updatePalette( palette );
 			} );
 		},
-		addLayer: () => {
-			objectRenderers.push( createObjectRenderer( ctx, palettes, graphics ) );
+		addLayer: ( type: LayerType, selectedPalette: number ) => {
+			objectRenderers.push( createObjectRenderer( ctx, palettes, graphics, type, selectedPalette ) );
 		},
 		removeLayer: ( layer: number ) => {
 			objectRenderers.splice( layer, 1 );
@@ -546,10 +553,10 @@ const createMapRenderer = (
 				objectRenderer.setSelectedLayer( selectedLayer === i );
 			} );
 		},
-		setSelectedObject: ( i: number | null, objects: MapObject[] ) => {
+		setSelectedObject: ( i: number | null, objects: MapObject[], layerType: LayerType = LayerType.block ) => {
 			isAnObjectSelected = i !== null;
 			if ( isAnObjectSelected ) {
-				selectedObject.setSelected( i, objects );
+				selectedObject.setSelected( i, objects, layerType );
 			}
 		},
 		setSelectedTile: ( x: number | null, y: number | null ) => {
@@ -584,6 +591,7 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 	const [ selectedMapIndex, setSelectedMapIndex ] = useState( null );
 	const [ selectedMap, setSelectedMap ] = useState( null );
 	const [ renderer, setRenderer ] = useState( null );
+	const [ addLayerOption, setAddLayerOption ] = useState( `block` );
 
 	const { height, layers, palette, width } = selectedMap !== null
 		? selectedMap.getProps()
@@ -595,7 +603,7 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 		closeLevel();
 		setSelected( { x: null, y: null } );
 		setSelectedObject( null );
-		renderer.setSelectedObject( null );
+		renderer.setSelectedObject( null, [] );
 		setSelectedLayer( null );
 		setSelectedMap( null );
 		setSelectedMapIndex( null );
@@ -616,7 +624,7 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 		setMaps( [ ...maps, generateDataBytes( map ) ] );
 		setSelected( { x: null, y: null } );
 		setSelectedObject( null );
-		renderer.setSelectedObject( null );
+		renderer.setSelectedObject( null, [] );
 		setSelectedLayer( null );
 	};
 
@@ -668,30 +676,30 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 
 	const updateObject = ( index, o ) => {
 		updateMap( selectedMap.updateLayer( selectedLayer ).updateObject( index, o ) );
-		renderer.setSelectedObject( index, objects );
+		renderer.setSelectedObject( index, objects, layers[ selectedLayer ].type );
 		renderer.updateLayerObjects( selectedLayer, objects );
 	};
 
 	const removeObject = () => {
 		updateMap( selectedMap.updateLayer( selectedLayer ).removeObject( selectedObject ) );
 		setSelectedObject( null );
-		renderer.setSelectedObject( null );
+		renderer.setSelectedObject( null, [] );
 		renderer.updateLayerObjects( selectedLayer, objects );
 	};
 
 	const addLayer = () => {
 		setSelectedLayer( layers.length );
 		setSelectedObject( null );
-		renderer.setSelectedObject( null );
-		updateMap( selectedMap.addLayer() );
-		renderer.addLayer();
+		renderer.setSelectedObject( null, [] );
+		updateMap( selectedMap.addLayer( addLayerOption ) );
+		renderer.addLayer( addLayerOption, palette );
 	};
 
 	const removeLayer = () => {
 		const layersCount = layers.length - 1;
 		updateMap( selectedMap.removeLayer( selectedLayer ) );
 		setSelectedObject( null );
-		renderer.setSelectedObject( null );
+		renderer.setSelectedObject( null, [] );
 		renderer.removeLayer( selectedLayer );
 		setSelectedLayer( selectedLayer === 0
 			? ( selectedLayer === layersCount
@@ -708,7 +716,7 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 		setSelectedLayer( i );
 		renderer.setSelectedLayer( i );
 		setSelectedObject( null );
-		renderer.setSelectedObject( null );
+		renderer.setSelectedObject( null, [] );
 	};
 
 	const moveLayerUp = () => {
@@ -745,7 +753,7 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 				break;
 			}
 		}
-		renderer.setSelectedObject( newSelectedObject, objects );
+		renderer.setSelectedObject( newSelectedObject, objects, layers[ selectedLayer ].type );
 		setSelectedObject( newSelectedObject, objects );
 	};
 
@@ -762,7 +770,7 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 		const gridX = Math.floor( x / 16 );
 		const gridY = Math.floor( y / 16 );
 
-		addObject( { ...objectTypes[ selectedType ].create( gridX, gridY ), type: selectedType } );
+		addObject( { ...typesFactory[ selectedType ].create( gridX, gridY ), type: selectedType } );
 	};
 
 	// Update cursor visuals on mouse move.
@@ -777,11 +785,17 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 		}
 
 		setSelected( { x: gridX, y: gridY } );
+		if ( ! renderer ) {
+			return;
+		}
 		renderer.setSelectedTile( gridX, gridY );
 	};
 
 	const onMouseOut = () => {
 		setSelected( { x: null, y: null } );
+		if ( ! renderer ) {
+			return;
+		}
 		renderer.setSelectedTile( null, null );
 	};
 
@@ -823,6 +837,8 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 		window.electronAPI.enableSave();
 	};
 
+	const typesFactory = getTypeFactory( selectedLayer ? layers[ selectedLayer ].type : LayerType.block );
+
 	// On canvas load, generate renderer.
 	useEffect( () => {
 		if ( canvasRef.current ) {
@@ -835,7 +851,7 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 				ctx,
 				palettes,
 				graphics,
-				layers.map( ( l: Layer ) => l.objects ),
+				layers,
 				palette,
 			) );
 		}
@@ -942,6 +958,13 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 		const paletteIndex = parseInt( target.value );
 		updateMap( selectedMap.updatePalette( paletteIndex ) );
 		renderer.updatePalette( paletteIndex );
+	};
+
+	const changeAddLayerOption = ( e: SyntheticBaseEvent ) => {
+		const target: HTMLSelectElement = e.target;
+		const value = target.value;
+		setAddLayerOption( value as LayerType );
+		setSelectedType( 0 );
 	};
 
 	useEffect( () => {
@@ -1057,12 +1080,6 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 						} ) }
 					</select>
 				</label>
-				<label>
-					<span>Type:</span>
-					<select value={ selectedType } onChange={ e => setSelectedType( e.target.value ) }>
-						{ objectTypes.map( ( type, i ) => <option key={ i } value={ i }>{ type.name }</option> ) }
-					</select>
-				</label>
 			</div>
 			{ selectedLayer !== null && <div>
 				<label>
@@ -1074,10 +1091,18 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 					/>
 				</label>
 			</div> }
+			{ selectedLayer !== null && <div>
+				<label>
+					<span>Type:</span>
+					<select value={ selectedType } onChange={ e => setSelectedType( e.target.value ) }>
+						{ typesFactory.map( ( type, i ) => <option key={ i } value={ i }>{ type.name }</option> ) }
+					</select>
+				</label>
+			</div> }
 			{ selectedLayer !== null && selectedObject !== null && <div>
 				<div>Selected object: { selectedObject }</div>
 				{
-					objectTypes[ objects[ selectedObject ].type() ].options.map( ( options, i ) => {
+					typesFactory[ objects[ selectedObject ].type() ].options.map( ( options, i ) => {
 						const {
 							atts,
 							key,
@@ -1134,6 +1159,11 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 				</ul>
 			</div>
 			<button disabled={ layers.length >= 255 } onClick={ addLayer }>Add layer</button>
+			<select value={ addLayerOption } onChange={ changeAddLayerOption }>
+				{ Object.keys( layerTypeNames ).map( ( type, i ) => {
+					return <option key={ i } value={ type }>{ layerTypeNames[ type as LayerType ] }</option>;
+				} ) }
+			</select>
 			<button disabled={ selectedLayer === null } onClick={ removeLayer }>Delete layer</button>
 			<button disabled={ selectedLayer === null || selectedLayer === 0 } onClick={ moveLayerUp }>↑</button>
 			<button

@@ -278,7 +278,7 @@ const Editor = (): ReactElement => {
 						if ( ! layer || typeof layer !== `object` ) {
 							throw new Error( `Invalid layer data for layer #${ k } o’ map #${ j } o’ level #${ i }` );
 						}
-						if ( typeof layer[ `type` ] !== `number` ) {
+						if ( typeof layer[ `type` ] !== `string` ) {
 							throw new Error( `Invalid layer type for layer #${ k } o’ map #${ j } o’ level #${ i }` );
 						}
 						if ( ! Array.isArray( layer[ `objects` ] ) ) {
@@ -327,7 +327,7 @@ const Editor = (): ReactElement => {
 						} );
 
 						return createLayer(
-							LayerType.block,
+							layer[ `type` ] as LayerType,
 							objects,
 							layer[ `scrollX` ],
 						);

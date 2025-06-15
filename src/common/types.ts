@@ -98,7 +98,7 @@ interface GraphicTile {
 }
 
 interface BlockLayer {
-	type: LayerType.block,
+	type: LayerType,
 	objects: MapObject[],
 	scrollX: number,
 }
@@ -152,7 +152,7 @@ interface LevelModeProps {
 interface LevelProps { name: string, goal: Goal, maps: ArrayBuffer[] }
 
 interface LvMap {
-	addLayer: () => LvMap,
+	addLayer: ( type: LayerType ) => LvMap,
 	getProps: () => LvMapProps,
 	removeLayer: ( index: number ) => LvMap,
 	switchLayers: ( a: number, b: number ) => LvMap,

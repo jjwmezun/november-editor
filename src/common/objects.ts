@@ -1,5 +1,5 @@
 import { tilesPerBlock } from "./constants";
-import { GraphicTile, MapObject, MapObjectType } from "./types";
+import { GraphicTile, LayerType, MapObject, MapObjectType } from "./types";
 
 const createTile = ( options: object ) => {
 	return {
@@ -540,6 +540,63 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 	},
 ] );
 
-export {
-	objectTypes,
-};
+const spriteTypes: readonly MapObjectType[] = Object.freeze( [
+	{
+		name: `Player`,
+		create: ( x, y ) => ( {
+			x: x,
+			y: y,
+			width: 1,
+			height: 2,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				x: object.xTiles(),
+				y: object.yTiles(),
+				srcWidth: tilesPerBlock,
+				srcHeight: tilesPerBlock * 2,
+			} ),
+		],
+		exportData: [
+			{ type: `Uint16`, key: `x` },
+			{ type: `Uint16`, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+		],
+	},
+] );
+
+const getTypeFactory = ( type: LayerType ): readonly MapObjectType[] => (
+	type === LayerType.sprite ? spriteTypes : objectTypes );
+
+export { getTypeFactory };
