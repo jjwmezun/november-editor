@@ -10,6 +10,8 @@ const createTile = ( options: object ) => {
 		srcy: 0,
 		x: 0,
 		y: 0,
+		flipx: false,
+		flipy: false,
 		...options,
 	};
 };
@@ -565,6 +567,7 @@ const spriteTypes: readonly MapObjectType[] = Object.freeze( [
 				y: object.yTiles(),
 				srcWidth: tilesPerBlock,
 				srcHeight: tilesPerBlock * 2,
+				flipx: true,
 			} ),
 		],
 		exportData: [
@@ -590,6 +593,73 @@ const spriteTypes: readonly MapObjectType[] = Object.freeze( [
 				atts: {
 					min: 0,
 					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Bad Apple`,
+		create: ( x, y ) => ( {
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+			direction: 0,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				x: object.xTiles(),
+				y: object.yTiles(),
+				srcWidth: tilesPerBlock,
+				srcHeight: tilesPerBlock,
+				srcy: 4,
+				flipx: object.getProp( `direction` ) === 1,
+			} ),
+		],
+		exportData: [
+			{ type: `Uint16`, key: `x` },
+			{ type: `Uint16`, key: `y` },
+			{ type: `Uint8`, key: `direction` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Direction`,
+				key: `direction`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: 1,
 				},
 			},
 		],

@@ -150,6 +150,8 @@ const createObjectRenderer = (
 					srcy,
 					x,
 					y,
+					flipx,
+					flipy,
 				} = tile;
 				const modelWidth = ( 8 / canvasWidth ) * srcWidth;
 				const modelHeight = ( 8 / canvasHeight ) * srcHeight;
@@ -158,7 +160,10 @@ const createObjectRenderer = (
 						-1 + ( 1 + ( 2 / srcWidth ) * x ) * modelWidth,
 						1 - ( 1 + ( 2 / srcHeight ) * y ) * modelHeight,
 					] )
-					.scale( [ modelWidth, modelHeight ] );
+					.scale( [
+						modelWidth * ( flipx ? -1 : 1 ),
+						modelHeight * ( flipy ? -1 : 1 ),
+					] );
 				const texmodel = createMat3()
 					.translate( [
 						srcx / 64,

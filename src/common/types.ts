@@ -95,6 +95,8 @@ interface GraphicTile {
 	srcy: number;
 	x: number;
 	y: number;
+	flipx: boolean;
+	flipy: boolean;
 }
 
 interface BlockLayer {
