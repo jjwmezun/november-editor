@@ -171,6 +171,16 @@ interface LvMap {
 	updatePalette: ( newPalette: number ) => LvMap,
 }
 
+interface MapEditorProps {
+	graphics: Graphics;
+	maps: ArrayBuffer[];
+	palettes: PaletteList;
+	selectedMap: LvMap | null;
+	selectedMapIndex: number | null;
+	setMaps: ( maps: ArrayBuffer[] ) => void;
+	setSelectedMap: ( map: LvMap | null ) => void;
+}
+
 interface MapObject {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	getProp: ( key: string ) => any,
@@ -428,6 +438,7 @@ export {
 	LvMap,
 	LvMapByteProps,
 	LvMapProps,
+	MapEditorProps,
 	MapObject,
 	MapObjectArgs,
 	MapObjectType,
