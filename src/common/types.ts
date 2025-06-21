@@ -257,6 +257,16 @@ interface MousePosition {
 	y: number,
 }
 
+interface ObjectRenderer {
+	render: () => void;
+	setSelectedLayer: ( isSelected: boolean ) => void;
+	updateAnimationFrame: ( frame: number ) => void;
+	updateDimensions: ( width: number, height: number ) => void;
+	updateObjects: ( objects: MapObject[] ) => void;
+	updatePalette: ( palette: number ) => void;
+	updateScrollX: ( layerScrollX: number, windowScrollX: number, mapWidth: number ) => void;
+}
+
 interface Palette {
 	getList: () => number[],
 	getName: () => string,
@@ -424,6 +434,7 @@ export {
 	Mat3,
 	Mode,
 	MousePosition,
+	ObjectRenderer,
 	Palette,
 	PaletteData,
 	PaletteList,
