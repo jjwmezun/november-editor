@@ -171,6 +171,16 @@ interface LvMap {
 	updatePalette: ( newPalette: number ) => LvMap,
 }
 
+interface MapEditorProps {
+	graphics: Graphics;
+	maps: ArrayBuffer[];
+	palettes: PaletteList;
+	selectedMap: LvMap | null;
+	selectedMapIndex: number | null;
+	setMaps: ( maps: ArrayBuffer[] ) => void;
+	setSelectedMap: ( map: LvMap | null ) => void;
+}
+
 interface MapObject {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	getProp: ( key: string ) => any,
@@ -255,6 +265,16 @@ interface LvMapProps {
 interface MousePosition {
 	x: number,
 	y: number,
+}
+
+interface ObjectRenderer {
+	render: () => void;
+	setSelectedLayer: ( isSelected: boolean ) => void;
+	updateAnimationFrame: ( frame: number ) => void;
+	updateDimensions: ( width: number, height: number ) => void;
+	updateObjects: ( objects: MapObject[] ) => void;
+	updatePalette: ( palette: number ) => void;
+	updateScrollX: ( layerScrollX: number, windowScrollX: number, mapWidth: number ) => void;
 }
 
 interface Palette {
@@ -418,12 +438,14 @@ export {
 	LvMap,
 	LvMapByteProps,
 	LvMapProps,
+	MapEditorProps,
 	MapObject,
 	MapObjectArgs,
 	MapObjectType,
 	Mat3,
 	Mode,
 	MousePosition,
+	ObjectRenderer,
 	Palette,
 	PaletteData,
 	PaletteList,
