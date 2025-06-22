@@ -6,7 +6,7 @@ Created by J. J. W. Mezun. Released under GPLv3 license.
 
 ## Todo:
 
-☐ O’erworld editor
-☐ Background layer
-☐ Object selector
-☐ Multiple tilesets
+- O’erworld editor
+- Background layer
+- Object selector
+- Multiple tilesets
