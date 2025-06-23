@@ -8,11 +8,10 @@ import SelectMode from './SelectMode';
 import GraphicsMode from './GraphicsMode';
 import PaletteMode from './PaletteMode';
 import {
-	compressPixels,
-	createBlankGraphicsEntry,
 	createGraphicsEntry,
 	createNewGraphics,
 	decompressPixels,
+	loadGraphicsFromData,
 } from '../../../common/graphics';
 import {
 	createLayer,
@@ -26,7 +25,6 @@ import {
 import {
 	ByteBlock,
 	Color,
-	DecodedGraphicsData,
 	Graphics,
 	Layer,
 	LayerType,
@@ -45,32 +43,13 @@ import {
 	decodePaletteData,
 } from '../../../common/palettes';
 
-const loadGraphicsFromData = ( data: Uint8Array ): DecodedGraphicsData => {
-	const graphics: Graphics = createNewGraphics();
-
-	[ `blocks`, `sprites` ].forEach( ( type: string ) => {
-		let entry = createBlankGraphicsEntry( 64, 64 );
-
-		// Update graphics entry with new pixels.
-		const dataSize = Math.ceil( entry.getPixels().length * ( 3 / 8 ) );
-		const pixels: number[] = decompressPixels( Array.from( data ).slice( 0, dataSize ) );
-		entry = entry.updatePixels( pixels );
-		data = data.slice( dataSize );
-		graphics[ type ] = entry;
-	} );
-
-	return {
-		graphics,
-		remainingBytes: data,
-	};
-};
-
 const generateExportData = ( levels: Level[], palettes: PaletteList, graphics: Graphics ): DataView => {
 	let saveData: ByteBlock[] = palettes.encode();
 
-	saveData = saveData.concat( compressPixels( graphics.blocks.getPixels() )
-		.concat( compressPixels( graphics.sprites.getPixels() ) )
-		.map( ( byte: number ): ByteBlock => ( { type: `Uint8`, value: byte } ) ) );
+	// Encode each graphics entry.
+	for ( const entry in graphics ) {
+		saveData = saveData.concat( graphics[ entry ].encode() );
+	}
 
 	// For each level, generate bytes for name, goal, and maps.
 	saveData = saveData.concat( encodeLevels( levels ) );
@@ -181,12 +160,9 @@ const Editor = (): ReactElement => {
 				throw new Error( `Invalid graphics data` );
 			}
 
-			const graphics = {
-				blocks: createBlankGraphicsEntry( 64, 64 ),
-				sprites: createBlankGraphicsEntry( 64, 64 ),
-			};
+			const graphics = createNewGraphics();
 
-			[ `blocks`, `sprites` ].forEach( ( type: string ) => {
+			[ `blocks`, `overworld`, `sprites` ].forEach( ( type: string ) => {
 				if ( ! data[ `graphics` ] || typeof data[ `graphics` ] !== `object` ) {
 					throw new Error( `Invalid graphics data` );
 				}
@@ -391,6 +367,7 @@ const Editor = (): ReactElement => {
 			window.electronAPI.save( JSON.stringify( {
 				graphics: {
 					blocks: graphics.blocks.toJSON(),
+					overworld: graphics.overworld.toJSON(),
 					sprites: graphics.sprites.toJSON(),
 				},
 				palettes: palettes.map( ( palette: Palette ) => palette.toJSON() ),

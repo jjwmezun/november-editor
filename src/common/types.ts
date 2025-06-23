@@ -70,12 +70,14 @@ interface GoalTemplate {
 
 interface Graphics {
 	blocks: GraphicsEntry,
+	overworld: GraphicsEntry,
 	sprites: GraphicsEntry,
 }
 
 interface GraphicsEntry {
 	clearTile: ( tileIndex: number ) => void,
 	createTexture: ( ctx: WebGLRenderingContext, index: number ) => WebGLTexture,
+	encode: () => ByteBlock[],
 	getWidthTiles: () => number,
 	getHeightTiles: () => number,
 	getWidthPixels: () => number,
