@@ -1,8 +1,7 @@
-import { getTypeFactory } from './objects';
+import { createObject, getTypeFactory } from './objects';
 import { getDataTypeSize } from './bytes';
 import { createGoal, goals } from './goals';
 import { encodeText, decodeText } from './text';
-import { tilesPerBlock, pixelsPerBlock } from "./constants";
 import {
 	ByteBlock,
 	DecodedLevelData,
@@ -152,7 +151,7 @@ const createMap = (
 					newLayers[ index ].objects.splice( objectIndex, 1 );
 					return createMap( width, height, newLayers, palette );
 				},
-				updateObject: ( objectIndex, newObject ) => {
+				updateObject: ( objectIndex: number, newObject: MapObjectArgs ) => {
 					const newLayers = [ ...layers ];
 					newLayers[ index ].objects[ objectIndex ] =
 						newLayers[ index ].objects[ objectIndex ].update( newObject );
@@ -174,45 +173,6 @@ const createMap = (
 		updatePalette: newPalette => {
 			return createMap( width, height, layers, newPalette );
 		},
-	} );
-};
-
-const createObject = ( object: MapObjectArgs ): MapObject => {
-	const {
-		type = 0,
-		x = 0,
-		y = 0,
-		width = 1,
-		height = 1,
-	} = object;
-	return Object.freeze( {
-		getProp: ( key: string ) => {
-			if ( !( key in object ) ) {
-				throw new Error( `Key ${ key } not found in object.` );
-			}
-			return object[ key ];
-		},
-		type: () => type,
-		xBlocks: () => x,
-		xTiles: () => x * tilesPerBlock,
-		xPixels: () => x * pixelsPerBlock,
-		yBlocks: () => y,
-		yTiles: () => y * tilesPerBlock,
-		yPixels: () => y * pixelsPerBlock,
-		widthBlocks: () => width,
-		widthTiles: () => width * tilesPerBlock,
-		widthPixels: () => width * pixelsPerBlock,
-		heightBlocks: () => height,
-		heightTiles: () => height * tilesPerBlock,
-		heightPixels: () => height * pixelsPerBlock,
-		rightBlocks: () => x + width,
-		rightTiles: () => ( x + width ) * tilesPerBlock,
-		rightPixels: () => ( x + width ) * pixelsPerBlock,
-		bottomBlocks: () => y + height,
-		bottomTiles: () => ( y + height ) * tilesPerBlock,
-		bottomPixels: () => ( y + height ) * pixelsPerBlock,
-		toJSON: () => object,
-		update: newObject => createObject( { ...object, ...newObject } ),
 	} );
 };
 
@@ -432,7 +392,6 @@ export {
 	createLayer,
 	createLevel,
 	createMap,
-	createObject,
 	encodeLevels,
 	generateDataBytes,
 	layerTypeNames,

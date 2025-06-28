@@ -1,5 +1,7 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import React, { ReactElement, useEffect, useState } from 'react';
+
 import '../assets/editor.scss';
-import { ReactElement, useEffect, useState } from 'react';
 import { getDataTypeSize } from '../../../common/bytes';
 import { levelCount } from '../../../common/constants';
 import { modeKeys } from '../../../common/modes';
@@ -7,6 +9,7 @@ import LevelMode from './LevelMode';
 import SelectMode from './SelectMode';
 import GraphicsMode from './GraphicsMode';
 import PaletteMode from './PaletteMode';
+import OverworldMode from './OverworldMode';
 import {
 	createGraphicsEntry,
 	createNewGraphics,
@@ -19,9 +22,9 @@ import {
 	createMap,
 	encodeLevels,
 	generateDataBytes,
-	createObject,
 	loadLevelFromData,
 }	from '../../../common/levels';
+import { createObject }	from '../../../common/objects';
 import {
 	ByteBlock,
 	Color,
@@ -42,6 +45,7 @@ import {
 	createPaletteList,
 	decodePaletteData,
 } from '../../../common/palettes';
+import { createBlankOverworld } from '../../../common/ow';
 
 const generateExportData = ( levels: Level[], palettes: PaletteList, graphics: Graphics ): DataView => {
 	let saveData: ByteBlock[] = palettes.encode();
@@ -74,6 +78,7 @@ const Editor = (): ReactElement => {
 	const [ graphics, setGraphics ] = useState( null );
 	const [ levels, setLevels ] = useState( null );
 	const [ palettes, setPalettes ] = useState( null );
+	const [ overworld, setOverworld ] = useState( createBlankOverworld() );
 	const [ mode, setMode ] = useState( modeKeys.select );
 
 	const onImport = ( _event, data: Uint8Array ) => {
@@ -409,6 +414,13 @@ const Editor = (): ReactElement => {
 				exitMode={ resetMode }
 				palettes={ palettes }
 				setPalettes={ setPalettes }
+			/> }
+			{ mode === modeKeys.overworld && <OverworldMode
+				exitMode={ resetMode }
+				graphics={ graphics.overworld }
+				overworld={ overworld }
+				palettes={ palettes }
+				setOverworld={ setOverworld }
 			/> }
 		</div> }
 	</div>;

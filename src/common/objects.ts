@@ -1,5 +1,5 @@
-import { tilesPerBlock } from "./constants";
-import { GraphicTile, LayerType, MapObject, MapObjectType } from "./types";
+import { pixelsPerBlock, tilesPerBlock } from "./constants";
+import { GraphicTile, LayerType, MapObject, MapObjectArgs, MapObjectType, OverworldLayerType } from "./types";
 
 const createTile = ( options: object ) => {
 	return {
@@ -666,7 +666,366 @@ const spriteTypes: readonly MapObjectType[] = Object.freeze( [
 	},
 ] );
 
+const owTileTypes: readonly MapObjectType[] = Object.freeze( [
+	{
+		name: `Grass`,
+		create: ( x, y ) => ( {
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => [
+			{
+				x: object.xBlocks(),
+				y: object.yBlocks(),
+				width: object.widthBlocks(),
+				height: object.heightBlocks(),
+			},
+		],
+		generateTiles: ( object: MapObject ) => {
+			const list: GraphicTile[] = [];
+			for ( let y = object.yTiles(); y < object.bottomTiles(); y++ ) {
+				for ( let x = object.xTiles(); x < object.rightTiles(); x++ ) {
+					list.push( createTile( {
+						x,
+						y,
+						srcx: 1,
+					} ) );
+				}
+			}
+			return list;
+		},
+		exportData: [
+			{ type: `Uint16`, key: `x` },
+			{ type: `Uint16`, key: `y` },
+			{ type: `Uint8`, key: `width` },
+			{ type: `Uint8`, key: `height` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Width`,
+				key: `width`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+			{
+				title: `Height`,
+				key: `height`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Grass Top`,
+		create: ( x, y ) => ( {
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => [
+			{
+				x: object.xBlocks(),
+				y: object.yBlocks(),
+				width: object.widthBlocks(),
+				height: object.heightBlocks(),
+			},
+		],
+		generateTiles: ( object: MapObject, currentTiles: GraphicTile[] ) => {
+			const list: GraphicTile[] = [];
+			let topLeftSet = false;
+			currentTiles.forEach( ( tile: GraphicTile ) => {
+				const { x, y } = tile;
+				if ( y === object.yTiles() && x === object.xTiles() ) {
+					tile.x = object.xTiles();
+					tile.y = object.yTiles();
+					tile.srcx = 2;
+					topLeftSet = true;
+				}
+			} );
+			if ( !topLeftSet ) {
+				list.push( createTile( {
+					x: object.xTiles(),
+					y: object.yTiles(),
+					srcx: 4,
+				} ) );
+				list.push( createTile( {
+					x: object.xTiles(),
+					y: object.yTiles() + 1,
+					srcx: 1,
+				} ) );
+			}
+			list.push( createTile( {
+				x: object.xTiles() + 1,
+				y: object.yTiles(),
+				srcx: 3,
+			} ) );
+			list.push( createTile( {
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 1,
+				srcx: 1,
+			} ) );
+			for ( let x = object.xTiles() + tilesPerBlock; x < object.rightTiles(); x += tilesPerBlock ) {
+				list.push( createTile( {
+					x,
+					y: object.yTiles(),
+					srcx: 4,
+				} ) );
+				list.push( createTile( {
+					x: x + 1,
+					y: object.yTiles(),
+					srcx: 3,
+				} ) );
+				list.push( createTile( {
+					x,
+					y: object.yTiles() + 1,
+					srcx: 1,
+				} ) );
+				list.push( createTile( {
+					x: x + 1,
+					y: object.yTiles() + 1,
+					srcx: 1,
+				} ) );
+			}
+			return list;
+		},
+		exportData: [
+			{ type: `Uint16`, key: `x` },
+			{ type: `Uint16`, key: `y` },
+			{ type: `Uint8`, key: `width` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Width`,
+				key: `width`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Grass Left`,
+		create: ( x, y ) => ( {
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => [
+			{
+				x: object.xBlocks(),
+				y: object.yBlocks(),
+				width: object.widthBlocks(),
+				height: object.heightBlocks(),
+			},
+		],
+		generateTiles: ( object: MapObject, currentTiles: GraphicTile[] ) => {
+			const list: GraphicTile[] = [];
+			let topLeftSet = false;
+			currentTiles.forEach( ( tile: GraphicTile ) => {
+				const { x, y } = tile;
+				if ( y === object.yTiles() && x === object.xTiles() ) {
+					tile.x = object.xTiles();
+					tile.y = object.yTiles();
+					tile.srcx = 2;
+					topLeftSet = true;
+				}
+			} );
+			if ( !topLeftSet ) {
+				list.push( createTile( {
+					x: object.xTiles(),
+					y: object.yTiles(),
+					srcx: 8,
+				} ) );
+				list.push( createTile( {
+					x: object.xTiles() + 1,
+					y: object.yTiles(),
+					srcx: 1,
+				} ) );
+			}
+			list.push( createTile( {
+				x: object.xTiles(),
+				y: object.yTiles() + 1,
+				srcx: 6,
+			} ) );
+			list.push( createTile( {
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 1,
+				srcx: 1,
+			} ) );
+			for ( let y = object.yTiles() + tilesPerBlock; y < object.bottomTiles(); y += tilesPerBlock ) {
+				list.push( createTile( {
+					x: object.xTiles(),
+					y,
+					srcx: 8,
+				} ) );
+				list.push( createTile( {
+					x: object.xTiles(),
+					y: y + 1,
+					srcx: 6,
+				} ) );
+				list.push( createTile( {
+					x: object.xTiles() + 1,
+					y,
+					srcx: 1,
+				} ) );
+				list.push( createTile( {
+					x: object.xTiles() + 1,
+					y: y + 1,
+					srcx: 1,
+				} ) );
+			}
+			return list;
+		},
+		exportData: [
+			{ type: `Uint16`, key: `x` },
+			{ type: `Uint16`, key: `y` },
+			{ type: `Uint8`, key: `height` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Height`,
+				key: `height`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
+] );
+
+const createObject = ( object: MapObjectArgs ): MapObject => {
+	const {
+		type = 0,
+		x = 0,
+		y = 0,
+		width = 1,
+		height = 1,
+	} = object;
+	return Object.freeze( {
+		getProp: ( key: string ) => {
+			if ( !( key in object ) ) {
+				throw new Error( `Key ${ key } not found in object.` );
+			}
+			return object[ key ];
+		},
+		type: () => type,
+		xBlocks: () => x,
+		xTiles: () => x * tilesPerBlock,
+		xPixels: () => x * pixelsPerBlock,
+		yBlocks: () => y,
+		yTiles: () => y * tilesPerBlock,
+		yPixels: () => y * pixelsPerBlock,
+		widthBlocks: () => width,
+		widthTiles: () => width * tilesPerBlock,
+		widthPixels: () => width * pixelsPerBlock,
+		heightBlocks: () => height,
+		heightTiles: () => height * tilesPerBlock,
+		heightPixels: () => height * pixelsPerBlock,
+		rightBlocks: () => x + width,
+		rightTiles: () => ( x + width ) * tilesPerBlock,
+		rightPixels: () => ( x + width ) * pixelsPerBlock,
+		bottomBlocks: () => y + height,
+		bottomTiles: () => ( y + height ) * tilesPerBlock,
+		bottomPixels: () => ( y + height ) * pixelsPerBlock,
+		toJSON: () => object,
+		update: newObject => createObject( { ...object, ...newObject } ),
+	} );
+};
+
 const getTypeFactory = ( type: LayerType ): readonly MapObjectType[] => (
 	type === LayerType.sprite ? spriteTypes : objectTypes );
 
-export { getTypeFactory };
+const getOverworldTypeFactory = ( type: OverworldLayerType ): readonly MapObjectType[] => owTileTypes;
+
+const getOverworldTypeGenerator = ( type: OverworldLayerType ): ( type: number, x: number, y: number ) => MapObject => {
+	const types = owTileTypes;
+	return ( type: number, x: number, y: number ): MapObject => {
+		const objectType = types[ type ];
+		if ( !objectType ) {
+			throw new Error( `Invalid overworld tile type: ${ type }` );
+		}
+		const object = objectType.create( x, y );
+		object[ `type` ] = type;
+		return createObject( object );
+	};
+};
+
+export { createObject, getOverworldTypeFactory, getOverworldTypeGenerator, getTypeFactory };

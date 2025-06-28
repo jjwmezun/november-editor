@@ -164,7 +164,7 @@ interface LvMap {
 	updateLayer: ( index: number ) => {
 		addObject: ( object: object ) => LvMap,
 		removeObject: ( objectIndex: number ) => LvMap,
-		updateObject: ( objectIndex: number, newObject: object ) => LvMap,
+		updateObject: ( objectIndex: number, newObject: MapObjectArgs ) => LvMap,
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		updateOption: ( key: string, value: any ) => LvMap,
 	},
@@ -234,7 +234,7 @@ interface MapObjectType {
 	name: string,
 	create: ( x: number, y: number ) => object,
 	generateHighlight: ( object: MapObject ) => Rect[],
-	generateTiles: ( object: MapObject ) => GraphicTile[],
+	generateTiles: ( object: MapObject, currentTiles: GraphicTile[] ) => GraphicTile[],
 	exportData: ByteBlockRef[],
 	options: MapObjectTypeOption[],
 }
@@ -277,6 +277,54 @@ interface ObjectRenderer {
 	updateObjects: ( objects: MapObject[] ) => void;
 	updatePalette: ( palette: number ) => void;
 	updateScrollX: ( layerScrollX: number, windowScrollX: number, mapWidth: number ) => void;
+}
+
+interface Overworld {
+	addObject( object: MapObject ): Overworld;
+	getHeightBlocks: () => number;
+	getHeightPixels: () => number;
+	getHeightTiles: () => number;
+	getObject: ( index: number ) => MapObject;
+	getObjectsList: () => readonly MapObject[];
+	getWidthBlocks: () => number;
+	getWidthPixels: () => number;
+	getWidthTiles: () => number;
+	removeObject: ( index: number ) => Overworld;
+	updateObject: ( index: number, object: MapObjectArgs ) => Overworld;
+}
+
+interface OverworldGridCanvasProps {
+	graphics: GraphicsEntry,
+	overworld: Overworld,
+	palettes: PaletteList,
+	selectedObject: number | null,
+	selectedObjectType: number,
+	setOverworld: ( overworld: Overworld ) => void,
+	setSelectedObject: ( object: number | null ) => void,
+}
+
+enum OverworldLayerType {
+	block = `block`,
+	sprite = `sprite`,
+}
+
+interface OverworldModeProps {
+	exitMode: () => void,
+	graphics: GraphicsEntry,
+	overworld: Overworld,
+	palettes: PaletteList,
+	setOverworld: ( overworld: Overworld ) => void,
+}
+
+interface OverworldTileGraphicsCanvasProps {
+	graphics: GraphicsEntry,
+	palettes: PaletteList,
+}
+
+interface OverworldTilesetModeProps {
+	exitMode: () => void,
+	graphics: GraphicsEntry,
+	palettes: PaletteList,
 }
 
 interface Palette {
@@ -448,6 +496,12 @@ export {
 	Mode,
 	MousePosition,
 	ObjectRenderer,
+	Overworld,
+	OverworldGridCanvasProps,
+	OverworldLayerType,
+	OverworldModeProps,
+	OverworldTileGraphicsCanvasProps,
+	OverworldTilesetModeProps,
 	Palette,
 	PaletteData,
 	PaletteList,
