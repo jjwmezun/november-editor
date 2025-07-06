@@ -280,27 +280,53 @@ interface ObjectRenderer {
 }
 
 interface Overworld {
-	addObject( object: MapObject ): Overworld;
+	addLayer: ( type: OverworldLayerType ) => Overworld;
 	getHeightBlocks: () => number;
 	getHeightPixels: () => number;
 	getHeightTiles: () => number;
-	getObject: ( index: number ) => MapObject;
-	getObjectsList: () => readonly MapObject[];
+	getLayersList: () => readonly OverworldLayer[];
 	getWidthBlocks: () => number;
 	getWidthPixels: () => number;
 	getWidthTiles: () => number;
-	removeObject: ( index: number ) => Overworld;
-	updateObject: ( index: number, object: MapObjectArgs ) => Overworld;
+	moveLayerDown: ( index: number ) => Overworld;
+	moveLayerUp: ( index: number ) => Overworld;
+	removeLayer: ( index: number ) => Overworld;
+	updateLayer: ( index: number, layer: OverworldLayerData ) => Overworld;
 }
 
 interface OverworldGridCanvasProps {
 	graphics: GraphicsEntry,
 	overworld: Overworld,
 	palettes: PaletteList,
+	selectedLayer: number,
 	selectedObject: number | null,
 	selectedObjectType: number,
 	setOverworld: ( overworld: Overworld ) => void,
 	setSelectedObject: ( object: number | null ) => void,
+}
+
+interface OverworldLayer {
+	addObject( object: MapObject ): Overworld;
+	getObject: ( index: number ) => MapObject;
+	getObjectsList: () => readonly MapObject[];
+	removeObject: ( index: number ) => Overworld;
+	updateObject: ( index: number, object: MapObjectArgs ) => Overworld;
+}
+
+interface OverworldLayerControlsProps {
+	addLayer: () => void;
+	layers: readonly OverworldLayer[];
+	moveLayerDown: () => void;
+	moveLayerUp: () => void;
+	removeLayer: () => void;
+	selectedLayer: number;
+	setSelectedLayer: ( index: number ) => void;
+	setSelectedObject: ( object: number | null ) => void;
+	setSelectedObjectType: ( type: number ) => void;
+}
+
+interface OverworldLayerData {
+	objects: readonly MapObject[];
 }
 
 enum OverworldLayerType {
@@ -316,15 +342,10 @@ interface OverworldModeProps {
 	setOverworld: ( overworld: Overworld ) => void,
 }
 
-interface OverworldTileGraphicsCanvasProps {
-	graphics: GraphicsEntry,
-	palettes: PaletteList,
-}
-
-interface OverworldTilesetModeProps {
-	exitMode: () => void,
-	graphics: GraphicsEntry,
-	palettes: PaletteList,
+interface OverworldObjectControlsProps {
+	typesFactory: readonly MapObjectType[],
+	selectedObjectType: number,
+	setSelectedObjectType: ( type: number ) => void,
 }
 
 interface Palette {
@@ -498,10 +519,12 @@ export {
 	ObjectRenderer,
 	Overworld,
 	OverworldGridCanvasProps,
+	OverworldLayer,
+	OverworldLayerControlsProps,
+	OverworldLayerData,
 	OverworldLayerType,
 	OverworldModeProps,
-	OverworldTileGraphicsCanvasProps,
-	OverworldTilesetModeProps,
+	OverworldObjectControlsProps,
 	Palette,
 	PaletteData,
 	PaletteList,
