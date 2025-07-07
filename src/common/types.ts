@@ -70,12 +70,14 @@ interface GoalTemplate {
 
 interface Graphics {
 	blocks: GraphicsEntry,
+	overworld: GraphicsEntry,
 	sprites: GraphicsEntry,
 }
 
 interface GraphicsEntry {
 	clearTile: ( tileIndex: number ) => void,
 	createTexture: ( ctx: WebGLRenderingContext, index: number ) => WebGLTexture,
+	encode: () => ByteBlock[],
 	getWidthTiles: () => number,
 	getHeightTiles: () => number,
 	getWidthPixels: () => number,
@@ -162,7 +164,7 @@ interface LvMap {
 	updateLayer: ( index: number ) => {
 		addObject: ( object: object ) => LvMap,
 		removeObject: ( objectIndex: number ) => LvMap,
-		updateObject: ( objectIndex: number, newObject: object ) => LvMap,
+		updateObject: ( objectIndex: number, newObject: MapObjectArgs ) => LvMap,
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		updateOption: ( key: string, value: any ) => LvMap,
 	},
@@ -232,7 +234,7 @@ interface MapObjectType {
 	name: string,
 	create: ( x: number, y: number ) => object,
 	generateHighlight: ( object: MapObject ) => Rect[],
-	generateTiles: ( object: MapObject ) => GraphicTile[],
+	generateTiles: ( object: MapObject, currentTiles: GraphicTile[] ) => GraphicTile[],
 	exportData: ByteBlockRef[],
 	options: MapObjectTypeOption[],
 }
@@ -275,6 +277,108 @@ interface ObjectRenderer {
 	updateObjects: ( objects: MapObject[] ) => void;
 	updatePalette: ( palette: number ) => void;
 	updateScrollX: ( layerScrollX: number, windowScrollX: number, mapWidth: number ) => void;
+}
+
+interface Overworld {
+	addMap: () => Overworld;
+	getMapsList: () => readonly OverworldMap[];
+	moveMapDown: ( index: number ) => Overworld;
+	moveMapUp: ( index: number ) => Overworld;
+	removeMap: ( index: number ) => Overworld;
+	updateMap: ( index: number, map: OverworldMapData ) => Overworld;
+}
+
+interface OverworldGridCanvasProps {
+	graphics: GraphicsEntry,
+	map: OverworldMap,
+	overworld: Overworld,
+	palettes: PaletteList,
+	selectedLayer: number,
+	selectedObject: number | null,
+	selectedObjectType: number,
+	setOverworld: ( overworld: Overworld ) => void,
+	setSelectedObject: ( object: number | null ) => void,
+}
+
+interface OverworldLayer {
+	addObject( object: MapObject ): Overworld;
+	getObject: ( index: number ) => MapObject;
+	getObjectsList: () => readonly MapObject[];
+	removeObject: ( index: number ) => Overworld;
+	updateObject: ( index: number, object: MapObjectArgs ) => Overworld;
+}
+
+interface OverworldLayerControlsProps {
+	addLayer: () => void;
+	layers: readonly OverworldLayer[];
+	moveLayerDown: () => void;
+	moveLayerUp: () => void;
+	removeLayer: () => void;
+	selectedLayer: number;
+	setSelectedLayer: ( index: number ) => void;
+	setSelectedObject: ( object: number | null ) => void;
+	setSelectedObjectType: ( type: number ) => void;
+}
+
+interface OverworldLayerData {
+	objects: readonly MapObject[];
+}
+
+enum OverworldLayerType {
+	block = `block`,
+	sprite = `sprite`,
+}
+
+interface OverworldMap {
+	addLayer: ( type: OverworldLayerType ) => Overworld;
+	getHeightBlocks: () => number;
+	getHeightPixels: () => number;
+	getHeightTiles: () => number;
+	getLayersList: () => readonly OverworldLayer[];
+	getWidthBlocks: () => number;
+	getWidthPixels: () => number;
+	getWidthTiles: () => number;
+	moveLayerDown: ( index: number ) => Overworld;
+	moveLayerUp: ( index: number ) => Overworld;
+	removeLayer: ( index: number ) => Overworld;
+	updateHeight: ( newHeight: number ) => Overworld;
+	updateLayer: ( index: number, layer: OverworldLayerData ) => Overworld;
+	updateWidth: ( newWidth: number ) => Overworld;
+}
+
+interface OverworldMapControlsProps {
+	addMap: () => void;
+	generateMapSelector: ( index: number ) => () => void;
+	maps: readonly OverworldMap[];
+	moveMapDown: () => void;
+	moveMapUp: () => void;
+	removeMap: () => void;
+	selectedMap: number;
+}
+
+interface OverworldMapData {
+	height: number;
+	layers: readonly OverworldLayerData[];
+	width: number;
+}
+
+interface OverworldMapOptionsProps {
+	map: OverworldMap;
+	setOverworld: ( overworld: Overworld ) => void;
+}
+
+interface OverworldModeProps {
+	exitMode: () => void,
+	graphics: GraphicsEntry,
+	overworld: Overworld,
+	palettes: PaletteList,
+	setOverworld: ( overworld: Overworld ) => void,
+}
+
+interface OverworldObjectControlsProps {
+	typesFactory: readonly MapObjectType[],
+	selectedObjectType: number,
+	setSelectedObjectType: ( type: number ) => void,
 }
 
 interface Palette {
@@ -446,6 +550,18 @@ export {
 	Mode,
 	MousePosition,
 	ObjectRenderer,
+	Overworld,
+	OverworldGridCanvasProps,
+	OverworldLayer,
+	OverworldLayerControlsProps,
+	OverworldLayerData,
+	OverworldLayerType,
+	OverworldMap,
+	OverworldMapControlsProps,
+	OverworldMapData,
+	OverworldMapOptionsProps,
+	OverworldModeProps,
+	OverworldObjectControlsProps,
 	Palette,
 	PaletteData,
 	PaletteList,

@@ -6,7 +6,7 @@ const modeMap: readonly Mode[] = Object.freeze( [
 		slug: `select`,
 	},
 	{
-		name: `Level List`,
+		name: `Levels`,
 		slug: `levelList`,
 	},
 	{
@@ -17,6 +17,10 @@ const modeMap: readonly Mode[] = Object.freeze( [
 		name: `Palettes`,
 		slug: `palettes`,
 	},
+	{
+		name: `O’erworld`,
+		slug: `overworld`,
+	},
 ] );
 
 type ModeKeys = {
@@ -24,6 +28,7 @@ type ModeKeys = {
 	levelList: number,
 	graphics: number,
 	palettes: number,
+	overworld: number,
 };
 
 const modeKeys: ModeKeys = {
@@ -31,6 +36,7 @@ const modeKeys: ModeKeys = {
 	levelList: 1,
 	graphics: 2,
 	palettes: 3,
+	overworld: 4,
 };
 
 export {

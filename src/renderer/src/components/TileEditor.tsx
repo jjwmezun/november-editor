@@ -209,6 +209,11 @@ const createRenderer = (
 	ctx.enable( ctx.BLEND );
 	ctx.blendFunc( ctx.SRC_ALPHA, ctx.ONE_MINUS_SRC_ALPHA );
 
+	let x = 0;
+	let y = 0;
+	let tilemapWidth = graphics.getWidthTiles();
+	let tilemapHeight = graphics.getHeightTiles();
+
 	const tilemapRenderer = ( () => {
 		const program = createShaderProgram(
 			ctx,
@@ -271,31 +276,39 @@ const createRenderer = (
 		program.setUniform1f( `u_palette_index`, 0 );
 
 		// Setup tilemap positions.
-		const model = createMat3()
-			.translate( [ 0, 0 ] )
-			.scale( [ 1 / ( tileSize * 8 ), 1 / ( tileSize * 8 ) ] );
-		renderObject.addUniform( `u_model`, `3fv`, new Float32Array( model.getList() ) );
+		const updateTilemapPositions = (): void => {
+			const model = createMat3()
+				.translate( [ x / tilemapWidth, y / tilemapHeight ] )
+				.scale( [ 1 / ( tileSize * ( tilemapWidth / 8 ) ), 1 / ( tileSize * ( tilemapHeight / 8 ) ) ] );
+			renderObject.addUniform( `u_model`, `3fv`, new Float32Array( model.getList() ) );
+		};
+		updateTilemapPositions();
 
 		return Object.freeze( {
 			render: () => {
 				program.use();
 				renderObject.render();
 			},
-			updateSelected: ( x: number, y: number ): void => {
-				program.use();
-				const model = createMat3()
-					.translate( [ x / graphics.getWidthTiles(), y / graphics.getHeightTiles() ] )
-					.scale( [ 1 / ( tileSize * 8 ), 1 / ( tileSize * 8 ) ] );
-				renderObject.addUniform( `u_model`, `3fv`, new Float32Array( model.getList() ) );
-			},
-			updateSelectedPalette: ( selectedPalette: number ): void => {
-				program.use();
-				program.setUniform1f( `u_palette_index`, selectedPalette );
-			},
 			updateGraphicsEntry: ( graphics: GraphicsEntry ): void => {
 				program.use();
 				const tilesetTexture = graphics.createTexture( ctx, 1 );
 				renderObject.addTextureUniform( `u_tileset_texture`, 1, tilesetTexture );
+			},
+			updateResolution: ( width: number, height: number ): void => {
+				program.use();
+				tilemapWidth = width;
+				tilemapHeight = height;
+				updateTilemapPositions();
+			},
+			updateSelected: ( newX: number, newY: number ): void => {
+				program.use();
+				x = newX;
+				y = newY;
+				updateTilemapPositions();
+			},
+			updateSelectedPalette: ( selectedPalette: number ): void => {
+				program.use();
+				program.setUniform1f( `u_palette_index`, selectedPalette );
 			},
 		} );
 	} )();
@@ -618,6 +631,9 @@ const createRenderer = (
 			renderBrush.updateBrush( x, y, brushSize );
 			renderTransparentBrush.updateBrush( x, y, brushSize );
 		},
+		updateResolution: ( width: number, height: number ): void => {
+			tilemapRenderer.updateResolution( width, height );
+		},
 		updateSelected: ( x: number, y: number ): void => {
 			tilemapRenderer.updateSelected( x, y );
 		},
@@ -642,6 +658,9 @@ const TileEditor = ( props: TileEditorProps ): ReactElement => {
 	const [ mouseDown, setMouseDown ] = useState( false );
 	const [ brushSize, setBrushSize ] = useState( 1 );
 	const [ renderer, setRenderer ] = useState( null );
+
+	const tilemapWidth = graphics.getWidthTiles();
+	const tilemapHeight = graphics.getHeightTiles();
 
 	const drawBrush = () => {
 		const brushPixels = generateBrushLayout( brushSize, selected.x, selected.y );
@@ -753,6 +772,14 @@ const TileEditor = ( props: TileEditorProps ): ReactElement => {
 		renderer.updateGraphicsEntry( graphics );
 		render();
 	}, [ graphics ] );
+
+	useEffect( () => {
+		if ( ! renderer ) {
+			return;
+		}
+		renderer.updateResolution( tilemapWidth, tilemapHeight );
+		render();
+	}, [ tilemapWidth, tilemapHeight, renderer ] );
 
 	return <div className="graphics__tile-grid-canvas">
 		<canvas

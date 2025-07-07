@@ -1,24 +1,27 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import React from "react";
+
 import {
 	MapObject,
 	MapObjectArgs,
 	MapObjectType,
 } from '../../../../common/types';
 
-interface ObjectOptionsProps {
-	objects: MapObject[];
+interface OverworldObjectOptionsProps {
 	removeObject: () => void;
-	selectedObject: number;
+	selectedObject: MapObject;
+	selectedObjectIndex: number;
 	typesFactory: readonly MapObjectType[];
 	updateObject: ( index: number, o: MapObjectArgs ) => void;
 }
 
-const ObjectOptions = ( props: ObjectOptionsProps ) => {
-	const { objects, removeObject, selectedObject, typesFactory, updateObject } = props;
+const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
+	const { removeObject, selectedObject, selectedObjectIndex, typesFactory, updateObject } = props;
 
 	return <div>
 		<h2>Object options</h2>
 		{
-			typesFactory[ objects[ selectedObject ].type() ].options.map( ( options, i ) => {
+			typesFactory[ selectedObject.type() ].options.map( ( options, i ) => {
 				const {
 					atts,
 					key,
@@ -33,20 +36,20 @@ const ObjectOptions = ( props: ObjectOptionsProps ) => {
 				const extraAtts = {};
 				for ( const key in atts ) {
 					extraAtts[ key ] = typeof atts[ key ] === `function`
-						? atts[ key ]( objects[ selectedObject ] )
+						? atts[ key ]( selectedObject )
 						: atts[ key ];
 				}
 				return <label key={ i }>
 					<span>{ title }:</span>
 					<input
 						type={ type }
-						value={ objects[ selectedObject ].getProp( key ) }
+						value={ selectedObject.getProp( key ) }
 						onChange={ e =>
 							updateObject(
-								selectedObject,
+								selectedObjectIndex,
 								{
 									[ key ]: update( e.target.value ),
-									...extraUpdate( objects[ selectedObject ], e.target.value ),
+									...extraUpdate( selectedObject, e.target.value ),
 								},
 							)
 						}
@@ -59,4 +62,4 @@ const ObjectOptions = ( props: ObjectOptionsProps ) => {
 	</div>;
 };
 
-export { ObjectOptions };
+export default OverworldObjectOptions;

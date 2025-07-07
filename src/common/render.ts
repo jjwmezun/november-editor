@@ -188,10 +188,7 @@ const createRenderTextureObject = (
 	program: WebGL2Program,
 	positionName: string = `a_position`,
 	textureCoordsName: string = `a_texture_coords`,
-): RenderObject => {
-	program.use();
-
-	const positions = [
+	positions: number[] = [
 		1.0, 1.0,   // top right vertex
 		1.0, 0.0,   // top right texture coord
 		1.0, -1.0,  // bottom right vertex
@@ -200,7 +197,9 @@ const createRenderTextureObject = (
 		0.0, 1.0,   // bottom left texture coord
 		-1.0, 1.0,  // top left vertex
 		0.0, 0.0,   // top left texture coord
-	];
+	],
+): RenderObject => {
+	program.use();
 
 	const indices = [
 		0, 1, 3,

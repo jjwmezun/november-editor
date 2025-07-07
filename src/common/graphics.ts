@@ -1,4 +1,4 @@
-import { Graphics, GraphicsEntry } from "./types";
+import { ByteBlock, DecodedGraphicsData, Graphics, GraphicsEntry } from "./types";
 import { tileSize } from "./constants";
 import { getBitsFromByte } from "./bytes";
 
@@ -108,6 +108,11 @@ const createGraphicsEntry = (
 			ctx.texParameteri( ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_T, ctx.REPEAT );
 			return texture;
 		},
+		encode: (): ByteBlock[] => [
+			{ type: `Uint8`, value: widthTiles },
+			{ type: `Uint8`, value: heightTiles },
+		].concat( compressPixels( pixels )
+			.map( ( byte: number ): ByteBlock => ( { type: `Uint8`, value: byte } ) ) ),
 		getWidthTiles: () => widthTiles,
 		getHeightTiles: () => heightTiles,
 		getWidthPixels,
@@ -165,8 +170,37 @@ const createBlankGraphicsEntry = ( widthTiles: number, heightTiles: number ): Gr
 
 const createNewGraphics = (): Graphics => ( {
 	blocks: createBlankGraphicsEntry( 64, 64 ),
+	overworld: createBlankGraphicsEntry( 128, 128 ),
 	sprites: createBlankGraphicsEntry( 64, 64 ),
 } );
+
+const loadGraphicsFromData = ( data: Uint8Array ): DecodedGraphicsData => {
+	// Create graphics object with empty entries to satisfy TypeScript.
+	const graphics: Graphics = {
+		blocks: createGraphicsEntry( 0, 0, [] ),
+		overworld: createGraphicsEntry( 0, 0, [] ),
+		sprites: createGraphicsEntry( 0, 0, [] ),
+	};
+
+	// Get graphics data from each type from bytes list.
+	Object.keys( graphics ).forEach( ( type: string ) => {
+		// Get width & height from first two bytes.
+		const width = data[ 0 ];
+		const height = data[ 1 ];
+		data = data.slice( 2 );
+
+		// Update graphics entry with new pixels.
+		const dataSize = Math.ceil( width * 8 * height * 8 * ( 3 / 8 ) );
+		const pixels: number[] = decompressPixels( Array.from( data ).slice( 0, dataSize ) );
+		data = data.slice( dataSize );
+		graphics[ type ] = createGraphicsEntry( width, height, pixels );
+	} );
+
+	return {
+		graphics,
+		remainingBytes: data,
+	};
+};
 
 export {
 	compressPixels,
@@ -174,4 +208,5 @@ export {
 	createGraphicsEntry,
 	createNewGraphics,
 	decompressPixels,
+	loadGraphicsFromData,
 };
