@@ -19,7 +19,7 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 	const [ showGrid, setShowGrid ] = useState<boolean>( true );
 	const {
 		graphics,
-		overworld,
+		map,
 		palettes,
 		selectedLayer,
 		selectedObject,
@@ -28,10 +28,12 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 		setSelectedObject,
 	} = props;
 
-	const layers = overworld.getLayersList();
+	const layers = map.getLayersList();
 	const layer = layers[ selectedLayer ];
 	const typesFactory = getOverworldTypeGenerator( OverworldLayerType.block );
 	const objects = layer.getObjectsList();
+	const width = map.getWidthBlocks();
+	const height = map.getHeightBlocks();
 
 	// Select object on left click.
 	const onClick = ( e: SyntheticBaseEvent ) => {
@@ -92,7 +94,7 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 
 	useEffect( () => {
 		if ( canvasRef.current ) {
-			const newRenderer = generateRenderer( canvasRef.current, overworld, graphics, palettes, 2, selectedLayer );
+			const newRenderer = generateRenderer( canvasRef.current, map, graphics, palettes, 2, selectedLayer );
 			setRenderer( newRenderer );
 			newRenderer.render();
 		}
@@ -113,7 +115,7 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 		if ( ! renderer ) {
 			return;
 		}
-		renderer.updateLayers( overworld, selectedLayer );
+		renderer.updateLayers( map, selectedLayer );
 		renderer.render();
 	}, [ layers ] );
 
@@ -133,6 +135,14 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 		renderer.render();
 	}, [ showGrid, renderer ] );
 
+	useEffect( () => {
+		if ( ! renderer ) {
+			return;
+		}
+		renderer.updateResolution( width, height );
+		renderer.render();
+	}, [ height, renderer, width ] );
+
 	return <div>
 		<h2>O’erworld Canvas</h2>
 		<div>
@@ -148,8 +158,8 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 		<div className="overworld__canvas">
 			<canvas
 				ref={ canvasRef }
-				height={ overworld.getHeightPixels() * zoom }
-				width={ overworld.getWidthPixels() * zoom }
+				height={ map.getHeightPixels() * zoom }
+				width={ map.getWidthPixels() * zoom }
 				onClick={ onClick }
 				onContextMenu={ onRightClick }
 				onMouseMove={ onMouseMove }

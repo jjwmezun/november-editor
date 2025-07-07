@@ -2,9 +2,9 @@ import {
 	GraphicsEntry,
 	GraphicTile,
 	MapObject,
-	Overworld,
 	OverworldLayer,
 	OverworldLayerType,
+	OverworldMap,
 	PaletteList,
 	Rect,
 	ShaderType,
@@ -19,7 +19,7 @@ import { getOverworldTypeFactory } from './objects';
 
 function generateRenderer(
 	canvas: HTMLCanvasElement,
-	overworld: Overworld,
+	map: OverworldMap,
 	graphics: GraphicsEntry,
 	palettes: PaletteList,
 	selectedPalette: number,
@@ -33,7 +33,7 @@ function generateRenderer(
 	ctx.blendFunc( ctx.SRC_ALPHA, ctx.ONE_MINUS_SRC_ALPHA );
 	ctx.viewport( 0, 0, ctx.canvas.width, ctx.canvas.height );
 
-	const layers = overworld.getLayersList();
+	const layers = map.getLayersList();
 
 	let objectRenderers = layers.map( ( _l: OverworldLayer, i: number ) => createObjectRenderer(
 		ctx,
@@ -132,34 +132,44 @@ function generateRenderer(
 		// Init palette index uniform.
 		program.setUniform1f( `u_palette_index`, selectedPalette );
 
+		let canvasWidth = map.getWidthTiles();
+
 		// Add scale matrix uniform.
-		const scale = createMat3()
-			.scale( [ 1 / overworld.getWidthTiles(), 1 / overworld.getHeightTiles() ] );
-		renderObject.addUniform( `u_scale`, `3fv`, new Float32Array( scale.getList() ) );
+		const updateScale = ( width: number, height: number ): void => {
+			const scale = createMat3()
+				.scale( [ 1 / width, 1 / height ] );
+			renderObject.addUniform( `u_scale`, `3fv`, new Float32Array( scale.getList() ) );
+		};
+		updateScale( map.getWidthTiles(), map.getHeightTiles() );
 
 		// Add trans instances.
-		const oddTiles: number[] = [];
-		for ( let y = 0; y < overworld.getHeightTiles(); y += 2 ) {
-			for ( let x = -1; x < overworld.getWidthTiles() + 1; ++x ) {
-				oddTiles.push(
-					-1 + ( 1 + x * 2 ) / overworld.getWidthTiles(),
-					1 - ( 1 + y * 2 ) / overworld.getHeightTiles(),
-					-1.0,
-				);
-				oddTiles.push(
-					-1 + ( 1 + x * 2 ) / overworld.getWidthTiles(),
-					1 - ( 1 + ( y + 1 ) * 2 ) / overworld.getHeightTiles(),
-					1.0,
-				);
-			}
-		}
+		let oddTiles: number[] = [];
 		const instanceVbo = ctx.createBuffer();
-		ctx.bindBuffer( ctx.ARRAY_BUFFER, instanceVbo );
-		ctx.bufferData(
-			ctx.ARRAY_BUFFER,
-			new Float32Array( oddTiles ),
-			ctx.DYNAMIC_DRAW,
-		);
+
+		const updateTiles = ( width: number, height: number ): void => {
+			oddTiles = [];
+			for ( let y = 0; y < height; y += 2 ) {
+				for ( let x = -1; x < width + 1; ++x ) {
+					oddTiles.push(
+						-1 + ( 1 + x * 2 ) / width,
+						1 - ( 1 + y * 2 ) / height,
+						-1.0,
+					);
+					oddTiles.push(
+						-1 + ( 1 + x * 2 ) / width,
+						1 - ( 1 + ( y + 1 ) * 2 ) / height,
+						1.0,
+					);
+				}
+			}
+			ctx.bindBuffer( ctx.ARRAY_BUFFER, instanceVbo );
+			ctx.bufferData(
+				ctx.ARRAY_BUFFER,
+				new Float32Array( oddTiles ),
+				ctx.DYNAMIC_DRAW,
+			);
+		};
+		updateTiles( map.getWidthTiles(), map.getHeightTiles() );
 		renderObject.addInstanceAttribute( `a_trans`, 2, ctx.FLOAT, false, 12, 0 );
 		renderObject.addInstanceAttribute( `a_direction`, 2, ctx.FLOAT, false, 12, 8 );
 
@@ -172,8 +182,14 @@ function generateRenderer(
 			render,
 			updateAnimation: ( delta: number ): void => {
 				program.use();
-				const xscroll = ( ( delta / 1000 ) * 0.05 ) % ( 1 / overworld.getWidthTiles() );
+				const xscroll = ( ( delta / 1000 ) * 0.05 ) % ( 1 / canvasWidth );
 				program.setUniform1f( `u_xscroll`, xscroll );
+			},
+			updateResolution: ( width: number, height: number ): void => {
+				program.use();
+				canvasWidth = width * 2;
+				updateScale( width * 2, height * 2 );
+				updateTiles( width * 2, height * 2 );
 			},
 			updateSelectedPalette: ( selectedPalette: number ): void => {
 				program.use();
@@ -320,15 +336,17 @@ function generateRenderer(
 
 		const renderObject = createRenderRectObject( ctx, program );
 
+		let canvasWidth = map.getWidthBlocks();
+		let canvasHeight = map.getHeightBlocks();
 		let x = -1;
 		let y = -1;
 		const updateModel = () => {
 			const model = createMat3()
 				.translate( [
-					-1 + ( 1 + x * 2 ) / overworld.getWidthBlocks(),
-					1 - ( 1 + y * 2 ) / overworld.getHeightBlocks(),
+					-1 + ( 1 + x * 2 ) / canvasWidth,
+					1 - ( 1 + y * 2 ) / canvasHeight,
 				] )
-				.scale( [ 1 / overworld.getWidthBlocks(), 1 / overworld.getHeightBlocks() ] );
+				.scale( [ 1 / canvasWidth, 1 / canvasHeight ] );
 			renderObject.addUniform( `u_model`, `3fv`, new Float32Array( model.getList() ) );
 		};
 		updateModel();
@@ -344,6 +362,15 @@ function generateRenderer(
 				}
 				x = _x;
 				y = _y;
+				program.use();
+				updateModel();
+			},
+			updateResolution: ( width: number, height: number ): void => {
+				if ( width === canvasWidth && height === canvasHeight ) {
+					return;
+				}
+				canvasWidth = width;
+				canvasHeight = height;
 				program.use();
 				updateModel();
 			},
@@ -396,12 +423,20 @@ function generateRenderer(
 		);
 
 		const renderObject = createRenderRectObject( ctx, program );
-		program.setUniform2f( `u_resolution`, overworld.getWidthPixels(), overworld.getHeightPixels() );
+
+		const updateResolution = ( width: number, height: number ): void => {
+			program.setUniform2f( `u_resolution`, width, height );
+		};
+		updateResolution( map.getWidthPixels(), map.getHeightPixels() );
 
 		return Object.freeze( {
 			render: () => {
 				program.use();
 				renderObject.render();
+			},
+			updateResolution: ( width: number, height: number ): void => {
+				program.use();
+				updateResolution( width * 16, height * 16 );
 			},
 		} );
 	} )();
@@ -434,8 +469,8 @@ function generateRenderer(
 		setSelectedObject: ( i: number | null, objects: readonly MapObject[] ) => {
 			selectedObject.setSelected( i, objects );
 		},
-		updateLayers: ( overworld: Overworld, selectedLayer: number ): void => {
-			const layers = overworld.getLayersList();
+		updateLayers: ( map: OverworldMap, selectedLayer: number ): void => {
+			const layers = map.getLayersList();
 			objectRenderers = layers.map( ( layer: OverworldLayer, i: number ) => {
 				const objectRenderer = createObjectRenderer(
 					ctx,
@@ -447,8 +482,8 @@ function generateRenderer(
 				objectRenderer.updateObjects( layer.getObjectsList() );
 				objectRenderer.updatePalette( selectedPalette );
 				objectRenderer.updateDimensions(
-					overworld.getWidthTiles(),
-					overworld.getHeightTiles(),
+					map.getWidthTiles(),
+					map.getHeightTiles(),
 				);
 				return objectRenderer;
 			} );
@@ -460,6 +495,19 @@ function generateRenderer(
 		updateHoverTile: ( x: number, y: number ): void => {
 			hover.updatePosition( x, y );
 			render();
+		},
+		updateResolution: ( width: number, height: number ): void => {
+			ctx.viewport( 0, 0, width * 32, height * 32 );
+			water.updateResolution( width, height );
+			selectedObject.updateCanvas( width, height );
+			hover.updateResolution( width, height );
+			gridLines.updateResolution( width, height );
+			objectRenderers.map( ( objectRenderer: OverworldObjectRenderer ) => {
+				objectRenderer.updateDimensions(
+					width * 2,
+					height * 2,
+				);
+			} );
 		},
 		updateSelectedObject: ( i: number | null, objects: readonly MapObject[] ): void => {
 			selectedObject.setSelected( i, objects );

@@ -280,22 +280,17 @@ interface ObjectRenderer {
 }
 
 interface Overworld {
-	addLayer: ( type: OverworldLayerType ) => Overworld;
-	getHeightBlocks: () => number;
-	getHeightPixels: () => number;
-	getHeightTiles: () => number;
-	getLayersList: () => readonly OverworldLayer[];
-	getWidthBlocks: () => number;
-	getWidthPixels: () => number;
-	getWidthTiles: () => number;
-	moveLayerDown: ( index: number ) => Overworld;
-	moveLayerUp: ( index: number ) => Overworld;
-	removeLayer: ( index: number ) => Overworld;
-	updateLayer: ( index: number, layer: OverworldLayerData ) => Overworld;
+	addMap: () => Overworld;
+	getMapsList: () => readonly OverworldMap[];
+	moveMapDown: ( index: number ) => Overworld;
+	moveMapUp: ( index: number ) => Overworld;
+	removeMap: ( index: number ) => Overworld;
+	updateMap: ( index: number, map: OverworldMapData ) => Overworld;
 }
 
 interface OverworldGridCanvasProps {
 	graphics: GraphicsEntry,
+	map: OverworldMap,
 	overworld: Overworld,
 	palettes: PaletteList,
 	selectedLayer: number,
@@ -332,6 +327,44 @@ interface OverworldLayerData {
 enum OverworldLayerType {
 	block = `block`,
 	sprite = `sprite`,
+}
+
+interface OverworldMap {
+	addLayer: ( type: OverworldLayerType ) => Overworld;
+	getHeightBlocks: () => number;
+	getHeightPixels: () => number;
+	getHeightTiles: () => number;
+	getLayersList: () => readonly OverworldLayer[];
+	getWidthBlocks: () => number;
+	getWidthPixels: () => number;
+	getWidthTiles: () => number;
+	moveLayerDown: ( index: number ) => Overworld;
+	moveLayerUp: ( index: number ) => Overworld;
+	removeLayer: ( index: number ) => Overworld;
+	updateHeight: ( newHeight: number ) => Overworld;
+	updateLayer: ( index: number, layer: OverworldLayerData ) => Overworld;
+	updateWidth: ( newWidth: number ) => Overworld;
+}
+
+interface OverworldMapControlsProps {
+	addMap: () => void;
+	generateMapSelector: ( index: number ) => () => void;
+	maps: readonly OverworldMap[];
+	moveMapDown: () => void;
+	moveMapUp: () => void;
+	removeMap: () => void;
+	selectedMap: number;
+}
+
+interface OverworldMapData {
+	height: number;
+	layers: readonly OverworldLayerData[];
+	width: number;
+}
+
+interface OverworldMapOptionsProps {
+	map: OverworldMap;
+	setOverworld: ( overworld: Overworld ) => void;
 }
 
 interface OverworldModeProps {
@@ -523,6 +556,10 @@ export {
 	OverworldLayerControlsProps,
 	OverworldLayerData,
 	OverworldLayerType,
+	OverworldMap,
+	OverworldMapControlsProps,
+	OverworldMapData,
+	OverworldMapOptionsProps,
 	OverworldModeProps,
 	OverworldObjectControlsProps,
 	Palette,
