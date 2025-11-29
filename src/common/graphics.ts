@@ -108,6 +108,11 @@ const createGraphicsEntry = (
 			ctx.texParameteri( ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_T, ctx.REPEAT );
 			return texture;
 		},
+		getData: () => ( {
+			data: pixels,
+			width: getWidthPixels(),
+			height: getHeightPixels(),
+		} ),
 		getWidthTiles: () => widthTiles,
 		getHeightTiles: () => heightTiles,
 		getWidthPixels,

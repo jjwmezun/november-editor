@@ -165,6 +165,49 @@ function createWindow() {
 		} );
 	};
 
+	const openTileExportWindow = ( _event, graphics ) => {
+		dialog.showSaveDialog( null, {
+			title: `Export Tiles`,
+			filters: [
+				{ name: `PNG`, extensions: [ `png` ] },
+			],
+		} ).then( result => {
+			if ( !result.canceled ) {
+				const png = new PNG( {
+					width: graphics.width,
+					height: graphics.height,
+					bitDepth: 8,
+					inputHasAlpha: true,
+				} );
+				const buffer = Buffer.alloc( graphics.width * graphics.height * 4 );
+				const bitmap = new Uint8Array( buffer.buffer );
+
+				for ( let y = 0; y < graphics.height; y++ ) {
+					for ( let x = 0; x < graphics.width; x++ ) {
+						const pixelIndex = y * graphics.width + x;
+						const colorIndex = graphics.data[ pixelIndex ];
+
+						const idx = pixelIndex * 4;
+						if ( colorIndex === 0 ) {
+							bitmap[ idx ] = 0;
+							bitmap[ idx + 1 ] = 0;
+							bitmap[ idx + 2 ] = 0;
+							bitmap[ idx + 3 ] = 0;
+						} else {
+							const colorValue = Math.min( ( colorIndex - 1 ) * 42, 255 );
+							bitmap[ idx ] = colorValue;
+							bitmap[ idx + 1 ] = colorValue;
+							bitmap[ idx + 2 ] = colorValue;
+							bitmap[ idx + 3 ] = 255;
+						}
+					}
+				}
+				png.data = buffer;
+				png.pack().pipe( fs.createWriteStream( result.filePath ) );
+			}
+		} );
+	};
+
 	const menu = Menu.buildFromTemplate( [
 		{
 			label: `File`,
@@ -328,6 +371,7 @@ function createWindow() {
 	ipcMain.on( `import-map`, importMap );
 
 	ipcMain.on( `open-tile-import-window`, openTileImportWindow );
+	ipcMain.on( `open-tile-export-window`, openTileExportWindow );
 
 	mainWindow.on( `ready-to-show`, () => {
 		mainWindow.show();

@@ -76,6 +76,7 @@ interface Graphics {
 interface GraphicsEntry {
 	clearTile: ( tileIndex: number ) => void,
 	createTexture: ( ctx: WebGLRenderingContext, index: number ) => WebGLTexture,
+	getData: () => { data: number[], width: number, height: number },
 	getWidthTiles: () => number,
 	getHeightTiles: () => number,
 	getWidthPixels: () => number,
