@@ -13,6 +13,7 @@ import OverworldObjectOptions from './Overworld/OverworldObjectOptions';
 function OverworldMode( props: OverworldModeProps ): ReactElement {
 	const { exitMode, graphics, overworld, palettes, setOverworld } = props;
 	const [ selectedLayer, setSelectedLayer ] = useState<number>( 0 );
+	const [ selectedLayerType, setSelectedLayerType ] = useState<OverworldLayerType>( OverworldLayerType.block );
 	const [ selectedMap, setSelectedMap ] = useState<number>( 0 );
 	const [ selectedObject, setSelectedObject ] = useState<number | null>( null );
 	const [ selectedObjectType, setSelectedObjectType ] = useState<number>( 0 );
@@ -20,9 +21,10 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 	const maps = overworld.getMapsList();
 	const map = maps[ selectedMap ];
 	const layers = map.getLayersList();
-	const typesFactory = getOverworldTypeFactory( OverworldLayerType.block );
+	const layer = layers[ selectedLayer ];
+	const typesFactory = getOverworldTypeFactory( layer.getType() );
 
-	const addLayer = (): void => setOverworld( map.addLayer( OverworldLayerType.block ) );
+	const addLayer = (): void => setOverworld( map.addLayer( selectedLayerType ) );
 
 	const addMap = (): void => setOverworld( overworld.addMap() );
 
@@ -81,12 +83,12 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 	};
 
 	const removeObject = (): void => {
-		setOverworld( layers[ selectedLayer ].removeObject( selectedObject ) );
+		setOverworld( layer.removeObject( selectedObject ) );
 		setSelectedObject( null );
 	};
 
 	const updateObject = ( index: number, object: MapObjectArgs ): void => {
-		setOverworld( layers[ selectedLayer ].updateObject( index, object ) );
+		setOverworld( layer.updateObject( index, object ) );
 	};
 
 	return <div>
@@ -122,7 +124,9 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 			moveLayerUp={ moveLayerUp }
 			removeLayer={ removeLayer }
 			selectedLayer={ selectedLayer }
+			selectedLayerType={ selectedLayerType }
 			setSelectedLayer={ setSelectedLayer }
+			setSelectedLayerType={ setSelectedLayerType }
 			setSelectedObject={ setSelectedObject }
 			setSelectedObjectType={ setSelectedObjectType }
 		/>
@@ -133,7 +137,7 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 		/>
 		{ selectedObject !== null && <OverworldObjectOptions
 			removeObject={ removeObject }
-			selectedObject={ layers[ selectedLayer ].getObject( selectedObject ) }
+			selectedObject={ layer.getObject( selectedObject ) }
 			selectedObjectIndex={ selectedObject }
 			typesFactory={ typesFactory }
 			updateObject={ updateObject }

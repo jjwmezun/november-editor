@@ -4,11 +4,10 @@ import React, { ReactElement, SyntheticBaseEvent, useEffect, useRef, useState } 
 import {
 	Coordinates,
 	OverworldGridCanvasProps,
-	OverworldLayerType,
 } from '../../../../common/types';
 import { getMousePosition } from '../../../../common/utils';
-import { getOverworldTypeGenerator } from '../../../../common/objects';
 import generateRenderer from '../../../../common/render-ow';
+import { getOverworldTypeGenerator } from '../../../../common/objects';
 
 const zoom = 2;
 
@@ -30,10 +29,10 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 
 	const layers = map.getLayersList();
 	const layer = layers[ selectedLayer ];
-	const typesFactory = getOverworldTypeGenerator( OverworldLayerType.block );
 	const objects = layer.getObjectsList();
 	const width = map.getWidthBlocks();
 	const height = map.getHeightBlocks();
+	const typeGenerator = getOverworldTypeGenerator( layer.getType() );
 
 	// Select object on left click.
 	const onClick = ( e: SyntheticBaseEvent ) => {
@@ -88,7 +87,7 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 		const gridX = Math.floor( x / ( 16 * zoom ) );
 		const gridY = Math.floor( y / ( 16 * zoom ) );
 
-		setOverworld( layer.addObject( typesFactory( selectedObjectType, gridX, gridY ) ) );
+		setOverworld( layer.addObject( typeGenerator( selectedObjectType, gridX, gridY ) ) );
 		setSelectedObject( null );
 	};
 
@@ -142,6 +141,32 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 		renderer.updateResolution( width, height );
 		renderer.render();
 	}, [ height, renderer, width ] );
+
+	useEffect( () => {
+		if ( ! renderer ) {
+			return;
+		}
+
+		// Set up animation loop on 1st load.
+		let prevTicks: number | null = null;
+		let frame: number = 0;
+		const tick = ( ticks: number ) => {
+			if ( prevTicks === null ) {
+				prevTicks = ticks;
+			} else {
+				const delta = ticks - prevTicks;
+				if ( delta > 1000 / 8 ) {
+					renderer.updateAnimationFrame( ++frame );
+					renderer.render();
+					prevTicks = ticks;
+				}
+			}
+			window.requestAnimationFrame( tick );
+		};
+		const handle = window.requestAnimationFrame( tick );
+
+		return () => window.cancelAnimationFrame( handle );
+	}, [ renderer ] );
 
 	return <div>
 		<h2>O’erworld Canvas</h2>

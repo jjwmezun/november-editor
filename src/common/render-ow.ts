@@ -35,8 +35,9 @@ function generateRenderer(
 
 	const layers = map.getLayersList();
 
-	let objectRenderers = layers.map( ( _l: OverworldLayer, i: number ) => createObjectRenderer(
+	let objectRenderers = layers.map( ( layer: OverworldLayer, i: number ) => createObjectRenderer(
 		ctx,
+		layer.getType(),
 		palettes,
 		graphics,
 		selectedPalette,
@@ -171,18 +172,21 @@ function generateRenderer(
 		};
 		updateTiles( map.getWidthTiles(), map.getHeightTiles() );
 		renderObject.addInstanceAttribute( `a_trans`, 2, ctx.FLOAT, false, 12, 0 );
-		renderObject.addInstanceAttribute( `a_direction`, 2, ctx.FLOAT, false, 12, 8 );
+		renderObject.addInstanceAttribute( `a_direction`, 1, ctx.FLOAT, false, 12, 8 );
 
 		// Add xscroll uniform.
 		program.setUniform1f( `u_xscroll`, 0.0 );
 
-		const render = () => renderObject.renderInstances( Math.floor( oddTiles.length / 2 ) );
+		const render = () => renderObject.renderInstances( Math.floor( oddTiles.length / 3 ) );
 
 		return Object.freeze( {
 			render,
 			updateAnimation: ( delta: number ): void => {
 				program.use();
-				const xscroll = ( ( delta / 1000 ) * 0.05 ) % ( 1 / canvasWidth );
+				let xscroll = ( ( delta / 1000 ) * 0.05 );
+				while ( xscroll > ( 2 / canvasWidth ) ) {
+					xscroll -= ( 2 / canvasWidth );
+				}
 				program.setUniform1f( `u_xscroll`, xscroll );
 			},
 			updateResolution: ( width: number, height: number ): void => {
@@ -469,11 +473,17 @@ function generateRenderer(
 		setSelectedObject: ( i: number | null, objects: readonly MapObject[] ) => {
 			selectedObject.setSelected( i, objects );
 		},
+		updateAnimationFrame: ( frame: number ): void => {
+			objectRenderers.forEach( ( objectRenderer: OverworldObjectRenderer ) => {
+				objectRenderer.updateAnimationFrame( frame );
+			} );
+		},
 		updateLayers: ( map: OverworldMap, selectedLayer: number ): void => {
 			const layers = map.getLayersList();
 			objectRenderers = layers.map( ( layer: OverworldLayer, i: number ) => {
 				const objectRenderer = createObjectRenderer(
 					ctx,
+					layer.getType(),
 					palettes,
 					graphics,
 					selectedPalette,
@@ -526,6 +536,7 @@ function generateRenderer(
 
 function createObjectRenderer(
 	ctx: WebGL2RenderingContext,
+	type: OverworldLayerType,
 	palettes: PaletteList,
 	graphics: GraphicsEntry,
 	selectedPalette: number,
@@ -569,7 +580,7 @@ function createObjectRenderer(
 						vec3 coords = vec3( a_texture_coords, 1.0 ) * texmodel;
 						v_texture_coords = coords.xy;
 						if ( animation > 0.0 ) {
-							v_texture_coords.x += animation * ( 2.0 / 64.0 );
+							v_texture_coords.x += animation * ( 1.0 / 128.0 );
 						}
 					}
 				`,
@@ -703,7 +714,7 @@ function createObjectRenderer(
 		},
 		updateObjects: ( objects: readonly MapObject[] ) => {
 			program.use();
-			const typeFactory = getOverworldTypeFactory( OverworldLayerType.block );
+			const typeFactory = getOverworldTypeFactory( type );
 			tiles = objects.reduce(
 				( acc: GraphicTile[], object: MapObject ) => {
 					return acc.concat( typeFactory[ object.type() ].generateTiles( object, acc ) );

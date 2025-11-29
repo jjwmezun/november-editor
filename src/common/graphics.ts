@@ -113,6 +113,11 @@ const createGraphicsEntry = (
 			{ type: `Uint8`, value: heightTiles },
 		].concat( compressPixels( pixels )
 			.map( ( byte: number ): ByteBlock => ( { type: `Uint8`, value: byte } ) ) ),
+		getData: () => ( {
+			data: pixels,
+			width: getWidthPixels(),
+			height: getHeightPixels(),
+		} ),
 		getWidthTiles: () => widthTiles,
 		getHeightTiles: () => heightTiles,
 		getWidthPixels,

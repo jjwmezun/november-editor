@@ -78,6 +78,7 @@ interface GraphicsEntry {
 	clearTile: ( tileIndex: number ) => void,
 	createTexture: ( ctx: WebGLRenderingContext, index: number ) => WebGLTexture,
 	encode: () => ByteBlock[],
+	getData: () => GraphicsEntryRaw,
 	getWidthTiles: () => number,
 	getHeightTiles: () => number,
 	getWidthPixels: () => number,
@@ -87,6 +88,12 @@ interface GraphicsEntry {
 	toJSON: () => object,
 	updatePixels: ( newPixels: number[] ) => GraphicsEntry,
 	updatePixel: ( color: number, x: number, y: number ) => void,
+}
+
+interface GraphicsEntryRaw {
+	data: number[],
+	width: number,
+	height: number,
 }
 
 interface GraphicTile {
@@ -282,9 +289,11 @@ interface ObjectRenderer {
 interface Overworld {
 	addMap: () => Overworld;
 	getMapsList: () => readonly OverworldMap[];
+	encode: () => ByteBlock[];
 	moveMapDown: ( index: number ) => Overworld;
 	moveMapUp: ( index: number ) => Overworld;
 	removeMap: ( index: number ) => Overworld;
+	toJSON: () => object;
 	updateMap: ( index: number, map: OverworldMapData ) => Overworld;
 }
 
@@ -304,7 +313,10 @@ interface OverworldLayer {
 	addObject( object: MapObject ): Overworld;
 	getObject: ( index: number ) => MapObject;
 	getObjectsList: () => readonly MapObject[];
+	getType: () => OverworldLayerType;
+	encode: () => ByteBlock[];
 	removeObject: ( index: number ) => Overworld;
+	toJSON: () => object;
 	updateObject: ( index: number, object: MapObjectArgs ) => Overworld;
 }
 
@@ -315,13 +327,16 @@ interface OverworldLayerControlsProps {
 	moveLayerUp: () => void;
 	removeLayer: () => void;
 	selectedLayer: number;
+	selectedLayerType: OverworldLayerType;
 	setSelectedLayer: ( index: number ) => void;
+	setSelectedLayerType: ( type: OverworldLayerType ) => void;
 	setSelectedObject: ( object: number | null ) => void;
 	setSelectedObjectType: ( type: number ) => void;
 }
 
 interface OverworldLayerData {
 	objects: readonly MapObject[];
+	type: OverworldLayerType;
 }
 
 enum OverworldLayerType {
@@ -338,9 +353,11 @@ interface OverworldMap {
 	getWidthBlocks: () => number;
 	getWidthPixels: () => number;
 	getWidthTiles: () => number;
+	encode: () => ByteBlock[];
 	moveLayerDown: ( index: number ) => Overworld;
 	moveLayerUp: ( index: number ) => Overworld;
 	removeLayer: ( index: number ) => Overworld;
+	toJSON: () => object;
 	updateHeight: ( newHeight: number ) => Overworld;
 	updateLayer: ( index: number, layer: OverworldLayerData ) => Overworld;
 	updateWidth: ( newWidth: number ) => Overworld;
@@ -509,6 +526,7 @@ interface ElectronAPI {
 	importMap: () => void,
 	on: ( channel: string, listener: ( _event, data: object ) => void ) => void,
 	openTileImportWindow: () => void,
+	openTileExportWindow: ( graphics: GraphicsEntryRaw ) => void,
 	remove: ( channel: string ) => void,
 	save: ( data: string ) => void,
 }
@@ -531,6 +549,7 @@ export {
 	GoalTemplate,
 	Graphics,
 	GraphicsEntry,
+	GraphicsEntryRaw,
 	GraphicTile,
 	Layer,
 	LayerType,

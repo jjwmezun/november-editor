@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import React from "react";
+import React, { SyntheticBaseEvent } from "react";
 
-import { OverworldLayerControlsProps } from "../../../../common/types";
+import { OverworldLayerControlsProps, OverworldLayerType } from "../../../../common/types";
 
 function OverworldLayerControls( props: OverworldLayerControlsProps ): React.ReactElement {
 	const {
@@ -11,7 +11,9 @@ function OverworldLayerControls( props: OverworldLayerControlsProps ): React.Rea
 		moveLayerUp,
 		removeLayer,
 		selectedLayer,
+		selectedLayerType,
 		setSelectedLayer,
+		setSelectedLayerType,
 		setSelectedObject,
 		setSelectedObjectType,
 	} = props;
@@ -22,19 +24,35 @@ function OverworldLayerControls( props: OverworldLayerControlsProps ): React.Rea
 		setSelectedObjectType( 0 );
 	};
 
+	const updateLayerType = ( e: SyntheticBaseEvent<HTMLSelectElement> ): void => {
+		const value = e.currentTarget.value as OverworldLayerType;
+		setSelectedLayerType( value );
+	};
+
 	return <div>
 		<h2>Layer controls:</h2>
 		<ul>
-			{ layers.map( ( _layer, i ) => <li key={ i }>
+			{ layers.map( ( layer, i ) => <li key={ i }>
 				<button
 					disabled={ selectedLayer === i }
 					onClick={ generateLayerChanger( i ) }
 				>
-					Layer #{ i + 1 }
+					Layer #{ i + 1 } – { OverworldLayerType[ layer.getType() ] }
 				</button>
 			</li> ) }
 		</ul>
 		<div>
+			<label>
+				Layer type
+				<select value={ selectedLayerType } onChange={ updateLayerType }>
+					{ Object.keys( OverworldLayerType ).map( ( key, i ) => <option
+						key={ i }
+						value={ key }
+					>
+						{ OverworldLayerType[ key ] }
+					</option> ) }
+				</select>
+			</label>
 			<button disabled={ layers.length >= 255 } onClick={ addLayer }>Add layer</button>
 			<button disabled={ layers.length <= 1 } onClick={ removeLayer }>Remove layer</button>
 			<button disabled={ selectedLayer <= 0 } onClick={ moveLayerUp }>↑</button>

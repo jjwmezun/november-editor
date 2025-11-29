@@ -12,7 +12,7 @@ function OverworldObjectControls( props: OverworldObjectControlsProps ): React.R
 
 	const updateSelectedObjectType = ( e: SyntheticBaseEvent ): void => {
 		const value = e.target.value;
-		setSelectedObjectType( value );
+		setSelectedObjectType( parseInt( value ) );
 	};
 
 	return <div>

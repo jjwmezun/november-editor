@@ -8,12 +8,12 @@ function OverworldMapOptions( props: OverworldMapOptionsProps ): ReactElement {
 
 	const updateMapHeight = ( e: SyntheticBaseEvent ) => {
 		const value = e.target.value;
-		setOverworld( map.updateHeight( value ) );
+		setOverworld( map.updateHeight( parseInt( value ) ) );
 	};
 
 	const updateMapWidth = ( e: SyntheticBaseEvent ) => {
 		const value = e.target.value;
-		setOverworld( map.updateWidth( value ) );
+		setOverworld( map.updateWidth( parseInt( value ) ) );
 	};
 
 	return <div>

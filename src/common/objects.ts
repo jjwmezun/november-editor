@@ -971,6 +971,181 @@ const owTileTypes: readonly MapObjectType[] = Object.freeze( [
 	},
 ] );
 
+const owSpriteTypes: readonly MapObjectType[] = Object.freeze( [
+	{
+		name: `Player`,
+		create: ( x, y ) => ( {
+			x: x,
+			y: y,
+		} ),
+		generateHighlight: ( object: MapObject ) => [
+			{
+				x: object.xBlocks(),
+				y: object.yBlocks(),
+				width: 1,
+				height: 1,
+			},
+		],
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				x: object.xTiles(),
+				y: object.yTiles(),
+				srcx: 0,
+				srcy: 2,
+				w: 1,
+				h: 1,
+			} ),
+			createTile( {
+				x: object.xTiles() + 1,
+				y: object.yTiles(),
+				srcx: 1,
+				srcy: 2,
+				w: 1,
+				h: 1,
+			} ),
+			createTile( {
+				x: object.xTiles(),
+				y: object.yTiles() + 1,
+				srcx: 2,
+				srcy: 2,
+				w: 1,
+				h: 1,
+				animation: 3,
+			} ),
+			createTile( {
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 1,
+				srcx: 4,
+				srcy: 2,
+				w: 1,
+				h: 1,
+				animation: 3,
+			} ),
+		],
+		exportData: [
+			{ type: `Uint16`, key: `x` },
+			{ type: `Uint16`, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Level Tile`,
+		create: ( x, y ) => ( {
+			x: x,
+			y: y,
+			level: 0,
+		} ),
+		generateHighlight: ( object: MapObject ) => [
+			{
+				x: object.xBlocks(),
+				y: object.yBlocks(),
+				width: 1,
+				height: 1,
+			},
+		],
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				x: object.xTiles(),
+				y: object.yTiles(),
+				srcx: 6,
+				srcy: 2,
+				w: 1,
+				h: 1,
+				animation: 9,
+			} ),
+			createTile( {
+				x: object.xTiles() + 1,
+				y: object.yTiles(),
+				srcx: 6,
+				srcy: 2,
+				w: 1,
+				h: 1,
+				animation: 9,
+				flipx: true,
+			} ),
+			createTile( {
+				x: object.xTiles(),
+				y: object.yTiles() + 1,
+				srcx: 6,
+				srcy: 2,
+				w: 1,
+				h: 1,
+				animation: 9,
+				flipy: true,
+			} ),
+			createTile( {
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 1,
+				srcx: 6,
+				srcy: 2,
+				w: 1,
+				h: 1,
+				animation: 9,
+				flipx: true,
+				flipy: true,
+			} ),
+		],
+		exportData: [
+			{ type: `Uint16`, key: `x` },
+			{ type: `Uint16`, key: `y` },
+			{ type: `Uint8`, key: `level` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Level`,
+				key: `level`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
+] );
+
 const createObject = ( object: MapObjectArgs ): MapObject => {
 	const {
 		type = 0,
@@ -1013,17 +1188,25 @@ const createObject = ( object: MapObjectArgs ): MapObject => {
 const getTypeFactory = ( type: LayerType ): readonly MapObjectType[] => (
 	type === LayerType.sprite ? spriteTypes : objectTypes );
 
-const getOverworldTypeFactory = ( type: OverworldLayerType ): readonly MapObjectType[] => owTileTypes;
+const getOverworldTypeFactory = ( type: OverworldLayerType ): readonly MapObjectType[] => {
+	return type === OverworldLayerType.sprite
+		? owSpriteTypes
+		: owTileTypes;
+};
 
-const getOverworldTypeGenerator = ( type: OverworldLayerType ): ( type: number, x: number, y: number ) => MapObject => {
-	const types = owTileTypes;
-	return ( type: number, x: number, y: number ): MapObject => {
-		const objectType = types[ type ];
-		if ( !objectType ) {
-			throw new Error( `Invalid overworld tile type: ${ type }` );
+const getOverworldTypeGenerator = ( layerType: OverworldLayerType ): (
+	objectType: number,
+	x: number,
+	y: number
+) => MapObject => {
+	const types = getOverworldTypeFactory( layerType );
+	return ( objectType: number, x: number, y: number ): MapObject => {
+		const type = types[ objectType ];
+		if ( !type ) {
+			throw new Error( `Invalid overworld tile type: ${ objectType }` );
 		}
-		const object = objectType.create( x, y );
-		object[ `type` ] = type;
+		const object = type.create( x, y );
+		object[ `type` ] = objectType;
 		return createObject( object );
 	};
 };
