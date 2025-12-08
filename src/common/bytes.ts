@@ -1,3 +1,9 @@
+function combineUint8ArrayIntoUint32( list: number[] ): number {
+	return list.reduce( ( acc, n, index ) => {
+		return acc + ( n << ( 8 * ( list.length - index - 1 ) ) );
+	}, 0 );
+}
+
 const getBitsFromByte = ( n: number ): number[] => {
 	const bits: number[] = [];
 	for ( let i = 7; i >= 0; i-- ) {
@@ -17,6 +23,7 @@ const getDataTypeSize = ( type: string ): number => {
 };
 
 export {
+	combineUint8ArrayIntoUint32,
 	getBitsFromByte,
 	getBitFromNumber,
 	getDataTypeSize,

@@ -1,3 +1,5 @@
+import { gzip, ungzip } from "node-gzip";
+
 import { Graphics, GraphicsEntry } from "./types";
 import { tileSize } from "./constants";
 import { getBitsFromByte } from "./bytes";
@@ -19,7 +21,7 @@ const getColorFromBits = ( bits: number[] ): number => {
 	return color;
 };
 
-const compressPixels = ( pixels: number[] ): number[] => {
+const compressPixels = async ( pixels: number[] ): Promise<number[]> => {
 	let bits: number[] = [];
 	const compressedPixels: number[] = [];
 	pixels.forEach( pixel => {
@@ -42,10 +44,11 @@ const compressPixels = ( pixels: number[] ): number[] => {
 		compressedPixels.push( parseInt( bits.join( `` ), 2 ) );
 	}
 
-	return compressedPixels;
+	return await gzip( Buffer.from( compressedPixels ) );
 };
 
-const decompressPixels = ( pixels: number[] ): number[] => {
+const decompressPixels = async ( pixels: number[] ): Promise<number[]> => {
+	pixels = await ungzip( Buffer.from( pixels ) ).then( buf => Array.from( buf ) );
 	const out: number[] = [];
 	let bits: number[] = [];
 	pixels.forEach( byte => {
@@ -133,9 +136,9 @@ const createGraphicsEntry = (
 			}
 			return createGraphicsEntry( widthTiles, heightTiles, pixels );
 		},
-		toJSON: () => {
+		toJSON: async () => {
 			// Compress pixels & convert to base64 string.
-			const pixelList = compressPixels( pixels );
+			const pixelList = await compressPixels( pixels );
 			let pixelString = ``;
 			for ( let i = 0; i < pixelList.length; i++ ) {
 				pixelString += String.fromCharCode( pixelList[ i ] );

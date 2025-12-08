@@ -1,6 +1,6 @@
 import '../assets/editor.scss';
 import { ReactElement, useEffect, useState } from 'react';
-import { getDataTypeSize } from '../../../common/bytes';
+import { combineUint8ArrayIntoUint32, getDataTypeSize } from '../../../common/bytes';
 import { levelCount } from '../../../common/constants';
 import { modeKeys } from '../../../common/modes';
 import LevelMode from './LevelMode';
@@ -45,32 +45,48 @@ import {
 	decodePaletteData,
 } from '../../../common/palettes';
 
-const loadGraphicsFromData = ( data: Uint8Array ): DecodedGraphicsData => {
+const loadGraphicsFromData = async ( data: Uint8Array ): Promise<DecodedGraphicsData> => {
 	const graphics: Graphics = createNewGraphics();
 
-	[ `blocks`, `sprites` ].forEach( ( type: string ) => {
-		let entry = createBlankGraphicsEntry( 64, 64 );
-
-		// Update graphics entry with new pixels.
-		const dataSize = Math.ceil( entry.getPixels().length * ( 3 / 8 ) );
-		const pixels: number[] = decompressPixels( Array.from( data ).slice( 0, dataSize ) );
-		entry = entry.updatePixels( pixels );
-		data = data.slice( dataSize );
-		graphics[ type ] = entry;
+	// Gather list o’ data sizes.
+	const sizes = [ `blocks`, `sprites` ].map( ( type: string ) => {
+		const dataSize = combineUint8ArrayIntoUint32( Array.from( data.slice( 0, 4 ) ) );
+		const prevData = [ ...data ];
+		data = data.slice( dataSize + 4 );
+		return {
+			dataSize,
+			data: prevData,
+			type,
+		};
 	} );
 
-	return {
-		graphics,
-		remainingBytes: data,
-	};
+	// For each data size, decompress graphics & add to graphics.
+	return Promise.all( sizes.map( async ( { data, dataSize, type } ) => {
+		let entry = createBlankGraphicsEntry( 64, 64 );
+		return new Promise<void>( resolve => {
+			decompressPixels( Array.from( data ).slice( 4, dataSize + 4 ) ).then( ( pixels: number[] ) => {
+				entry = entry.updatePixels( pixels );
+				graphics[ type ] = entry;
+				resolve();
+			} );
+		} );
+	} ) ).then( () => {
+		return {
+			graphics,
+			remainingBytes: data,
+		};
+	} );
 };
 
-const generateExportData = ( levels: Level[], palettes: PaletteList, graphics: Graphics ): DataView => {
+const generateExportData = async ( levels: Level[], palettes: PaletteList, graphics: Graphics ): Promise<DataView> => {
 	let saveData: ByteBlock[] = palettes.encode();
 
-	saveData = saveData.concat( compressPixels( graphics.blocks.getPixels() )
-		.concat( compressPixels( graphics.sprites.getPixels() ) )
-		.map( ( byte: number ): ByteBlock => ( { type: `Uint8`, value: byte } ) ) );
+	const blockGFX = Array.from( await compressPixels( graphics.blocks.getPixels() ) );
+	const spriteGFX = Array.from( await compressPixels( graphics.sprites.getPixels() ) );
+	saveData.push( { type: `Uint32`, value: blockGFX.length } );
+	saveData = saveData.concat( blockGFX.map( ( byte: number ): ByteBlock => ( { type: `Uint8`, value: byte } ) ) );
+	saveData.push( { type: `Uint32`, value: spriteGFX.length } );
+	saveData = saveData.concat( spriteGFX.map( ( byte: number ): ByteBlock => ( { type: `Uint8`, value: byte } ) ) );
 
 	// For each level, generate bytes for name, goal, and maps.
 	saveData = saveData.concat( encodeLevels( levels ) );
@@ -98,30 +114,24 @@ const Editor = (): ReactElement => {
 	const [ mode, setMode ] = useState( modeKeys.select );
 
 	const onImport = ( _event, data: Uint8Array ) => {
-		resetMode();
-
 		const paletteData = decodePaletteData( data );
-		setPalettes( paletteData.palettes );
 
 		// Load graphics data.
-		const graphicsData = loadGraphicsFromData( paletteData.remainingBytes );
-		setGraphics( graphicsData.graphics );
+		loadGraphicsFromData( paletteData.remainingBytes ).then( graphicsData => {
+			// Load level data.
+			const levels: Level[] = [];
+			let remainingBytes = graphicsData.remainingBytes;
+			while ( levels.length < levelCount ) {
+				const levelData = loadLevelFromData( remainingBytes );
+				levels.push( levelData.level );
+				remainingBytes = levelData.remainingBytes;
+			}
 
-		// Load level data.
-		const levels: Level[] = [];
-		let remainingBytes = graphicsData.remainingBytes;
-		while ( remainingBytes.length > 0 ) {
-			const levelData = loadLevelFromData( remainingBytes );
-			levels.push( levelData.level );
-			remainingBytes = levelData.remainingBytes;
-		}
-
-		// If there are fewer levels than expected,
-		// add new levels to fill the gap.
-		while ( levels.length < levelCount ) {
-			levels.push( createLevel() );
-		}
-		setLevels( levels );
+			resetMode();
+			setPalettes( paletteData.palettes );
+			setGraphics( graphicsData.graphics );
+			setLevels( levels );
+		} );
 	};
 
 	const onOpen = ( _event, data: object ) => {
@@ -186,7 +196,7 @@ const Editor = (): ReactElement => {
 				sprites: createBlankGraphicsEntry( 64, 64 ),
 			};
 
-			[ `blocks`, `sprites` ].forEach( ( type: string ) => {
+			Promise.all( [ `blocks`, `sprites` ].map( ( type: string ) => {
 				if ( ! data[ `graphics` ] || typeof data[ `graphics` ] !== `object` ) {
 					throw new Error( `Invalid graphics data` );
 				}
@@ -213,14 +223,19 @@ const Editor = (): ReactElement => {
 					pixelList.push( letter.charCodeAt( 0 ) );
 				}
 
-				graphics[ type ] = createGraphicsEntry(
-					dataItem[ `widthTiles` ],
-					dataItem[ `heightTiles` ],
-					decompressPixels( pixelList ),
-				);
+				return new Promise( resolve => {
+					decompressPixels( pixelList ).then( pixelData => {
+						graphics[ type ] = createGraphicsEntry(
+							dataItem[ `widthTiles` ],
+							dataItem[ `heightTiles` ],
+							pixelData,
+						);
+						resolve( null );
+					} );
+				} );
+			} ) ).then( () => {
+				setGraphics( graphics );
 			} );
-
-			setGraphics( graphics );
 		} else {
 			// If no graphics is present, set to default.
 			setGraphics( createNewGraphics() );
@@ -388,20 +403,25 @@ const Editor = (): ReactElement => {
 			if ( graphics === null || levels === null || palettes === null ) {
 				return;
 			}
-			window.electronAPI.save( JSON.stringify( {
-				graphics: {
-					blocks: graphics.blocks.toJSON(),
-					sprites: graphics.sprites.toJSON(),
-				},
-				palettes: palettes.map( ( palette: Palette ) => palette.toJSON() ),
-				levels: levels.map( ( level: Level ) => level.toJSON() ),
-			}, null, 4 ) );
+			Promise.all( [ graphics.blocks.toJSON(), graphics.sprites.toJSON() ] )
+				.then( ( [ blockGraphics, spriteGraphics ] ) => {
+					window.electronAPI.save( JSON.stringify( {
+						graphics: {
+							blocks: blockGraphics,
+							sprites: spriteGraphics,
+						},
+						palettes: palettes.map( ( palette: Palette ) => palette.toJSON() ),
+						levels: levels.map( ( level: Level ) => level.toJSON() ),
+					}, null, 4 ) );
+				} );
 		};
 		const onExport = () => {
 			if ( graphics === null || levels === null || palettes === null ) {
 				return;
 			}
-			window.electronAPI.export( generateExportData( levels, palettes, graphics ) );
+			generateExportData( levels, palettes, graphics ).then( dataView => {
+				window.electronAPI.export( dataView );
+			} );
 		};
 		window.electronAPI.on( `save__editor`, onSave );
 		window.electronAPI.on( `export__editor`, onExport );
