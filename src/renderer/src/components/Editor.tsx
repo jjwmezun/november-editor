@@ -62,9 +62,9 @@ const loadGraphicsFromData = async ( data: Uint8Array ): Promise<DecodedGraphics
 
 	// For each data size, decompress graphics & add to graphics.
 	return Promise.all( sizes.map( async ( { data, dataSize, type } ) => {
-		let entry = createBlankGraphicsEntry( 64, 64 );
+		let entry = createBlankGraphicsEntry( type, 64, 64 );
 		return new Promise<void>( resolve => {
-			decompressPixels( Array.from( data ).slice( 4, dataSize + 4 ) ).then( ( pixels: number[] ) => {
+			decompressPixels( Array.from( data ).slice( 4, dataSize + 4 ), type ).then( ( pixels: number[] ) => {
 				entry = entry.updatePixels( pixels );
 				graphics[ type ] = entry;
 				resolve();
@@ -81,8 +81,8 @@ const loadGraphicsFromData = async ( data: Uint8Array ): Promise<DecodedGraphics
 const generateExportData = async ( levels: Level[], palettes: PaletteList, graphics: Graphics ): Promise<DataView> => {
 	let saveData: ByteBlock[] = palettes.encode();
 
-	const blockGFX = Array.from( await compressPixels( graphics.blocks.getPixels() ) );
-	const spriteGFX = Array.from( await compressPixels( graphics.sprites.getPixels() ) );
+	const blockGFX = Array.from( await compressPixels( graphics.blocks.getPixels(), `blocks` ) );
+	const spriteGFX = Array.from( await compressPixels( graphics.sprites.getPixels(), `sprites` ) );
 	saveData.push( { type: `Uint32`, value: blockGFX.length } );
 	saveData = saveData.concat( blockGFX.map( ( byte: number ): ByteBlock => ( { type: `Uint8`, value: byte } ) ) );
 	saveData.push( { type: `Uint32`, value: spriteGFX.length } );
@@ -192,8 +192,8 @@ const Editor = (): ReactElement => {
 			}
 
 			const graphics = {
-				blocks: createBlankGraphicsEntry( 64, 64 ),
-				sprites: createBlankGraphicsEntry( 64, 64 ),
+				blocks: createBlankGraphicsEntry( `blocks`, 64, 64 ),
+				sprites: createBlankGraphicsEntry( `sprites`, 64, 64 ),
 			};
 
 			Promise.all( [ `blocks`, `sprites` ].map( ( type: string ) => {
@@ -224,8 +224,9 @@ const Editor = (): ReactElement => {
 				}
 
 				return new Promise( resolve => {
-					decompressPixels( pixelList ).then( pixelData => {
+					decompressPixels( pixelList, type ).then( pixelData => {
 						graphics[ type ] = createGraphicsEntry(
+							type,
 							dataItem[ `widthTiles` ],
 							dataItem[ `heightTiles` ],
 							pixelData,
