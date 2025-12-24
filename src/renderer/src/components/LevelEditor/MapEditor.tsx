@@ -8,7 +8,7 @@ import { getMousePosition } from '../../../../common/utils';
 import {
 	LayerType,
 	MapEditorProps,
-	MapObject,
+	MapObjectArgs,
 } from '../../../../common/types';
 import { createMapRenderer } from '../../../../common/render-level';
 
@@ -216,7 +216,7 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		window.electronAPI.enableSave();
 	};
 
-	const updateObject = ( index: number, o: MapObject ) => {
+	const updateObject = ( index: number, o: MapObjectArgs ) => {
 		if ( selectedMap === null || selectedLayer === null ) {
 			return;
 		}
@@ -386,9 +386,9 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 				</label>
 			</div> }
 			{ selectedLayer !== null
-			&& layers.length < selectedLayer
+			&& layers.length > selectedLayer
 			&& selectedObject !== null
-			&& objects.length < selectedObject
+			&& objects.length > selectedObject
 			&& <ObjectOptions
 				objects={ objects }
 				removeObject={ removeObject }

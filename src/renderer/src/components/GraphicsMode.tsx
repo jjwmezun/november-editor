@@ -89,6 +89,7 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 			<select onChange={ changeGraphicEntry }>
 				<option value="blocks">Blocks</option>
 				<option value="sprites">Sprites</option>
+				<option value="overworld">O’erworld</option>
 			</select>
 			<TileGrid
 				graphics={ selectedGraphicsEntry }
