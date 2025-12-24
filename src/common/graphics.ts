@@ -1,6 +1,6 @@
-import { ByteBlock, DecodedGraphicsData, Graphics, GraphicsEntry } from "./types";
+import { DecodedGraphicsData, Graphics, GraphicsEntry } from "./types";
 import { tileSize } from "./constants";
-import { getBitsFromByte } from "./bytes";
+import { combineUint8ArrayIntoUint32, getBitsFromByte } from "./bytes";
 
 // Convert color index into list o’ 3 bits.
 const getBitsFromColor = ( color: number ): number[] => {
@@ -19,7 +19,7 @@ const getColorFromBits = ( bits: number[] ): number => {
 	return color;
 };
 
-const compressPixels = ( pixels: number[] ): number[] => {
+const compressPixels = async ( pixels: number[], name: string ): Promise<number[]> => {
 	let bits: number[] = [];
 	const compressedPixels: number[] = [];
 	pixels.forEach( pixel => {
@@ -42,32 +42,48 @@ const compressPixels = ( pixels: number[] ): number[] => {
 		compressedPixels.push( parseInt( bits.join( `` ), 2 ) );
 	}
 
-	return compressedPixels;
+	return new Promise( resolve => {
+		window.electronAPI.on( `compression-response`, ( _event, data, _name ) => {
+			if ( _name === name ) {
+				resolve( data );
+			}
+		} );
+		window.electronAPI.compress( Buffer.from( compressedPixels ), name );
+	} );
 };
 
-const decompressPixels = ( pixels: number[] ): number[] => {
-	const out: number[] = [];
-	let bits: number[] = [];
-	pixels.forEach( byte => {
-		// Get bits from byte & add to total list.
-		bits = bits.concat( getBitsFromByte( byte ) );
+const decompressPixels = async ( pixels: number[], name: string ): Promise<number[]> => {
+	return new Promise( resolve => {
+		window.electronAPI.on( `decompression-response`, ( _event, pixels, _name ) => {
+			if ( _name !== name ) {
+				return;
+			}
+			const out: number[] = [];
+			let bits: number[] = [];
+			pixels.forEach( ( byte: number ) => {
+				// Get bits from byte & add to total list.
+				bits = bits.concat( getBitsFromByte( byte ) );
 
-		// If there are ’nough bits to make a color, add it to pixels.
-		while ( bits.length >= 3 ) {
-			const v = bits.splice( 0, 3 );
-			const color = getColorFromBits( v );
-			out.push( color );
-		}
+				// If there are ’nough bits to make a color, add it to pixels.
+				while ( bits.length >= 3 ) {
+					const v = bits.splice( 0, 3 );
+					const color = getColorFromBits( v );
+					out.push( color );
+				}
+			} );
+
+			if ( bits.length > 0 ) {
+				throw new Error( `Invalid tileset data` );
+			}
+
+			resolve( out );
+		} );
+		window.electronAPI.decompress( Buffer.from( pixels ), name );
 	} );
-
-	if ( bits.length > 0 ) {
-		throw new Error( `Invalid tileset data` );
-	}
-
-	return out;
 };
 
 const createGraphicsEntry = (
+	name: string,
 	widthTiles: number,
 	heightTiles: number,
 	pixels: number[],
@@ -85,7 +101,7 @@ const createGraphicsEntry = (
 				const start = pixelY * getWidthPixels() + x;
 				pixels.fill( 0, start, start + tileSize );
 			}
-			return createGraphicsEntry( widthTiles, heightTiles, pixels );
+			return createGraphicsEntry( name, widthTiles, heightTiles, pixels );
 		},
 		createTexture: ( ctx: WebGLRenderingContext, index: number ): WebGLTexture => {
 			const texture = ctx.createTexture();
@@ -108,11 +124,6 @@ const createGraphicsEntry = (
 			ctx.texParameteri( ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_T, ctx.REPEAT );
 			return texture;
 		},
-		encode: (): ByteBlock[] => [
-			{ type: `Uint8`, value: widthTiles },
-			{ type: `Uint8`, value: heightTiles },
-		].concat( compressPixels( pixels )
-			.map( ( byte: number ): ByteBlock => ( { type: `Uint8`, value: byte } ) ) ),
 		getData: () => ( {
 			data: pixels,
 			width: getWidthPixels(),
@@ -141,11 +152,11 @@ const createGraphicsEntry = (
 					}
 				}
 			}
-			return createGraphicsEntry( widthTiles, heightTiles, pixels );
+			return createGraphicsEntry( name, widthTiles, heightTiles, pixels );
 		},
-		toJSON: () => {
+		toJSON: async () => {
 			// Compress pixels & convert to base64 string.
-			const pixelList = compressPixels( pixels );
+			const pixelList = await compressPixels( pixels, name );
 			let pixelString = ``;
 			for ( let i = 0; i < pixelList.length; i++ ) {
 				pixelString += String.fromCharCode( pixelList[ i ] );
@@ -158,53 +169,64 @@ const createGraphicsEntry = (
 				pixels: pixelData,
 			};
 		},
-		updatePixels: newPixels => createGraphicsEntry( widthTiles, heightTiles, newPixels ),
+		updatePixels: newPixels => createGraphicsEntry( name, widthTiles, heightTiles, newPixels ),
 		updatePixel: ( color, x, y ) => {
 			const index = y * getWidthPixels() + x;
 			pixels[ index ] = color;
-			return createGraphicsEntry( widthTiles, heightTiles, pixels );
+			return createGraphicsEntry( name, widthTiles, heightTiles, pixels );
 		},
 	};
 };
 
-const createBlankGraphicsEntry = ( widthTiles: number, heightTiles: number ): GraphicsEntry => createGraphicsEntry(
+const createBlankGraphicsEntry = (
+	name: string,
+	widthTiles: number,
+	heightTiles: number,
+): GraphicsEntry => createGraphicsEntry(
+	name,
 	widthTiles,
 	heightTiles,
 	new Array( widthTiles * tileSize * heightTiles * tileSize ).fill( 0 ),
 );
 
 const createNewGraphics = (): Graphics => ( {
-	blocks: createBlankGraphicsEntry( 64, 64 ),
-	overworld: createBlankGraphicsEntry( 128, 128 ),
-	sprites: createBlankGraphicsEntry( 64, 64 ),
+	blocks: createBlankGraphicsEntry( `blocks`, 64, 64 ),
+	overworld: createBlankGraphicsEntry( `overworld`, 128, 128 ),
+	sprites: createBlankGraphicsEntry( `sprites`, 64, 64 ),
 } );
 
-const loadGraphicsFromData = ( data: Uint8Array ): DecodedGraphicsData => {
-	// Create graphics object with empty entries to satisfy TypeScript.
-	const graphics: Graphics = {
-		blocks: createGraphicsEntry( 0, 0, [] ),
-		overworld: createGraphicsEntry( 0, 0, [] ),
-		sprites: createGraphicsEntry( 0, 0, [] ),
-	};
+const loadGraphicsFromData = async ( data: Uint8Array ): Promise<DecodedGraphicsData> => {
+	const graphics: Graphics = createNewGraphics();
 
-	// Get graphics data from each type from bytes list.
-	Object.keys( graphics ).forEach( ( type: string ) => {
-		// Get width & height from first two bytes.
-		const width = data[ 0 ];
-		const height = data[ 1 ];
-		data = data.slice( 2 );
-
-		// Update graphics entry with new pixels.
-		const dataSize = Math.ceil( width * 8 * height * 8 * ( 3 / 8 ) );
-		const pixels: number[] = decompressPixels( Array.from( data ).slice( 0, dataSize ) );
-		data = data.slice( dataSize );
-		graphics[ type ] = createGraphicsEntry( width, height, pixels );
+	// Gather list o’ data sizes.
+	const sizes = [ `blocks`, `sprites`, `overworld` ].map( ( type: string ) => {
+		const dataSize = combineUint8ArrayIntoUint32( Array.from( data.slice( 0, 4 ) ) );
+		const prevData = [ ...data ];
+		data = data.slice( dataSize + 4 );
+		return {
+			dataSize,
+			data: prevData,
+			type,
+		};
 	} );
 
-	return {
-		graphics,
-		remainingBytes: data,
-	};
+	// For each data size, decompress graphics & add to graphics.
+	return Promise.all( sizes.map( async ( { data, dataSize, type } ) => {
+		const wh = type === `overworld` ? 128 : 64;
+		let entry = createBlankGraphicsEntry( type, wh, wh );
+		return new Promise<void>( resolve => {
+			decompressPixels( Array.from( data ).slice( 4, dataSize + 4 ), type ).then( ( pixels: number[] ) => {
+				entry = entry.updatePixels( pixels );
+				graphics[ type ] = entry;
+				resolve();
+			} );
+		} );
+	} ) ).then( () => {
+		return {
+			graphics,
+			remainingBytes: data,
+		};
+	} );
 };
 
 export {

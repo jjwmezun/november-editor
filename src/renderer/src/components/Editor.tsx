@@ -11,6 +11,8 @@ import GraphicsMode from './GraphicsMode';
 import PaletteMode from './PaletteMode';
 import OverworldMode from './OverworldMode';
 import {
+	compressPixels,
+	createBlankGraphicsEntry,
 	createGraphicsEntry,
 	createNewGraphics,
 	decompressPixels,
@@ -48,18 +50,23 @@ import {
 } from '../../../common/palettes';
 import { createBlankOverworld, createOverworldFromJSON, loadOverworldFromData } from '../../../common/ow';
 
-const generateExportData = (
+const generateExportData = async (
 	levels: Level[],
 	palettes: PaletteList,
 	graphics: Graphics,
 	overworld: Overworld,
-): DataView => {
+): Promise<DataView> => {
 	let saveData: ByteBlock[] = palettes.encode();
 
-	// Encode each graphics entry.
-	for ( const entry in graphics ) {
-		saveData = saveData.concat( graphics[ entry ].encode() );
-	}
+	const blockGFX = Array.from( await compressPixels( graphics.blocks.getPixels(), `blocks` ) );
+	const spriteGFX = Array.from( await compressPixels( graphics.sprites.getPixels(), `sprites` ) );
+	const overworldGFX = Array.from( await compressPixels( graphics.overworld.getPixels(), `overworld` ) );
+	saveData.push( { type: `Uint32`, value: blockGFX.length } );
+	saveData = saveData.concat( blockGFX.map( ( byte: number ): ByteBlock => ( { type: `Uint8`, value: byte } ) ) );
+	saveData.push( { type: `Uint32`, value: spriteGFX.length } );
+	saveData = saveData.concat( spriteGFX.map( ( byte: number ): ByteBlock => ( { type: `Uint8`, value: byte } ) ) );
+	saveData.push( { type: `Uint32`, value: overworldGFX.length } );
+	saveData = saveData.concat( overworldGFX.map( ( byte: number ): ByteBlock => ( { type: `Uint8`, value: byte } ) ) );
 
 	// For each level, generate bytes for name, goal, and maps.
 	saveData = saveData.concat( encodeLevels( levels ) );
@@ -91,27 +98,27 @@ const Editor = (): ReactElement => {
 	const [ mode, setMode ] = useState( modeKeys.select );
 
 	const onImport = ( _event, data: Uint8Array ) => {
-		resetMode();
-
 		const paletteData = decodePaletteData( data );
-		setPalettes( paletteData.palettes );
 
 		// Load graphics data.
-		const graphicsData = loadGraphicsFromData( paletteData.remainingBytes );
-		setGraphics( graphicsData.graphics );
+		loadGraphicsFromData( paletteData.remainingBytes ).then( graphicsData => {
+			// Load level data.
+			const levels: Level[] = [];
+			let remainingBytes = graphicsData.remainingBytes;
+			while ( levels.length < levelCount ) {
+				const levelData = loadLevelFromData( remainingBytes );
+				levels.push( levelData.level );
+				remainingBytes = levelData.remainingBytes;
+			}
 
-		// Load level data.
-		const levels: Level[] = [];
-		let remainingBytes = graphicsData.remainingBytes;
-		while ( levels.length < levelCount ) {
-			const levelData = loadLevelFromData( remainingBytes );
-			levels.push( levelData.level );
-			remainingBytes = levelData.remainingBytes;
-		}
-		setLevels( levels );
+			// Load overworld data.
+			setOverworld( loadOverworldFromData( remainingBytes ) );
 
-		// Load overworld data.
-		setOverworld( loadOverworldFromData( remainingBytes ) );
+			resetMode();
+			setPalettes( paletteData.palettes );
+			setGraphics( graphicsData.graphics );
+			setLevels( levels );
+		} );
 	};
 
 	const onOpen = ( _event, data: object ) => {
@@ -181,48 +188,64 @@ const Editor = (): ReactElement => {
 
 		setPalettes( createPaletteList( palettes ) );
 
-		// Import graphics.
-		if ( ! data[ `graphics` ] || typeof data[ `graphics` ] !== `object` ) {
-			throw new Error( `Invalid graphics data` );
-		}
-
-		const graphics = createNewGraphics();
-
-		[ `blocks`, `overworld`, `sprites` ].forEach( ( type: string ) => {
+		// Import graphics if present.
+		if ( `graphics` in data ) {
+			// Validate data.
 			if ( ! data[ `graphics` ] || typeof data[ `graphics` ] !== `object` ) {
 				throw new Error( `Invalid graphics data` );
 			}
-			if ( ! ( type in data[ `graphics` ] ) || typeof data[ `graphics` ][ type ] !== `object` ) {
-				throw new Error( `Invalid graphics ${ type } data` );
-			}
 
-			const dataItem = data[ `graphics` ][ type ];
+			const graphics = {
+				blocks: createBlankGraphicsEntry( `blocks`, 64, 64 ),
+				sprites: createBlankGraphicsEntry( `sprites`, 64, 64 ),
+				overworld: createBlankGraphicsEntry( `overworld`, 128, 128 ),
+			};
 
-			if ( ! dataItem[ `widthTiles` ] || typeof dataItem[ `widthTiles` ] !== `number` ) {
-				throw new Error( `Invalid graphics width` );
-			}
-			if ( ! dataItem[ `heightTiles` ] || typeof dataItem[ `heightTiles` ] !== `number` ) {
-				throw new Error( `Invalid graphics height` );
-			}
-			if ( ! dataItem[ `pixels` ] || typeof dataItem[ `pixels` ] !== `string` ) {
-				dataItem[ `pixels` ].map( ( pixel: unknown ) => console.log( typeof pixel ) );
-				throw new Error( `Invalid graphics pixels` );
-			}
+			Promise.all( [ `blocks`, `sprites`, `overworld` ].map( ( type: string ) => {
+				if ( ! data[ `graphics` ] || typeof data[ `graphics` ] !== `object` ) {
+					throw new Error( `Invalid graphics data` );
+				}
+				if ( ! ( type in data[ `graphics` ] ) || typeof data[ `graphics` ][ type ] !== `object` ) {
+					throw new Error( `Invalid graphics ${ type } data` );
+				}
 
-			// Convert base 64 string to byte array.
-			const pixelList: number[] = [];
-			for ( const letter of atob( dataItem[ `pixels` ] ) ) {
-				pixelList.push( letter.charCodeAt( 0 ) );
-			}
+				const dataItem = data[ `graphics` ][ type ];
 
-			graphics[ type ] = createGraphicsEntry(
-				dataItem[ `widthTiles` ],
-				dataItem[ `heightTiles` ],
-				decompressPixels( pixelList ),
-			);
-		} );
+				if ( ! dataItem[ `widthTiles` ] || typeof dataItem[ `widthTiles` ] !== `number` ) {
+					throw new Error( `Invalid graphics width` );
+				}
+				if ( ! dataItem[ `heightTiles` ] || typeof dataItem[ `heightTiles` ] !== `number` ) {
+					throw new Error( `Invalid graphics height` );
+				}
+				if ( ! dataItem[ `pixels` ] || typeof dataItem[ `pixels` ] !== `string` ) {
+					dataItem[ `pixels` ].map( ( pixel: unknown ) => console.log( typeof pixel ) );
+					throw new Error( `Invalid graphics pixels` );
+				}
 
-		setGraphics( graphics );
+				// Convert base 64 string to byte array.
+				const pixelList: number[] = [];
+				for ( const letter of atob( dataItem[ `pixels` ] ) ) {
+					pixelList.push( letter.charCodeAt( 0 ) );
+				}
+
+				return new Promise( resolve => {
+					decompressPixels( pixelList, type ).then( pixelData => {
+						graphics[ type ] = createGraphicsEntry(
+							type,
+							dataItem[ `widthTiles` ],
+							dataItem[ `heightTiles` ],
+							pixelData,
+						);
+						resolve( null );
+					} );
+				} );
+			} ) ).then( () => {
+				setGraphics( graphics );
+			} );
+		} else {
+			// If no graphics is present, set to default.
+			setGraphics( createNewGraphics() );
+		}
 
 		// Import levels.
 		// Validate data.
@@ -390,22 +413,27 @@ const Editor = (): ReactElement => {
 			if ( graphics === null || levels === null || palettes === null || overworld === null ) {
 				return;
 			}
-			window.electronAPI.save( JSON.stringify( {
-				graphics: {
-					blocks: graphics.blocks.toJSON(),
-					overworld: graphics.overworld.toJSON(),
-					sprites: graphics.sprites.toJSON(),
-				},
-				levels: levels.map( ( level: Level ) => level.toJSON() ),
-				overworld: overworld.toJSON(),
-				palettes: palettes.map( ( palette: Palette ) => palette.toJSON() ),
-			}, null, 4 ) );
+			Promise.all( [ graphics.blocks.toJSON(), graphics.sprites.toJSON(), graphics.overworld.toJSON() ] )
+				.then( ( [ blockGraphics, spriteGraphics, overworldGraphics ] ) => {
+					window.electronAPI.save( JSON.stringify( {
+						graphics: {
+							blocks: blockGraphics,
+							sprites: spriteGraphics,
+							overworld: overworldGraphics,
+						},
+						palettes: palettes.map( ( palette: Palette ) => palette.toJSON() ),
+						levels: levels.map( ( level: Level ) => level.toJSON() ),
+						overworld: overworld.toJSON(),
+					}, null, 4 ) );
+				} );
 		};
 		const onExport = () => {
 			if ( graphics === null || levels === null || palettes === null || overworld === null ) {
 				return;
 			}
-			window.electronAPI.export( generateExportData( levels, palettes, graphics, overworld ) );
+			generateExportData( levels, palettes, graphics, overworld ).then( dataView => {
+				window.electronAPI.export( dataView );
+			} );
 		};
 		window.electronAPI.on( `save__editor`, onSave );
 		window.electronAPI.on( `export__editor`, onExport );

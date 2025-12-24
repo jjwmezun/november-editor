@@ -77,8 +77,7 @@ interface Graphics {
 interface GraphicsEntry {
 	clearTile: ( tileIndex: number ) => void,
 	createTexture: ( ctx: WebGLRenderingContext, index: number ) => WebGLTexture,
-	encode: () => ByteBlock[],
-	getData: () => GraphicsEntryRaw,
+	getData: () => { data: number[], width: number, height: number },
 	getWidthTiles: () => number,
 	getHeightTiles: () => number,
 	getWidthPixels: () => number,
@@ -520,11 +519,14 @@ interface WebGL2Program {
 }
 
 interface ElectronAPI {
+	compress: ( data: Buffer, name: string ) => void,
+	decompress: ( data: Buffer, name: string ) => void,
 	enableSave: () => void,
 	export: ( data: DataView ) => void,
 	exportMap: ( map: ArrayBuffer ) => void,
 	importMap: () => void,
-	on: ( channel: string, listener: ( _event, data: object ) => void ) => void,
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	on: ( channel: string, listener: ( _event: any, data: any, ...args: any[] ) => void ) => void,
 	openTileImportWindow: () => void,
 	openTileExportWindow: ( graphics: GraphicsEntryRaw ) => void,
 	remove: ( channel: string ) => void,

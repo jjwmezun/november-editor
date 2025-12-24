@@ -18,8 +18,11 @@ if ( process.contextIsolated ) {
 			importMap: value => ipcRenderer.send( `import-map`, value ),
 			enableSave: value => ipcRenderer.send( `enable-save`, value ),
 			openTileImportWindow: () => ipcRenderer.send( `open-tile-import-window` ),
+			openTileExportWindow: graphics => ipcRenderer.send( `open-tile-export-window`, graphics ),
 			save: value => ipcRenderer.send( `save`, value ),
 			export: value => ipcRenderer.send( `export`, value ),
+			compress: ( data, name ) => ipcRenderer.send( `compression-response`, data, name ),
+			decompress: ( data, name ) => ipcRenderer.send( `decompression-response`, data, name ),
 		} );
 	} catch ( error ) {
 		console.error( error );
