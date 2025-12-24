@@ -57,6 +57,8 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 		setSelectedTile( 0 );
 	};
 
+	const exportTiles = () => window.electronAPI.openTileExportWindow( selectedGraphicsEntry.getData() );
+
 	useEffect( () => {
 		const handleImportTiles = ( _event, data ) => {
 			const { pixels, width, height } = data;
@@ -113,6 +115,9 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 			/>
 			<div>
 				<button onClick={ window.electronAPI.openTileImportWindow }>Import tiles</button>
+			</div>
+			<div>
+				<button onClick={ exportTiles }>Export tiles</button>
 			</div>
 			<div>
 				<button onClick={ exitMode }>← Back</button>
