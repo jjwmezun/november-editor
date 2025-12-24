@@ -400,11 +400,14 @@ interface WebGL2Program {
 }
 
 interface ElectronAPI {
+	compress: ( data: Buffer, name: string ) => void,
+	decompress: ( data: Buffer, name: string ) => void,
 	enableSave: () => void,
 	export: ( data: DataView ) => void,
 	exportMap: ( map: ArrayBuffer ) => void,
 	importMap: () => void,
-	on: ( channel: string, listener: ( _event, data: object ) => void ) => void,
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	on: ( channel: string, listener: ( _event: any, data: any, ...args: any[] ) => void ) => void,
 	openTileImportWindow: () => void,
 	remove: ( channel: string ) => void,
 	save: ( data: string ) => void,

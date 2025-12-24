@@ -4,6 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import fs from 'fs';
 import { PNG } from 'pngjs';
+import { spawnSync } from 'child_process';
 
 function createWindow() {
 	let savePath = null;
@@ -208,6 +209,26 @@ function createWindow() {
 		} );
 	};
 
+	const compress = ( _event, data, name ) => {
+		const brotli = spawnSync( `brotli`, [ `-c` ], { input: data } );
+		const { stdout } = brotli;
+		mainWindow.webContents.send(
+			`compression-response`,
+			Buffer.from( stdout ),
+			name,
+		);
+	};
+
+	const decompress = ( _event, data, name ) => {
+		const brotli = spawnSync( `brotli`, [ `-c`, `-d` ], { input: data } );
+		const { stdout } = brotli;
+		mainWindow.webContents.send(
+			`decompression-response`,
+			Buffer.from( stdout ),
+			name,
+		);
+	};
+
 	const menu = Menu.buildFromTemplate( [
 		{
 			label: `File`,
@@ -372,6 +393,9 @@ function createWindow() {
 
 	ipcMain.on( `open-tile-import-window`, openTileImportWindow );
 	ipcMain.on( `open-tile-export-window`, openTileExportWindow );
+
+	ipcMain.on( `compression-response`, compress );
+	ipcMain.on( `decompression-response`, decompress );
 
 	mainWindow.on( `ready-to-show`, () => {
 		mainWindow.show();
