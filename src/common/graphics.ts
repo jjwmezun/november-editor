@@ -19,7 +19,7 @@ const getColorFromBits = ( bits: number[] ): number => {
 	return color;
 };
 
-const compressPixels = ( pixels: number[] ): number[] => {
+const compressPixels = async ( pixels: number[], name: string ): Promise<number[]> => {
 	let bits: number[] = [];
 	const compressedPixels: number[] = [];
 	pixels.forEach( pixel => {
@@ -42,32 +42,48 @@ const compressPixels = ( pixels: number[] ): number[] => {
 		compressedPixels.push( parseInt( bits.join( `` ), 2 ) );
 	}
 
-	return compressedPixels;
+	return new Promise( resolve => {
+		window.electronAPI.on( `compression-response`, ( _event, data, _name ) => {
+			if ( _name === name ) {
+				resolve( data );
+			}
+		} );
+		window.electronAPI.compress( Buffer.from( compressedPixels ), name );
+	} );
 };
 
-const decompressPixels = ( pixels: number[] ): number[] => {
-	const out: number[] = [];
-	let bits: number[] = [];
-	pixels.forEach( byte => {
-		// Get bits from byte & add to total list.
-		bits = bits.concat( getBitsFromByte( byte ) );
+const decompressPixels = async ( pixels: number[], name: string ): Promise<number[]> => {
+	return new Promise( resolve => {
+		window.electronAPI.on( `decompression-response`, ( _event, pixels, _name ) => {
+			if ( _name !== name ) {
+				return;
+			}
+			const out: number[] = [];
+			let bits: number[] = [];
+			pixels.forEach( ( byte: number ) => {
+				// Get bits from byte & add to total list.
+				bits = bits.concat( getBitsFromByte( byte ) );
 
-		// If there are ’nough bits to make a color, add it to pixels.
-		while ( bits.length >= 3 ) {
-			const v = bits.splice( 0, 3 );
-			const color = getColorFromBits( v );
-			out.push( color );
-		}
+				// If there are ’nough bits to make a color, add it to pixels.
+				while ( bits.length >= 3 ) {
+					const v = bits.splice( 0, 3 );
+					const color = getColorFromBits( v );
+					out.push( color );
+				}
+			} );
+
+			if ( bits.length > 0 ) {
+				throw new Error( `Invalid tileset data` );
+			}
+
+			resolve( out );
+		} );
+		window.electronAPI.decompress( Buffer.from( pixels ), name );
 	} );
-
-	if ( bits.length > 0 ) {
-		throw new Error( `Invalid tileset data` );
-	}
-
-	return out;
 };
 
 const createGraphicsEntry = (
+	name: string,
 	widthTiles: number,
 	heightTiles: number,
 	pixels: number[],
@@ -85,7 +101,7 @@ const createGraphicsEntry = (
 				const start = pixelY * getWidthPixels() + x;
 				pixels.fill( 0, start, start + tileSize );
 			}
-			return createGraphicsEntry( widthTiles, heightTiles, pixels );
+			return createGraphicsEntry( name, widthTiles, heightTiles, pixels );
 		},
 		createTexture: ( ctx: WebGLRenderingContext, index: number ): WebGLTexture => {
 			const texture = ctx.createTexture();
@@ -131,11 +147,11 @@ const createGraphicsEntry = (
 					}
 				}
 			}
-			return createGraphicsEntry( widthTiles, heightTiles, pixels );
+			return createGraphicsEntry( name, widthTiles, heightTiles, pixels );
 		},
-		toJSON: () => {
+		toJSON: async () => {
 			// Compress pixels & convert to base64 string.
-			const pixelList = compressPixels( pixels );
+			const pixelList = await compressPixels( pixels, name );
 			let pixelString = ``;
 			for ( let i = 0; i < pixelList.length; i++ ) {
 				pixelString += String.fromCharCode( pixelList[ i ] );
@@ -148,24 +164,29 @@ const createGraphicsEntry = (
 				pixels: pixelData,
 			};
 		},
-		updatePixels: newPixels => createGraphicsEntry( widthTiles, heightTiles, newPixels ),
+		updatePixels: newPixels => createGraphicsEntry( name, widthTiles, heightTiles, newPixels ),
 		updatePixel: ( color, x, y ) => {
 			const index = y * getWidthPixels() + x;
 			pixels[ index ] = color;
-			return createGraphicsEntry( widthTiles, heightTiles, pixels );
+			return createGraphicsEntry( name, widthTiles, heightTiles, pixels );
 		},
 	};
 };
 
-const createBlankGraphicsEntry = ( widthTiles: number, heightTiles: number ): GraphicsEntry => createGraphicsEntry(
+const createBlankGraphicsEntry = (
+	name: string,
+	widthTiles: number,
+	heightTiles: number,
+): GraphicsEntry => createGraphicsEntry(
+	name,
 	widthTiles,
 	heightTiles,
 	new Array( widthTiles * tileSize * heightTiles * tileSize ).fill( 0 ),
 );
 
 const createNewGraphics = (): Graphics => ( {
-	blocks: createBlankGraphicsEntry( 64, 64 ),
-	sprites: createBlankGraphicsEntry( 64, 64 ),
+	blocks: createBlankGraphicsEntry( `blocks`, 64, 64 ),
+	sprites: createBlankGraphicsEntry( `sprites`, 64, 64 ),
 } );
 
 export {
