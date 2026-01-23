@@ -3,6 +3,14 @@ import {
 	MapObject,
 	MapObjectArgs,
 	Overworld,
+	OverworldEvent,
+	OverworldEventFrame,
+	OverworldEventsList,
+	OverworldEventUpdate,
+	OverworldEventUpdateAdd,
+	OverworldEventUpdateChange,
+	OverworldEventUpdateRemove,
+	OverworldEventUpdateType,
 	OverworldLayer,
 	OverworldLayerData,
 	OverworldLayerType,
@@ -23,7 +31,7 @@ function convertLayerTypeToByte( type: OverworldLayerType ): number {
 }
 
 function createBlankOverworld(): Overworld {
-	return createOverworld( [ createBlankOverworldMapData() ] );
+	return createOverworld( [ createBlankOverworldMapData() ], [] );
 }
 
 function createBlankOverworldLayerData( atts: object = {} ): OverworldLayerData {
@@ -43,15 +51,23 @@ function createBlankOverworldMapData( atts: object = {} ): OverworldMapData {
 	} );
 }
 
-function createOverworld( maps: readonly OverworldMapData[] ): Overworld {
+function createOverworld( maps: readonly OverworldMapData[], events: readonly OverworldEvent[] ): Overworld {
 	const updateMap = ( index: number, map: OverworldMapData ): Overworld => {
 		const newMaps = [ ...maps ];
 		newMaps[ index ] = map;
-		return createOverworld( newMaps );
+		return createOverworld( newMaps, events );
 	};
 	const maps_ = maps.map( ( map: OverworldMapData, index: number ) => createOverworldMap( map, index, updateMap ) );
+
+	const updateEvents = ( newEvents: readonly OverworldEvent[] ): Overworld => {
+		return createOverworld( maps, newEvents );
+	};
+
+	const eventsList = createOverworldEventsList( events, updateEvents );
+
 	return Object.freeze( {
-		addMap: () => createOverworld( [ ...maps, createBlankOverworldMapData() ] ),
+		addMap: () => createOverworld( [ ...maps, createBlankOverworldMapData() ], events ),
+		getEventsList: () => eventsList,
 		getMapsList: () => maps_,
 		encode: () => {
 			// Init data list.
@@ -76,7 +92,7 @@ function createOverworld( maps: readonly OverworldMapData[] ): Overworld {
 				newMaps[ index + 1 ],
 				newMaps[ index ],
 			];
-			return createOverworld( newMaps );
+			return createOverworld( newMaps, events );
 		},
 		moveMapUp: ( index: number ) => {
 			if ( index <= 0 ) {
@@ -87,7 +103,7 @@ function createOverworld( maps: readonly OverworldMapData[] ): Overworld {
 				newMaps[ index - 1 ],
 				newMaps[ index ],
 			];
-			return createOverworld( newMaps );
+			return createOverworld( newMaps, events );
 		},
 		removeMap: ( index: number ) => {
 			if ( maps.length <= 1 ) {
@@ -95,10 +111,11 @@ function createOverworld( maps: readonly OverworldMapData[] ): Overworld {
 			}
 			const newMaps = [ ...maps ];
 			newMaps.splice( index, 1 );
-			return createOverworld( newMaps );
+			return createOverworld( newMaps, events );
 		},
 		toJSON: () => {
 			return {
+				events: eventsList.toJSON(),
 				maps: maps_.map( map => map.toJSON() ),
 			};
 		},
@@ -106,8 +123,111 @@ function createOverworld( maps: readonly OverworldMapData[] ): Overworld {
 	} );
 }
 
+function createOverworldEventsList(
+	events: readonly OverworldEvent[],
+	updateEvents: ( newEvents: readonly OverworldEvent[] ) => Overworld,
+): OverworldEventsList {
+	return Object.freeze( {
+		addEvent: () => {
+			const newEvents = [ ...events, createOverworldEvent() ];
+			return updateEvents( newEvents );
+		},
+		getEntry: ( index: number ): OverworldEvent => {
+			if ( index < 0 || index >= events.length ) {
+				throw new Error( `Event index out o’ bounds: ${ index }` );
+			}
+			return events[ index ];
+		},
+		getLength: () => events.length,
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		map: ( callback: ( event: OverworldEvent, index: number ) => any ) => {
+			return events.map( callback );
+		},
+		toJSON: () => ( {
+			events: events.map( event => event.toJSON() ),
+		} ),
+		updateEvent: ( index: number, event: OverworldEvent ) => {
+			if ( index < 0 || index >= events.length ) {
+				throw new Error( `Event index out o’ bounds: ${ index }` );
+			}
+			const newEvents = [ ...events ];
+			newEvents[ index ] = event;
+			return updateEvents( newEvents );
+		},
+	} );
+}
+
+function createOverworldEvent( frames: OverworldEventFrame[] = [] ): OverworldEvent {
+	return Object.freeze( {
+		addFrame: () => {
+			const newFrames = [ ...frames, createFrame() ];
+			return createOverworldEvent( newFrames );
+		},
+		getEntry: ( index: number ): OverworldEventFrame => {
+			if ( index < 0 || index >= frames.length ) {
+				throw new Error( `Frame index out o’ bounds: ${ index }` );
+			}
+			return frames[ index ];
+		},
+		getLength: () => frames.length,
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		map: ( callback: ( frame: OverworldEventFrame, index: number ) => any ) => {
+			return frames.map( callback );
+		},
+		toJSON: () => ( {
+			frames: frames.map( frame => frame.toJSON() ),
+		} ),
+		updateFrame: ( index: number, frame: OverworldEventFrame ) => {
+			if ( index < 0 || index >= frames.length ) {
+				throw new Error( `Frame index out o’ bounds: ${ index }` );
+			}
+			const newFrames = [ ...frames ];
+			newFrames[ index ] = frame;
+			return createOverworldEvent( newFrames );
+		},
+	} );
+}
+
+function createFrame( duration: number = 8, updates: readonly OverworldEventUpdate[] = [] ): OverworldEventFrame {
+	return Object.freeze( {
+		getDuration: () => duration,
+		getUpdates: () => updates,
+		toJSON: () => ( {
+			duration,
+			updates: updates.map( update => update.toJSON() ),
+		} ),
+		updateDuration: ( newDuration: number ) => createFrame( newDuration, updates ),
+	} );
+}
+
+function createEventUpdate(
+	map: number,
+	layer: number,
+	type: OverworldEventUpdateType,
+	update: OverworldEventUpdateAdd | OverworldEventUpdateChange | OverworldEventUpdateRemove,
+): OverworldEventUpdate {
+	return Object.freeze( {
+		getLayer: () => layer,
+		getMap: () => map,
+		getType: () => type,
+		getUpdate: () => update,
+		toJSON: () => ( {
+			map,
+			layer,
+			type,
+			update,
+		} ),
+	} );
+}
+
 function createOverworldFromJSON( data: object ): Overworld {
-	if ( ! ( `maps` in data ) || ! Array.isArray( data[ `maps` ] ) ) {
+	if (
+		! ( `maps` in data ) ||
+		! Array.isArray( data[ `maps` ] ) ||
+			! ( `events` in data ) ||
+			typeof data[ `events` ] !== `object` ||
+			data[ `events` ] === null
+	) {
 		throw new Error( `Invalid overworld data` );
 	}
 	const mapsData: object[] = data[ `maps` ];
@@ -142,7 +262,70 @@ function createOverworldFromJSON( data: object ): Overworld {
 		} );
 	} );
 
-	return createOverworld( maps );
+	const eventsData: object = data[ `events` ];
+
+	if ( ! ( `events` in eventsData ) || ! Array.isArray( eventsData[ `events` ] ) ) {
+		throw new Error( `Invalid overworld events data` );
+	}
+
+	const eventsList: object[] = eventsData[ `events` ];
+	const events = eventsList.map( eventData => {
+		if (
+			typeof eventData !== `object` ||
+			eventData === null ||
+			! ( `frames` in eventData ) ||
+			! Array.isArray( eventData[ `frames` ] )
+		) {
+			throw new Error( `Invalid overworld event data` );
+		}
+		const framesData: object[] = eventData[ `frames` ];
+		const frames = framesData.map( frameData => {
+			if (
+				typeof frameData !== `object` ||
+				frameData === null ||
+				! ( `duration` in frameData ) ||
+				! ( `updates` in frameData ) ||
+				! Array.isArray( frameData[ `updates` ] ) ||
+				typeof frameData[ `duration` ] !== `number`
+			) {
+				throw new Error( `Invalid overworld event frame data` );
+			}
+			const duration: number = frameData[ `duration` ] as number;
+			const updatesData: object[] = frameData[ `updates` ];
+			const updates: OverworldEventUpdate[] = updatesData.map( updateData => {
+				if (
+					typeof updateData !== `object` ||
+					updateData === null ||
+					! ( `map` in updateData ) ||
+					! ( `layer` in updateData ) ||
+					! ( `type` in updateData ) ||
+					! ( `update` in updateData ) ||
+					typeof updateData[ `map` ] !== `number` ||
+					typeof updateData[ `layer` ] !== `number` ||
+					typeof updateData[ `type` ] !== `string` ||
+					typeof updateData[ `update` ] !== `object` ||
+					updateData[ `update` ] === null
+				) {
+					throw new Error( `Invalid overworld event update data` );
+				}
+
+				const layer = updateData[ `layer` ] as number;
+				const map = updateData[ `map` ] as number;
+				const type = updateData[ `type` ] as OverworldEventUpdateType;
+				const update = updateData[ `update` ] as OverworldEventUpdateAdd
+					| OverworldEventUpdateChange
+					| OverworldEventUpdateRemove;
+
+				return createEventUpdate( map, layer, type, update );
+			} );
+
+			return createFrame( duration, updates );
+		} );
+
+		return createOverworldEvent( frames );
+	} );
+
+	return createOverworld( maps, events );
 }
 
 function createOverworldLayer(

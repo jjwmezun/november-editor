@@ -287,6 +287,7 @@ interface ObjectRenderer {
 
 interface Overworld {
 	addMap: () => Overworld;
+	getEventsList: () => OverworldEventsList;
 	getMapsList: () => readonly OverworldMap[];
 	encode: () => ByteBlock[];
 	moveMapDown: ( index: number ) => Overworld;
@@ -294,6 +295,72 @@ interface Overworld {
 	removeMap: ( index: number ) => Overworld;
 	toJSON: () => object;
 	updateMap: ( index: number, map: OverworldMapData ) => Overworld;
+}
+
+interface OverworldEventsList {
+	addEvent: () => Overworld,
+	getEntry: ( index: number ) => OverworldEvent,
+	getLength: () => number,
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	map: ( callback: ( event: OverworldEvent, index: number ) => any ) => any[],
+	toJSON: () => object,
+	updateEvent: ( index: number, event: OverworldEvent ) => Overworld,
+}
+
+interface OverworldEventUpdateRemove {
+	getObjectId: () => number,
+}
+
+interface OverworldEventUpdateAdd {
+	getObjectType: () => number,
+	getOtherParameters: () => object,
+	getX: () => number,
+	getY: () => number,
+}
+
+interface OverworldEventUpdateChange {
+	getChanges: () => object,
+	getObjectId: () => number,
+}
+
+enum OverworldEventUpdateType {
+	add = `add`,
+	change = `change`,
+	remove = `remove`,
+}
+
+interface OverworldEventUpdate {
+	getLayer: () => number,
+	getMap: () => number,
+	getType: () => OverworldEventUpdateType,
+	getUpdate: () => OverworldEventUpdateAdd | OverworldEventUpdateChange | OverworldEventUpdateRemove,
+	toJSON: () => object,
+}
+
+interface OverworldEventFrame {
+	getDuration: () => number,
+	getUpdates: () => readonly OverworldEventUpdate[],
+	toJSON: () => object,
+	updateDuration: ( newDuration: number ) => OverworldEventFrame,
+}
+
+interface OverworldEvent {
+	addFrame: () => OverworldEvent,
+	getEntry: ( index: number ) => OverworldEventFrame,
+	getLength: () => number,
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	map: ( callback: ( frame: OverworldEventFrame, index: number ) => any ) => any[],
+	toJSON: () => object,
+	updateFrame: ( index: number, frame: OverworldEventFrame ) => OverworldEvent,
+}
+
+interface OverworldEventControlsProps {
+	eventsList: OverworldEventsList,
+	selectedEvent: number,
+	selectedEventFrame: number | null,
+	setOverworld: ( overworld: Overworld ) => void,
+	setSelectedEvent: ( index: number ) => void,
+	setSelectedEventFrame: ( frame: number | null ) => void,
 }
 
 interface OverworldGridCanvasProps {
@@ -534,7 +601,7 @@ interface ElectronAPI {
 }
 
 declare global {
-    interface Window { electronAPI: ElectronAPI; }
+	interface Window { electronAPI: ElectronAPI; }
 }
 
 export {
@@ -572,6 +639,15 @@ export {
 	MousePosition,
 	ObjectRenderer,
 	Overworld,
+	OverworldEvent,
+	OverworldEventsList,
+	OverworldEventControlsProps,
+	OverworldEventUpdate,
+	OverworldEventUpdateAdd,
+	OverworldEventUpdateChange,
+	OverworldEventUpdateRemove,
+	OverworldEventUpdateType,
+	OverworldEventFrame,
 	OverworldGridCanvasProps,
 	OverworldLayer,
 	OverworldLayerControlsProps,
