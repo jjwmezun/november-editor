@@ -5,6 +5,7 @@ import {
 	OverworldLayer,
 	OverworldLayerType,
 	OverworldMap,
+	OverworldRenderer,
 	PaletteList,
 	Rect,
 	ShaderType,
@@ -24,7 +25,7 @@ function generateRenderer(
 	palettes: PaletteList,
 	selectedPalette: number,
 	selectedLayer: number,
-) {
+): OverworldRenderer {
 	const ctx = canvas.getContext( `webgl2` );
 	if ( !ctx ) {
 		throw new Error( `WebGL2 context not available` );

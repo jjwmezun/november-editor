@@ -1,9 +1,10 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import React, { ReactElement, SyntheticBaseEvent, useEffect, useRef, useState } from "react";
+import React, { ReactElement, SyntheticEvent, useEffect, useRef, useState } from "react";
 
 import {
 	Coordinates,
 	OverworldGridCanvasProps,
+	OverworldRenderer,
 } from '../../../../common/types';
 import { getMousePosition } from '../../../../common/utils';
 import generateRenderer from '../../../../common/render-ow';
@@ -14,10 +15,11 @@ const zoom = 2;
 function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 	const canvasRef = useRef<HTMLCanvasElement>( null );
 	const [ hover, setHover ] = useState<Coordinates>( { x: -1, y: -1 } );
-	const [ renderer, setRenderer ] = useState( null );
+	const [ renderer, setRenderer ] = useState<OverworldRenderer | null>( null );
 	const [ showGrid, setShowGrid ] = useState<boolean>( true );
 	const {
 		graphics,
+		latestId,
 		map,
 		palettes,
 		selectedLayer,
@@ -35,7 +37,7 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 	const typeGenerator = getOverworldTypeGenerator( layer.getType() );
 
 	// Select object on left click.
-	const onClick = ( e: SyntheticBaseEvent ) => {
+	const onClick = ( e: SyntheticEvent ) => {
 		const { x, y } = getMousePosition( e );
 
 		const gridX = Math.floor( x / ( 16 * zoom ) );
@@ -56,12 +58,15 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 				break;
 			}
 		}
+		if ( ! renderer ) {
+			return;
+		}
 		renderer.setSelectedObject( newSelectedObject, objects );
 		setSelectedObject( newSelectedObject );
 	};
 
 	// Update cursor visuals on mouse move.
-	const onMouseMove = ( e: SyntheticBaseEvent ) => {
+	const onMouseMove = ( e: SyntheticEvent ) => {
 		const { x, y } = getMousePosition( e );
 
 		const gridX = Math.floor( x / ( 16 * zoom ) );
@@ -79,7 +84,7 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 	};
 
 	// Create object on right click.
-	const onRightClick = ( e: SyntheticBaseEvent ) => {
+	const onRightClick = ( e: SyntheticEvent ) => {
 		e.preventDefault();
 
 		const { x, y } = getMousePosition( e );
@@ -87,7 +92,7 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 		const gridX = Math.floor( x / ( 16 * zoom ) );
 		const gridY = Math.floor( y / ( 16 * zoom ) );
 
-		setOverworld( layer.addObject( typeGenerator( selectedObjectType, gridX, gridY ) ) );
+		setOverworld( layer.addObject( typeGenerator( latestId, selectedObjectType, gridX, gridY ) ) );
 		setSelectedObject( null );
 	};
 

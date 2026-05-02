@@ -111,6 +111,7 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 		/>
 		<OverworldGridCanvas
 			graphics={ graphics }
+			latestId={ overworld.getLatestId() }
 			map={ map }
 			overworld={ overworld }
 			palettes={ palettes }

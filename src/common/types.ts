@@ -216,6 +216,7 @@ interface MapObject {
 }
 
 interface MapObjectArgs {
+	id?: number,
 	type?: number,
 	x?: number,
 	y?: number,
@@ -238,11 +239,27 @@ interface MapObjectTypeOption {
 
 interface MapObjectType {
 	name: string,
-	create: ( x: number, y: number ) => object,
+	create: ( id: number, x: number, y: number ) => object,
 	generateHighlight: ( object: MapObject ) => Rect[],
 	generateTiles: ( object: MapObject, currentTiles: GraphicTile[] ) => GraphicTile[],
 	exportData: ByteBlockRef[],
 	options: MapObjectTypeOption[],
+}
+
+interface MapRenderer {
+	changeMap: ( map: LvMap ) => void,
+	render: () => void,
+	updateAnimationFrame: ( frame: number ) => void,
+	updateDimensions: ( width: number, height: number ) => void,
+	updateLayerObjects: ( layer: number, objects: MapObject[] ) => void,
+	updatePalette: ( palette: number ) => void,
+	addLayer: ( type: LayerType, selectedPalette: number ) => void,
+	removeLayer: ( layer: number ) => void,
+	setSelectedLayer: ( selectedLayer: number ) => void,
+	setSelectedObject: ( i: number | null, objects: MapObject[], layerType: LayerType ) => void,
+	setSelectedTile: ( x: number | null, y: number | null ) => void,
+	switchLayers: ( layer1: number, layer2: number ) => void,
+	updateScrollX: ( windowScrollX: number, map: LvMap ) => void,
 }
 
 interface Mat3 {
@@ -288,6 +305,7 @@ interface ObjectRenderer {
 interface Overworld {
 	addMap: () => Overworld;
 	getEventsList: () => OverworldEventsList;
+	getLatestId: () => number;
 	getMapsList: () => readonly OverworldMap[];
 	encode: () => ByteBlock[];
 	moveMapDown: ( index: number ) => Overworld;
@@ -365,6 +383,7 @@ interface OverworldEventControlsProps {
 
 interface OverworldGridCanvasProps {
 	graphics: GraphicsEntry,
+	latestId: number,
 	map: OverworldMap,
 	overworld: Overworld,
 	palettes: PaletteList,
@@ -462,6 +481,19 @@ interface OverworldObjectControlsProps {
 	typesFactory: readonly MapObjectType[],
 	selectedObjectType: number,
 	setSelectedObjectType: ( type: number ) => void,
+}
+
+interface OverworldRenderer {
+	render: () => void,
+	setSelectedObject: ( i: number | null, objects: readonly MapObject[] ) => void,
+	updateAnimationFrame: ( frame: number ) => void,
+	updateLayers: ( map: OverworldMap, selectedLayer: number ) => void,
+	updateLayerObjects: ( layer: number, objects: readonly MapObject[], i: number ) => void,
+	updateHoverTile: ( x: number, y: number ) => void,
+	updateResolution: ( width: number, height: number ) => void,
+	updateSelectedObject: ( i: number | null, objects: readonly MapObject[] ) => void,
+	updateSelectedLayer: ( selectedLayer: number ) => void,
+	updateShowGrid: ( _showGrid: boolean ) => void,
 }
 
 interface Palette {
@@ -634,6 +666,7 @@ export {
 	MapObject,
 	MapObjectArgs,
 	MapObjectType,
+	MapRenderer,
 	Mat3,
 	Mode,
 	MousePosition,
@@ -659,6 +692,7 @@ export {
 	OverworldMapOptionsProps,
 	OverworldModeProps,
 	OverworldObjectControlsProps,
+	OverworldRenderer,
 	Palette,
 	PaletteData,
 	PaletteList,

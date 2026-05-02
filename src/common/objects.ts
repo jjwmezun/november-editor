@@ -19,7 +19,8 @@ const createTile = ( options: object ) => {
 const objectTypes: readonly MapObjectType[] = Object.freeze( [
 	{
 		name: `Ground`,
-		create: ( x, y ) => ( {
+		create: ( id, x, y ) => ( {
+			id: id,
 			x: x,
 			y: y,
 			width: 1,
@@ -71,6 +72,7 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 			return list;
 		},
 		exportData: [
+			{ type: `Uint16`, key: `id` },
 			{ type: `Uint16`, key: `x` },
 			{ type: `Uint16`, key: `y` },
 			{ type: `Uint16`, key: `width` },
@@ -121,7 +123,8 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 	},
 	{
 		name: `Fire Hydrant`,
-		create: ( x, y ) => ( {
+		create: ( id, x, y ) => ( {
+			id: id,
 			x: x,
 			y: y,
 		} ),
@@ -152,6 +155,7 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 			return tiles;
 		},
 		exportData: [
+			{ type: `Uint16`, key: `id` },
 			{ type: `Uint16`, key: `x` },
 			{ type: `Uint16`, key: `y` },
 		],
@@ -180,7 +184,8 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 	},
 	{
 		name: `Gem`,
-		create: ( x, y ) => ( {
+		create: ( id, x, y ) => ( {
+			id: id,
 			x: x,
 			y: y,
 			width: 1,
@@ -223,6 +228,7 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 			return tiles;
 		},
 		exportData: [
+			{ type: `Uint16`, key: `id` },
 			{ type: `Uint16`, key: `x` },
 			{ type: `Uint16`, key: `y` },
 			{ type: `Uint8`, key: `width` },
@@ -273,7 +279,8 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 	},
 	{
 		name: `Building`,
-		create: ( x, y ) => ( {
+		create: ( id, x, y ) => ( {
+			id: id,
 			x: x,
 			y: y,
 			width: 6,
@@ -378,6 +385,7 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 			return tiles;
 		},
 		exportData: [
+			{ type: `Uint16`, key: `id` },
 			{ type: `Uint16`, key: `x` },
 			{ type: `Uint16`, key: `y` },
 			{ type: `Uint8`, key: `width` },
@@ -446,7 +454,8 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 	},
 	{
 		name: `Fence`,
-		create: ( x, y ) => ( {
+		create: ( id, x, y ) => ( {
+			id: id,
 			x: x,
 			y: y,
 			width: 4,
@@ -503,6 +512,7 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 			return tiles;
 		},
 		exportData: [
+			{ type: `Uint16`, key: `id` },
 			{ type: `Uint16`, key: `x` },
 			{ type: `Uint16`, key: `y` },
 			{ type: `Uint16`, key: `width` },
@@ -545,7 +555,8 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 const spriteTypes: readonly MapObjectType[] = Object.freeze( [
 	{
 		name: `Player`,
-		create: ( x, y ) => ( {
+		create: ( id, x, y ) => ( {
+			id: id,
 			x: x,
 			y: y,
 			width: 1,
@@ -571,6 +582,7 @@ const spriteTypes: readonly MapObjectType[] = Object.freeze( [
 			} ),
 		],
 		exportData: [
+			{ type: `Uint16`, key: `id` },
 			{ type: `Uint16`, key: `x` },
 			{ type: `Uint16`, key: `y` },
 		],
@@ -599,7 +611,8 @@ const spriteTypes: readonly MapObjectType[] = Object.freeze( [
 	},
 	{
 		name: `Bad Apple`,
-		create: ( x, y ) => ( {
+		create: ( id, x, y ) => ( {
+			id: id,
 			x: x,
 			y: y,
 			width: 1,
@@ -627,6 +640,7 @@ const spriteTypes: readonly MapObjectType[] = Object.freeze( [
 			} ),
 		],
 		exportData: [
+			{ type: `Uint16`, key: `id` },
 			{ type: `Uint16`, key: `x` },
 			{ type: `Uint16`, key: `y` },
 			{ type: `Uint8`, key: `direction` },
@@ -669,7 +683,8 @@ const spriteTypes: readonly MapObjectType[] = Object.freeze( [
 const owTileTypes: readonly MapObjectType[] = Object.freeze( [
 	{
 		name: `Grass`,
-		create: ( x, y ) => ( {
+		create: ( id, x, y ) => ( {
+			id: id,
 			x: x,
 			y: y,
 			width: 1,
@@ -697,6 +712,7 @@ const owTileTypes: readonly MapObjectType[] = Object.freeze( [
 			return list;
 		},
 		exportData: [
+			{ type: `Uint16`, key: `id` },
 			{ type: `Uint16`, key: `x` },
 			{ type: `Uint16`, key: `y` },
 			{ type: `Uint8`, key: `width` },
@@ -747,7 +763,8 @@ const owTileTypes: readonly MapObjectType[] = Object.freeze( [
 	},
 	{
 		name: `Grass Top`,
-		create: ( x, y ) => ( {
+		create: ( id, x, y ) => ( {
+			id: id,
 			x: x,
 			y: y,
 			width: 1,
@@ -820,6 +837,7 @@ const owTileTypes: readonly MapObjectType[] = Object.freeze( [
 			return list;
 		},
 		exportData: [
+			{ type: `Uint16`, key: `id` },
 			{ type: `Uint16`, key: `x` },
 			{ type: `Uint16`, key: `y` },
 			{ type: `Uint8`, key: `width` },
@@ -859,7 +877,8 @@ const owTileTypes: readonly MapObjectType[] = Object.freeze( [
 	},
 	{
 		name: `Grass Left`,
-		create: ( x, y ) => ( {
+		create: ( id, x, y ) => ( {
+			id: id,
 			x: x,
 			y: y,
 			width: 1,
@@ -932,6 +951,7 @@ const owTileTypes: readonly MapObjectType[] = Object.freeze( [
 			return list;
 		},
 		exportData: [
+			{ type: `Uint16`, key: `id` },
 			{ type: `Uint16`, key: `x` },
 			{ type: `Uint16`, key: `y` },
 			{ type: `Uint8`, key: `height` },
@@ -974,7 +994,8 @@ const owTileTypes: readonly MapObjectType[] = Object.freeze( [
 const owSpriteTypes: readonly MapObjectType[] = Object.freeze( [
 	{
 		name: `Player`,
-		create: ( x, y ) => ( {
+		create: ( id, x, y ) => ( {
+			id: id,
 			x: x,
 			y: y,
 		} ),
@@ -1023,6 +1044,7 @@ const owSpriteTypes: readonly MapObjectType[] = Object.freeze( [
 			} ),
 		],
 		exportData: [
+			{ type: `Uint16`, key: `id` },
 			{ type: `Uint16`, key: `x` },
 			{ type: `Uint16`, key: `y` },
 		],
@@ -1051,7 +1073,8 @@ const owSpriteTypes: readonly MapObjectType[] = Object.freeze( [
 	},
 	{
 		name: `Level Tile`,
-		create: ( x, y ) => ( {
+		create: ( id, x, y ) => ( {
+			id: id,
 			x: x,
 			y: y,
 			level: 0,
@@ -1107,6 +1130,7 @@ const owSpriteTypes: readonly MapObjectType[] = Object.freeze( [
 			} ),
 		],
 		exportData: [
+			{ type: `Uint16`, key: `id` },
 			{ type: `Uint16`, key: `x` },
 			{ type: `Uint16`, key: `y` },
 			{ type: `Uint8`, key: `level` },
@@ -1153,6 +1177,7 @@ const createObject = ( object: MapObjectArgs ): MapObject => {
 		y = 0,
 		width = 1,
 		height = 1,
+		id = -1,
 	} = object;
 	return Object.freeze( {
 		getProp: ( key: string ) => {
@@ -1162,6 +1187,7 @@ const createObject = ( object: MapObjectArgs ): MapObject => {
 			return object[ key ];
 		},
 		type: () => type,
+		id: () => id,
 		xBlocks: () => x,
 		xTiles: () => x * tilesPerBlock,
 		xPixels: () => x * pixelsPerBlock,
@@ -1195,17 +1221,18 @@ const getOverworldTypeFactory = ( type: OverworldLayerType ): readonly MapObject
 };
 
 const getOverworldTypeGenerator = ( layerType: OverworldLayerType ): (
+	id: number,
 	objectType: number,
 	x: number,
 	y: number
 ) => MapObject => {
 	const types = getOverworldTypeFactory( layerType );
-	return ( objectType: number, x: number, y: number ): MapObject => {
+	return ( id: number, objectType: number, x: number, y: number ): MapObject => {
 		const type = types[ objectType ];
 		if ( !type ) {
 			throw new Error( `Invalid overworld tile type: ${ objectType }` );
 		}
-		const object = type.create( x, y );
+		const object = type.create( id, x, y );
 		object[ `type` ] = objectType;
 		return createObject( object );
 	};
