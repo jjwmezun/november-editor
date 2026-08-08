@@ -3,6 +3,7 @@ import React, { ReactElement, SyntheticEvent, useEffect, useRef, useState } from
 
 import {
 	Coordinates,
+	OverworldEventUpdateRemove,
 	OverworldGridCanvasProps,
 	OverworldRenderer,
 } from '../../../../common/types';
@@ -22,7 +23,9 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 		latestId,
 		map,
 		palettes,
+		selectedFrameUpdatesList,
 		selectedLayer,
+		selectedMap,
 		selectedObject,
 		selectedObjectType,
 		setOverworld,
@@ -30,11 +33,28 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 	} = props;
 
 	const layers = map.getLayersList();
-	const layer = layers[ selectedLayer ];
-	const objects = layer.getObjectsList();
+	let layer = layers[ selectedLayer ];
+	let objects = layer.getObjectsList();
 	const width = map.getWidthBlocks();
 	const height = map.getHeightBlocks();
 	const typeGenerator = getOverworldTypeGenerator( layer.getType() );
+
+	selectedFrameUpdatesList.forEach( update => {
+		switch ( update.getType() ) {
+			case `remove`:
+				if ( update.getMap() === selectedMap && update.getLayer() === selectedLayer ) {
+					const updateValue: OverworldEventUpdateRemove = update.getUpdate() as OverworldEventUpdateRemove;
+					objects.forEach( ( o, i ) => {
+						if ( o.id() === updateValue.getObjectId() ) {
+							layer = layer.updateObject( i, { hidden: true } )
+								.getMapsList()[ selectedMap ].getLayersList()[ selectedLayer ];
+							objects = layer.getObjectsList();
+						}
+					} );
+				}
+			break;
+		}
+	} );
 
 	// Select object on left click.
 	const onClick = ( e: SyntheticEvent ) => {
@@ -48,6 +68,12 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 		// Go backwards so that the topmost object is selected first.
 		for ( let i = objects.length - 1; i >= 0; i-- ) {
 			const object = objects[ i ];
+
+			// Ignore hidden objects.
+			if ( object.hidden() ) {
+				continue;
+			}
+
 			if (
 				gridX >= object.xBlocks()
 				&& gridX < object.rightBlocks()
@@ -122,6 +148,13 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 		renderer.updateLayers( map, selectedLayer );
 		renderer.render();
 	}, [ layers ] );
+
+	useEffect( () => {
+		if ( ! renderer ) {
+			return;
+		}
+		renderer.updateLayerObjects( selectedLayer, objects, selectedObject );
+	}, [ selectedFrameUpdatesList ] );
 
 	useEffect( () => {
 		if ( ! renderer ) {

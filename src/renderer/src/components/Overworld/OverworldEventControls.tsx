@@ -2,6 +2,8 @@ import { ReactElement } from 'react';
 import {
 	OverworldEvent,
 	OverworldEventControlsProps,
+	OverworldEventUpdate,
+	OverworldEventUpdateRemove,
 } from '../../../../common/types';
 
 function OverworldEventControls( props: OverworldEventControlsProps ): ReactElement {
@@ -9,15 +11,19 @@ function OverworldEventControls( props: OverworldEventControlsProps ): ReactElem
 		eventsList,
 		selectedEvent,
 		selectedEventFrame,
+		selectedObject,
 		setOverworld,
 		setSelectedEvent,
 		setSelectedEventFrame,
+		setSelectedObject,
 	} = props;
 
 	const selectedEventEntry = selectedEvent > 0 ? eventsList.getEntry( selectedEvent - 1 ) : null;
 	const selectedEventFrameEntry = selectedEventEntry && selectedEventFrame !== null
 		? selectedEventEntry.getEntry( selectedEventFrame )
 		: null;
+	const updatesList: readonly OverworldEventUpdate[] =
+		selectedEventFrameEntry ? selectedEventFrameEntry.getUpdates() : [];
 
 	const addEvent = (): void => {
 		setOverworld( eventsList.addEvent() );
@@ -35,6 +41,7 @@ function OverworldEventControls( props: OverworldEventControlsProps ): ReactElem
 	const generateFrameSelector = ( index: number ) => (): void => {
 		if ( selectedEventFrame !== index ) {
 			setSelectedEventFrame( index );
+			setSelectedObject( null );
 		}
 	};
 
@@ -93,6 +100,11 @@ function OverworldEventControls( props: OverworldEventControlsProps ): ReactElem
 					onChange={ generateFrameDurationUpdater }
 				/>
 			</label>
+			{ updatesList.length > 0 && <ul>
+				{ updatesList.map( ( update, index ) => <li key={ index }>
+					{ `Map ${ update.getMap() }, Layer ${ update.getLayer() }: ${ update.getType() }` }
+				</li> ) }
+			</ul> }
 		</div> }
 	</div>;
 }

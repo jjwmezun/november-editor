@@ -2,7 +2,7 @@
 import React, { ReactElement, useState } from "react";
 
 import { getOverworldTypeFactory } from '../../../common/objects';
-import { MapObjectArgs, OverworldLayerType, OverworldModeProps } from '../../../common/types';
+import { MapObjectArgs, OverworldEventFrame, OverworldLayerType, OverworldModeProps } from '../../../common/types';
 import OverworldEventControls from './Overworld/OverworldEventControls';
 import OverworldGridCanvas from './Overworld/OverworldGridCanvas';
 import OverworldLayerControls from './Overworld/OverworldLayerControls';
@@ -26,6 +26,13 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 	const layers = map.getLayersList();
 	const layer = layers[ selectedLayer ];
 	const typesFactory = getOverworldTypeFactory( layer.getType() );
+
+	const eventsList = overworld.getEventsList();
+	const selectedEventEntry = selectedEvent > 0 ? eventsList.getEntry( selectedEvent - 1 ) : null;
+	const selectedEventFrameEntry = selectedEventEntry && selectedEventFrame !== null
+		? selectedEventEntry.getEntry( selectedEventFrame )
+		: null;
+	const selectedFrameUpdatesList = selectedEventFrameEntry ? selectedEventFrameEntry.getUpdates() : [];
 
 	const addLayer = (): void => setOverworld( map.addLayer( selectedLayerType ) );
 
@@ -86,12 +93,23 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 	};
 
 	const removeObject = (): void => {
+		if ( ! selectedObject ) {
+			return;
+		}
 		setOverworld( layer.removeObject( selectedObject ) );
 		setSelectedObject( null );
 	};
 
 	const updateObject = ( index: number, object: MapObjectArgs ): void => {
 		setOverworld( layer.updateObject( index, object ) );
+	};
+
+	const updateSelectedEventFrame = ( frame: OverworldEventFrame ): void => {
+		if ( ! selectedEventEntry || selectedEventFrame === null ) {
+			return;
+		}
+		const updatedEvent = selectedEventEntry.updateFrame( selectedEventFrame, frame );
+		setOverworld( eventsList.updateEvent( selectedEvent - 1, updatedEvent ) );
 	};
 
 	return <div>
@@ -115,7 +133,9 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 			map={ map }
 			overworld={ overworld }
 			palettes={ palettes }
+			selectedFrameUpdatesList={ selectedFrameUpdatesList }
 			selectedLayer={ selectedLayer }
+			selectedMap={ selectedMap }
 			selectedObject={ selectedObject }
 			selectedObjectType={ selectedObjectType }
 			setOverworld={ setOverworld }
@@ -141,18 +161,26 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 		/>
 		{ selectedObject !== null && <OverworldObjectOptions
 			removeObject={ removeObject }
+			selectedEventEntry={ selectedEventEntry }
+			selectedEventFrameEntry={ selectedEventFrameEntry }
+			selectedLayer={ selectedLayer }
+			selectedMap={ selectedMap }
 			selectedObject={ layer.getObject( selectedObject ) }
 			selectedObjectIndex={ selectedObject }
+			setSelectedObject={ setSelectedObject }
 			typesFactory={ typesFactory }
+			updateSelectedEventFrame={ updateSelectedEventFrame }
 			updateObject={ updateObject }
 		/> }
 		<OverworldEventControls
 			eventsList={ overworld.getEventsList() }
 			selectedEvent={ selectedEvent }
 			selectedEventFrame={ selectedEventFrame }
+			selectedObject={ selectedObject ? layer.getObject( selectedObject ) : null }
 			setOverworld={ setOverworld }
 			setSelectedEvent={ setSelectedEvent }
 			setSelectedEventFrame={ setSelectedEventFrame }
+			setSelectedObject={ setSelectedObject }
 		/>
 		<div><button onClick={ exitMode }>← Back</button></div>
 	</div>;

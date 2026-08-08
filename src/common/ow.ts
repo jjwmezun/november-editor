@@ -194,8 +194,27 @@ function createOverworldEvent( frames: OverworldEventFrame[] = [] ): OverworldEv
 	} );
 }
 
+function createEventUpdateRemove( objectId: number ): OverworldEventUpdateRemove {
+	return Object.freeze( {
+		getObjectId: () => objectId,
+		toJSON: () => ( {
+			id: objectId,
+		} ),
+	} );
+}
+
 function createFrame( duration: number = 8, updates: readonly OverworldEventUpdate[] = [] ): OverworldEventFrame {
 	return Object.freeze( {
+		addEventRemove: ( map: number, layer: number, objectId: number ) => {
+			const update = createEventUpdate(
+				map,
+				layer,
+				OverworldEventUpdateType.remove,
+				createEventUpdateRemove( objectId ),
+			);
+			const newUpdates = [ ...updates, update ];
+			return createFrame( duration, newUpdates );
+		},
 		getDuration: () => duration,
 		getUpdates: () => updates,
 		toJSON: () => ( {
@@ -221,7 +240,7 @@ function createEventUpdate(
 			map,
 			layer,
 			type,
-			update,
+			update: update.toJSON(),
 		} ),
 	} );
 }
@@ -318,9 +337,23 @@ function createOverworldFromJSON( data: object ): Overworld {
 				const layer = updateData[ `layer` ] as number;
 				const map = updateData[ `map` ] as number;
 				const type = updateData[ `type` ] as OverworldEventUpdateType;
-				const update = updateData[ `update` ] as OverworldEventUpdateAdd
-					| OverworldEventUpdateChange
-					| OverworldEventUpdateRemove;
+
+				// Default update.
+				let update = createEventUpdateRemove( 0 );
+
+				// Generate update from type & value.
+				switch ( type ) {
+					case OverworldEventUpdateType.add:
+					break;
+					case OverworldEventUpdateType.change:
+					break;
+					case OverworldEventUpdateType.remove:
+						if ( ! ( `id` in updateData[ `update` ] ) || typeof updateData[ `update` ][ `id` ] !== `number` ) {
+							throw new Error( `Invalid overworld event remove update data` );
+						}
+						update = createEventUpdateRemove( updateData[ `update` ][ `id` ] );
+					break;
+				}
 
 				return createEventUpdate( map, layer, type, update );
 			} );

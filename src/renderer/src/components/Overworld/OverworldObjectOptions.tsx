@@ -5,18 +5,54 @@ import {
 	MapObject,
 	MapObjectArgs,
 	MapObjectType,
+	OverworldEvent,
+	OverworldEventFrame,
 } from '../../../../common/types';
 
 interface OverworldObjectOptionsProps {
 	removeObject: () => void;
+	selectedEventEntry: OverworldEvent | null;
+	selectedEventFrameEntry: OverworldEventFrame | null;
+	selectedLayer: number;
+	selectedMap: number;
 	selectedObject: MapObject;
 	selectedObjectIndex: number;
+	setSelectedObject: ( object: number | null ) => void;
 	typesFactory: readonly MapObjectType[];
+	updateSelectedEventFrame: ( frame: OverworldEventFrame ) => void;
 	updateObject: ( index: number, o: MapObjectArgs ) => void;
 }
 
 const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
-	const { removeObject, selectedObject, selectedObjectIndex, typesFactory, updateObject } = props;
+	const {
+		removeObject,
+		selectedEventEntry,
+		selectedEventFrameEntry,
+		selectedObject,
+		selectedObjectIndex,
+		selectedLayer,
+		selectedMap,
+		setSelectedObject,
+		typesFactory,
+		updateSelectedEventFrame,
+		updateObject,
+	} = props;
+
+	const deleteObject = (): void => {
+		// If not in an event, remove as usual.
+		if ( selectedEventEntry === null ) {
+			removeObject();
+		} else if ( selectedEventFrameEntry !== null ) {
+			// If in an event, add remove event entry instead.
+			const updatedFrame = selectedEventFrameEntry.addEventRemove(
+				selectedMap,
+				selectedLayer,
+				selectedObject.id(),
+			);
+			updateSelectedEventFrame( updatedFrame );
+		}
+		setSelectedObject( null );
+	};
 
 	return <div>
 		<h2>Object options</h2>
@@ -58,7 +94,7 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 				</label>;
 			} )
 		}
-		<button onClick={ removeObject }>Delete</button>
+		<button onClick={ deleteObject }>Delete</button>
 	</div>;
 };
 

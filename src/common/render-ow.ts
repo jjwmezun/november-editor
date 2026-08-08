@@ -499,9 +499,10 @@ function generateRenderer(
 				return objectRenderer;
 			} );
 		},
-		updateLayerObjects: ( layer: number, objects: readonly MapObject[], i: number ) => {
+		updateLayerObjects: ( layer: number, objects: readonly MapObject[], i: number | null ) => {
 			objectRenderers[ layer ].updateObjects( objects );
 			selectedObject.setSelected( i, objects );
+			render();
 		},
 		updateHoverTile: ( x: number, y: number ): void => {
 			hover.updatePosition( x, y );
@@ -718,7 +719,10 @@ function createObjectRenderer(
 			const typeFactory = getOverworldTypeFactory( type );
 			tiles = objects.reduce(
 				( acc: GraphicTile[], object: MapObject ) => {
-					return acc.concat( typeFactory[ object.type() ].generateTiles( object, acc ) );
+					// Ignore hidden tiles.
+					return ( object.hidden() )
+						? acc
+						: acc.concat( typeFactory[ object.type() ].generateTiles( object, acc ) );
 				},
 				[],
 			);

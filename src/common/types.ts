@@ -192,6 +192,8 @@ interface MapEditorProps {
 interface MapObject {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	getProp: ( key: string ) => any,
+	id: () => number,
+	hidden: () => boolean,
 	type: () => number,
 	xBlocks: () => number,
 	xTiles: () => number,
@@ -327,6 +329,7 @@ interface OverworldEventsList {
 
 interface OverworldEventUpdateRemove {
 	getObjectId: () => number,
+	toJSON: () => object,
 }
 
 interface OverworldEventUpdateAdd {
@@ -334,11 +337,13 @@ interface OverworldEventUpdateAdd {
 	getOtherParameters: () => object,
 	getX: () => number,
 	getY: () => number,
+	toJSON: () => object,
 }
 
 interface OverworldEventUpdateChange {
 	getChanges: () => object,
 	getObjectId: () => number,
+	toJSON: () => object,
 }
 
 enum OverworldEventUpdateType {
@@ -356,6 +361,7 @@ interface OverworldEventUpdate {
 }
 
 interface OverworldEventFrame {
+	addEventRemove: ( map: number, layer: number, objectId: number ) => OverworldEventFrame,
 	getDuration: () => number,
 	getUpdates: () => readonly OverworldEventUpdate[],
 	toJSON: () => object,
@@ -376,9 +382,11 @@ interface OverworldEventControlsProps {
 	eventsList: OverworldEventsList,
 	selectedEvent: number,
 	selectedEventFrame: number | null,
+	selectedObject: MapObject | null,
 	setOverworld: ( overworld: Overworld ) => void,
 	setSelectedEvent: ( index: number ) => void,
 	setSelectedEventFrame: ( frame: number | null ) => void,
+	setSelectedObject: ( object: number | null ) => void,
 }
 
 interface OverworldGridCanvasProps {
@@ -387,7 +395,9 @@ interface OverworldGridCanvasProps {
 	map: OverworldMap,
 	overworld: Overworld,
 	palettes: PaletteList,
+	selectedFrameUpdatesList: readonly OverworldEventUpdate[],
 	selectedLayer: number,
+	selectedMap: number,
 	selectedObject: number | null,
 	selectedObjectType: number,
 	setOverworld: ( overworld: Overworld ) => void,

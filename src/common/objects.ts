@@ -1173,6 +1173,7 @@ const owSpriteTypes: readonly MapObjectType[] = Object.freeze( [
 const createObject = ( object: MapObjectArgs ): MapObject => {
 	const {
 		type = 0,
+		hidden = false,
 		x = 0,
 		y = 0,
 		width = 1,
@@ -1188,6 +1189,7 @@ const createObject = ( object: MapObjectArgs ): MapObject => {
 		},
 		type: () => type,
 		id: () => id,
+		hidden: () => hidden,
 		xBlocks: () => x,
 		xTiles: () => x * tilesPerBlock,
 		xPixels: () => x * pixelsPerBlock,
