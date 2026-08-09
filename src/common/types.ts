@@ -307,7 +307,6 @@ interface ObjectRenderer {
 interface Overworld {
 	addMap: () => Overworld;
 	getEventsList: () => OverworldEventsList;
-	getLatestId: () => number;
 	getMapsList: () => readonly OverworldMap[];
 	encode: () => ByteBlock[];
 	moveMapDown: ( index: number ) => Overworld;
@@ -391,9 +390,7 @@ interface OverworldEventControlsProps {
 
 interface OverworldGridCanvasProps {
 	graphics: GraphicsEntry,
-	latestId: number,
 	map: OverworldMap,
-	overworld: Overworld,
 	palettes: PaletteList,
 	selectedFrameUpdatesList: readonly OverworldEventUpdate[],
 	selectedLayer: number,
@@ -406,6 +403,8 @@ interface OverworldGridCanvasProps {
 
 interface OverworldLayer {
 	addObject( object: MapObject ): Overworld;
+	getId: () => number;
+	getLatestId: () => number;
 	getObject: ( index: number ) => MapObject;
 	getObjectsList: () => readonly MapObject[];
 	getType: () => OverworldLayerType;
@@ -430,6 +429,8 @@ interface OverworldLayerControlsProps {
 }
 
 interface OverworldLayerData {
+	id: number;
+	latestId: number;
 	objects: readonly MapObject[];
 	type: OverworldLayerType;
 }
@@ -444,6 +445,7 @@ interface OverworldMap {
 	getHeightBlocks: () => number;
 	getHeightPixels: () => number;
 	getHeightTiles: () => number;
+	getId: () => number;
 	getLayersList: () => readonly OverworldLayer[];
 	getWidthBlocks: () => number;
 	getWidthPixels: () => number;
@@ -470,6 +472,8 @@ interface OverworldMapControlsProps {
 
 interface OverworldMapData {
 	height: number;
+	id: number;
+	latestId: number;
 	layers: readonly OverworldLayerData[];
 	width: number;
 }

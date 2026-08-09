@@ -20,7 +20,6 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 	const [ showGrid, setShowGrid ] = useState<boolean>( true );
 	const {
 		graphics,
-		latestId,
 		map,
 		palettes,
 		selectedFrameUpdatesList,
@@ -42,7 +41,7 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 	selectedFrameUpdatesList.forEach( update => {
 		switch ( update.getType() ) {
 			case `remove`:
-				if ( update.getMap() === selectedMap && update.getLayer() === selectedLayer ) {
+				if ( update.getMap() === map.getId() && update.getLayer() === layer.getId() ) {
 					const updateValue: OverworldEventUpdateRemove = update.getUpdate() as OverworldEventUpdateRemove;
 					objects.forEach( ( o, i ) => {
 						if ( o.id() === updateValue.getObjectId() ) {
@@ -118,7 +117,7 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 		const gridX = Math.floor( x / ( 16 * zoom ) );
 		const gridY = Math.floor( y / ( 16 * zoom ) );
 
-		setOverworld( layer.addObject( typeGenerator( latestId, selectedObjectType, gridX, gridY ) ) );
+		setOverworld( layer.addObject( typeGenerator( layer.getLatestId(), selectedObjectType, gridX, gridY ) ) );
 		setSelectedObject( null );
 	};
 

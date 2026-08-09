@@ -7,14 +7,16 @@ import {
 	MapObjectType,
 	OverworldEvent,
 	OverworldEventFrame,
+	OverworldLayer,
+	OverworldMap,
 } from '../../../../common/types';
 
 interface OverworldObjectOptionsProps {
 	removeObject: () => void;
 	selectedEventEntry: OverworldEvent | null;
 	selectedEventFrameEntry: OverworldEventFrame | null;
-	selectedLayer: number;
-	selectedMap: number;
+	selectedLayer: OverworldLayer;
+	selectedMap: OverworldMap;
 	selectedObject: MapObject;
 	selectedObjectIndex: number;
 	setSelectedObject: ( object: number | null ) => void;
@@ -45,8 +47,8 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 		} else if ( selectedEventFrameEntry !== null ) {
 			// If in an event, add remove event entry instead.
 			const updatedFrame = selectedEventFrameEntry.addEventRemove(
-				selectedMap,
-				selectedLayer,
+				selectedMap.getId(),
+				selectedLayer.getId(),
 				selectedObject.id(),
 			);
 			updateSelectedEventFrame( updatedFrame );

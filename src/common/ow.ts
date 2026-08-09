@@ -31,21 +31,25 @@ function convertLayerTypeToByte( type: OverworldLayerType ): number {
 }
 
 function createBlankOverworld(): Overworld {
-	return createOverworld( 0, [ createBlankOverworldMapData() ], [] );
+	return createOverworld( 1, [ createBlankOverworldMapData( 0 ) ], [] );
 }
 
-function createBlankOverworldLayerData( atts: object = {} ): OverworldLayerData {
+function createBlankOverworldLayerData( latestId: number, atts: object = {} ): OverworldLayerData {
 	return Object.freeze( {
+		id: latestId,
+		latestId: 0,
 		objects: [],
 		type: OverworldLayerType.block,
 		...atts,
 	} );
 }
 
-function createBlankOverworldMapData( atts: object = {} ): OverworldMapData {
+function createBlankOverworldMapData( index: number, atts: object = {} ): OverworldMapData {
 	return Object.freeze( {
 		height: 20,
-		layers: [ createBlankOverworldLayerData() ],
+		id: index,
+		latestId: 1,
+		layers: [ createBlankOverworldLayerData( 0 ) ],
 		width: 20,
 		...atts,
 	} );
@@ -56,10 +60,10 @@ function createOverworld(
 	maps: readonly OverworldMapData[],
 	events: readonly OverworldEvent[],
 ): Overworld {
-	const updateMap = ( index: number, map: OverworldMapData, gettingNewObject: boolean = false ): Overworld => {
+	const updateMap = ( index: number, map: OverworldMapData ): Overworld => {
 		const newMaps = [ ...maps ];
 		newMaps[ index ] = map;
-		return createOverworld( gettingNewObject ? latestId + 1 : latestId, newMaps, events );
+		return createOverworld( latestId, newMaps, events );
 	};
 	const maps_ = maps.map( ( map: OverworldMapData, index: number ) => createOverworldMap( map, index, updateMap ) );
 
@@ -70,9 +74,8 @@ function createOverworld(
 	const eventsList = createOverworldEventsList( events, updateEvents );
 
 	return Object.freeze( {
-		addMap: () => createOverworld( latestId, [ ...maps, createBlankOverworldMapData() ], events ),
+		addMap: () => createOverworld( latestId + 1, [ ...maps, createBlankOverworldMapData( latestId ) ], events ),
 		getEventsList: () => eventsList,
-		getLatestId: () => latestId,
 		getMapsList: () => maps_,
 		encode: () => {
 			// Init data list.
@@ -246,7 +249,7 @@ function createEventUpdate(
 }
 
 function createOverworldFromJSON( data: object ): Overworld {
-	if (
+	if ( ! ( `latestId` in data ) ||
 		! ( `maps` in data ) ||
 		! Array.isArray( data[ `maps` ] ) ||
 			! ( `events` in data ) ||
@@ -258,6 +261,8 @@ function createOverworldFromJSON( data: object ): Overworld {
 	const mapsData: object[] = data[ `maps` ];
 	const maps: OverworldMapData[] = mapsData.map( mapData => {
 		if ( ! ( `height` in mapData )
+			|| ! ( `id` in mapData )
+			|| ! ( `latestId` in mapData )
 			|| ! ( `layers` in mapData )
 			|| ! ( `width` in mapData )
 			|| ! Array.isArray( mapData[ `layers` ] )
@@ -267,7 +272,9 @@ function createOverworldFromJSON( data: object ): Overworld {
 		}
 		const layersData: object[] = mapData[ `layers` ];
 		const layers: OverworldLayerData[] = layersData.map( layerData => {
-			if ( ! ( `objects` in layerData )
+			if ( ! ( `id` in layerData )
+				|| ! ( `latestId` in layerData )
+				|| ! ( `objects` in layerData )
 				|| ! ( `type` in layerData )
 				|| ! Array.isArray( layerData[ `objects` ] )
 				|| typeof layerData[ `type` ] !== `string` ) {
@@ -276,12 +283,16 @@ function createOverworldFromJSON( data: object ): Overworld {
 			const objectsData: object[] = layerData[ `objects` ];
 			const objects: MapObject[] = objectsData.map( objData => createObject( objData ) );
 			return Object.freeze( {
+				id: layerData[ `id` ] as number,
+				latestId: layerData[ `latestId` ] as number,
 				objects,
 				type: layerData[ `type` ] as OverworldLayerType,
 			} );
 		} );
 		return Object.freeze( {
 			height: mapData[ `height` ] as number,
+			id: mapData[ `id` ] as number,
+			latestId: mapData[ `latestId` ] as number,
 			layers,
 			width: mapData[ `width` ] as number,
 		} );
@@ -364,24 +375,26 @@ function createOverworldFromJSON( data: object ): Overworld {
 		return createOverworldEvent( frames );
 	} );
 
-	return createOverworld( 0, maps, events );
+	return createOverworld( data[ `latestId` ] as number, maps, events );
 }
 
 function createOverworldLayer(
-	updateLayer: ( index: number, layer: OverworldLayerData, gettingNewObject?: boolean ) => Overworld,
+	updateLayer: ( index: number, layer: OverworldLayerData ) => Overworld,
 	layerIndex: number,
 	layer: OverworldLayerData,
 ): OverworldLayer {
-	const { objects, type } = layer;
+	const { id, latestId, objects, type } = layer;
 	return Object.freeze( {
 		addObject: ( object: MapObject ) => updateLayer(
 			layerIndex,
 			{
 				...layer,
+				latestId: latestId + 1,
 				objects: [ ...objects, object ],
 			},
-			true,
 		),
+		getId: () => id,
+		getLatestId: () => latestId,
 		getObject: ( index: number ): MapObject => {
 			if ( index < 0 || index >= objects.length ) {
 				throw new Error( `Object index out of bounds: ${ index }` );
@@ -425,6 +438,8 @@ function createOverworldLayer(
 			);
 		},
 		toJSON: () => ( {
+			id,
+			latestId,
 			objects: objects.map( obj => obj.toJSON() ),
 			type: OverworldLayerType[ type ],
 		} ),
@@ -446,23 +461,24 @@ function createOverworldLayer(
 function createOverworldMap(
 	data: OverworldMapData,
 	mapIndex: number,
-	updateMap: ( index: number, map: OverworldMapData, gettingNewObject?: boolean ) => Overworld,
+	updateMap: ( index: number, map: OverworldMapData ) => Overworld,
 ): OverworldMap {
-	const { height, layers, width } = data;
-	const updateThisMap = ( atts: object = {}, gettingNewObject: boolean = false ) => updateMap(
+	const { height, id, latestId, layers, width } = data;
+	const updateThisMap = ( atts: object = {} ) => updateMap(
 		mapIndex,
 		{
 			height,
+			id,
+			latestId,
 			layers,
 			width,
 			...atts,
 		},
-		gettingNewObject,
 	);
-	const updateLayer = ( index: number, layer: OverworldLayerData, gettingNewObject?: boolean ): Overworld => {
+	const updateLayer = ( index: number, layer: OverworldLayerData ): Overworld => {
 		const newLayers = [ ...layers ];
 		newLayers[ index ] = layer;
-		return updateThisMap( { layers: newLayers }, gettingNewObject );
+		return updateThisMap( { layers: newLayers } );
 	};
 	const layers_ = layers.map( ( layer, index ) => createOverworldLayer(
 		updateLayer,
@@ -471,14 +487,16 @@ function createOverworldMap(
 	) );
 	return Object.freeze( {
 		addLayer: ( type: OverworldLayerType ) => updateThisMap( {
+			latestId: latestId + 1,
 			layers: [
 				...layers,
-				createBlankOverworldLayerData( { type } ),
+				createBlankOverworldLayerData( latestId, { type } ),
 			],
 		} ),
 		getHeightBlocks: () => height,
 		getHeightPixels: () => height * 16,
 		getHeightTiles: () => height * 2,
+		getId: () => id,
 		getLayersList: () => layers_,
 		getWidthBlocks: () => width,
 		getWidthPixels: () => width * 16,
@@ -533,6 +551,8 @@ function createOverworldMap(
 		},
 		toJSON: () => ( {
 			height,
+			id,
+			latestId,
 			layers: layers_.map( layer => layer.toJSON() ),
 			width,
 		} ),

@@ -93,7 +93,7 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 	};
 
 	const removeObject = (): void => {
-		if ( ! selectedObject ) {
+		if ( selectedObject === null ) {
 			return;
 		}
 		setOverworld( layer.removeObject( selectedObject ) );
@@ -129,9 +129,7 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 		/>
 		<OverworldGridCanvas
 			graphics={ graphics }
-			latestId={ overworld.getLatestId() }
 			map={ map }
-			overworld={ overworld }
 			palettes={ palettes }
 			selectedFrameUpdatesList={ selectedFrameUpdatesList }
 			selectedLayer={ selectedLayer }
@@ -163,8 +161,8 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 			removeObject={ removeObject }
 			selectedEventEntry={ selectedEventEntry }
 			selectedEventFrameEntry={ selectedEventFrameEntry }
-			selectedLayer={ selectedLayer }
-			selectedMap={ selectedMap }
+			selectedLayer={ layer }
+			selectedMap={ map }
 			selectedObject={ layer.getObject( selectedObject ) }
 			selectedObjectIndex={ selectedObject }
 			setSelectedObject={ setSelectedObject }
