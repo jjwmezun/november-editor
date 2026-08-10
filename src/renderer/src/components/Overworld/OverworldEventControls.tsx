@@ -3,8 +3,32 @@ import {
 	OverworldEvent,
 	OverworldEventControlsProps,
 	OverworldEventUpdate,
-	OverworldEventUpdateRemove,
 } from '../../../../common/types';
+
+interface UpdateInfoProps {
+	update: OverworldEventUpdate;
+}
+
+function UpdateInfo( props: UpdateInfoProps ): ReactElement {
+	const { update } = props;
+	let data: object = {};
+
+	switch ( update.getType() ) {
+		case 'change':
+			data = {
+				id: update.getUpdate().getObjectId(),
+				...update.getUpdate().getChanges()
+			};
+		break;
+		case 'remove':
+			data = { id: update.getUpdate().getObjectId() };
+		break;
+	}
+
+	return <li>
+		{ `M ${ update.getMap() }, L ${ update.getLayer() }: ${ update.getType() } – ${ JSON.stringify( data ) }` }
+	</li>;
+}
 
 function OverworldEventControls( props: OverworldEventControlsProps ): ReactElement {
 	const {
@@ -101,9 +125,7 @@ function OverworldEventControls( props: OverworldEventControlsProps ): ReactElem
 				/>
 			</label>
 			{ updatesList.length > 0 && <ul>
-				{ updatesList.map( ( update, index ) => <li key={ index }>
-					{ `Map ${ update.getMap() }, Layer ${ update.getLayer() }: ${ update.getType() }` }
-				</li> ) }
+				{ updatesList.map( ( update, index ) => <UpdateInfo key={ index } update={ update } /> ) }
 			</ul> }
 		</div> }
 	</div>;

@@ -52,6 +52,18 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 					} );
 				}
 			break;
+			case `change`:
+				if ( update.getMap() === map.getId() && update.getLayer() === layer.getId() ) {
+					const updateValue = update.getUpdate();
+					objects.forEach( ( o, i ) => {
+						if ( o.id() === updateValue.getObjectId() ) {
+							layer = layer.updateObject( i, { ...updateValue.getChanges() } )
+								.getMapsList()[ selectedMap ].getLayersList()[ selectedLayer ];
+							objects = layer.getObjectsList();
+						}
+					} );
+				}
+			break;
 		}
 	} );
 

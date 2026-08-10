@@ -7,6 +7,8 @@ import {
 	MapObjectType,
 	OverworldEvent,
 	OverworldEventFrame,
+	OverworldEventUpdate,
+	OverworldEventUpdateChange,
 	OverworldLayer,
 	OverworldMap,
 } from '../../../../common/types';
@@ -56,6 +58,10 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 		setSelectedObject( null );
 	};
 
+	const eventFrameUpdatesList: readonly OverworldEventUpdate[] = selectedEventFrameEntry === null
+		? []
+		: selectedEventFrameEntry.getUpdates();
+
 	return <div>
 		<h2>Object options</h2>
 		{
@@ -77,20 +83,78 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 						? atts[ key ]( selectedObject )
 						: atts[ key ];
 				}
+
+				let updateIndex: number | null = null;
+
+				// Default to showing object value.
+				let value = selectedObject.getProp( key );
+
+				// But if there is an event update for the selected event frame, o’erride with that.
+				eventFrameUpdatesList.forEach( ( update, index ) => {
+					switch ( update.getType() ) {
+						case `change`: {
+							const updateValue = update.getUpdate() as OverworldEventUpdateChange;
+							if (
+								update.getMap() === selectedMap.getId()
+								&& update.getLayer() === selectedLayer.getId()
+								&& updateValue.getObjectId() === selectedObject.id()
+							) {
+								updateIndex = index;
+								const changes = updateValue.getChanges();
+								if ( key in changes ) {
+									value = changes[ key ];
+								}
+							}
+						}
+						break;
+					}
+				} );
+
+				// If not editing an event, update the object itself.
+				// If updating a frame, if there is already an update for the selected object,
+				// update that update instead o’ creating a new 1.
+				const onUpdateObject = ( selectedEventEntry === null )
+					? ( e: React.ChangeEvent<HTMLInputElement> ): void => {
+						updateObject(
+							selectedObjectIndex,
+							{
+								[ key ]: update( e.target.value ),
+								...extraUpdate( selectedObject, e.target.value ),
+							},
+						);
+					}
+					: ( selectedEventFrameEntry !== null )
+						? ( e: React.ChangeEvent<HTMLInputElement> ): void => {
+							const updatedFrame = updateIndex
+								? selectedEventFrameEntry.updateEventChange(
+									updateIndex,
+									selectedMap.getId(),
+									selectedLayer.getId(),
+									selectedObject.id(),
+									{
+										[ key ]: update( e.target.value ),
+										...extraUpdate( selectedObject, e.target.value ),
+									},
+								)
+								: selectedEventFrameEntry.addEventChange(
+									selectedMap.getId(),
+									selectedLayer.getId(),
+									selectedObject.id(),
+									{
+										[ key ]: update( e.target.value ),
+										...extraUpdate( selectedObject, e.target.value ),
+									},
+								);
+							updateSelectedEventFrame( updatedFrame );
+						}
+						: () => null;
+
 				return <label key={ i }>
 					<span>{ title }:</span>
 					<input
 						type={ type }
-						value={ selectedObject.getProp( key ) }
-						onChange={ e =>
-							updateObject(
-								selectedObjectIndex,
-								{
-									[ key ]: update( e.target.value ),
-									...extraUpdate( selectedObject, e.target.value ),
-								},
-							)
-						}
+						value={ value }
+						onChange={ onUpdateObject }
 						{ ...extraAtts }
 					/>
 				</label>;

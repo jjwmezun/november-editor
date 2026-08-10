@@ -197,6 +197,17 @@ function createOverworldEvent( frames: OverworldEventFrame[] = [] ): OverworldEv
 	} );
 }
 
+function createEventUpdateChange( objectId: number, changes: object ): OverworldEventUpdateChange {
+	return Object.freeze( {
+		getChanges: () => changes,
+		getObjectId: () => objectId,
+		toJSON: () => ( {
+			id: objectId,
+			changes,
+		} ),
+	} );
+}
+
 function createEventUpdateRemove( objectId: number ): OverworldEventUpdateRemove {
 	return Object.freeze( {
 		getObjectId: () => objectId,
@@ -208,6 +219,16 @@ function createEventUpdateRemove( objectId: number ): OverworldEventUpdateRemove
 
 function createFrame( duration: number = 8, updates: readonly OverworldEventUpdate[] = [] ): OverworldEventFrame {
 	return Object.freeze( {
+		addEventChange: ( map: number, layer: number, objectId: number, changes: object ) => {
+			const update = createEventUpdate(
+				map,
+				layer,
+				OverworldEventUpdateType.change,
+				createEventUpdateChange( objectId, changes ),
+			);
+			const newUpdates = [ ...updates, update ];
+			return createFrame( duration, newUpdates );
+		},
 		addEventRemove: ( map: number, layer: number, objectId: number ) => {
 			const update = createEventUpdate(
 				map,
@@ -225,6 +246,27 @@ function createFrame( duration: number = 8, updates: readonly OverworldEventUpda
 			updates: updates.map( update => update.toJSON() ),
 		} ),
 		updateDuration: ( newDuration: number ) => createFrame( newDuration, updates ),
+		updateEventChange: ( index: number, map: number, layer: number, objectId: number, changes: object ) => {
+			if ( index < 0 || index >= updates.length ) {
+				throw new Error( `Update index out o’ bounds: ${ index }` );
+			}
+			const origUpdate = updates[ index ].getUpdate() as OverworldEventUpdateChange;
+			const update = createEventUpdate(
+				map,
+				layer,
+				OverworldEventUpdateType.change,
+				createEventUpdateChange(
+					objectId,
+					{
+						...origUpdate.getChanges(),
+						...changes,
+					},
+				),
+			);
+			const newUpdates = [ ...updates ];
+			newUpdates[ index ] = update;
+			return createFrame( duration, newUpdates );
+		},
 	} );
 }
 
@@ -357,6 +399,19 @@ function createOverworldFromJSON( data: object ): Overworld {
 					case OverworldEventUpdateType.add:
 					break;
 					case OverworldEventUpdateType.change:
+						if (
+							! ( `id` in updateData[ `update` ] )
+							|| typeof updateData[ `update` ][ `id` ] !== `number`
+							|| ! ( `changes` in updateData[ `update` ] )
+							|| typeof updateData[ `update` ][ `changes` ] !== `object`
+							|| updateData[ `update` ][ `changes` ] === null
+						) {
+							throw new Error( `Invalid overworld event change update data` );
+						}
+						update = createEventUpdateChange(
+							updateData[ `update` ][ `id` ],
+							{ ...updateData[ `update` ][ `changes` ] },
+						);
 					break;
 					case OverworldEventUpdateType.remove:
 						if ( ! ( `id` in updateData[ `update` ] ) || typeof updateData[ `update` ][ `id` ] !== `number` ) {
