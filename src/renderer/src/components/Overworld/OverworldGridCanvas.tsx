@@ -22,7 +22,8 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 		graphics,
 		map,
 		palettes,
-		selectedFrameUpdatesList,
+		selectedEventFrames,
+		selectedFrame,
 		selectedLayer,
 		selectedMap,
 		selectedObject,
@@ -38,34 +39,38 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 	const height = map.getHeightBlocks();
 	const typeGenerator = getOverworldTypeGenerator( layer.getType() );
 
-	selectedFrameUpdatesList.forEach( update => {
-		switch ( update.getType() ) {
-			case `remove`:
-				if ( update.getMap() === map.getId() && update.getLayer() === layer.getId() ) {
-					const updateValue: OverworldEventUpdateRemove = update.getUpdate() as OverworldEventUpdateRemove;
-					objects.forEach( ( o, i ) => {
-						if ( o.id() === updateValue.getObjectId() ) {
-							layer = layer.updateObject( i, { hidden: true } )
-								.getMapsList()[ selectedMap ].getLayersList()[ selectedLayer ];
-							objects = layer.getObjectsList();
-						}
-					} );
-				}
-			break;
-			case `change`:
-				if ( update.getMap() === map.getId() && update.getLayer() === layer.getId() ) {
-					const updateValue = update.getUpdate();
-					objects.forEach( ( o, i ) => {
-						if ( o.id() === updateValue.getObjectId() ) {
-							layer = layer.updateObject( i, { ...updateValue.getChanges() } )
-								.getMapsList()[ selectedMap ].getLayersList()[ selectedLayer ];
-							objects = layer.getObjectsList();
-						}
-					} );
-				}
-			break;
-		}
-	} );
+	// Update objects shown & editable based on frames going up to current frame.
+	for ( let i = 0; i <= selectedFrame; i++ ) {
+		const updates = selectedEventFrames[ i ] ? selectedEventFrames[ i ].getUpdates() : [];
+		updates.forEach( update => {
+			switch ( update.getType() ) {
+				case `remove`:
+					if ( update.getMap() === map.getId() && update.getLayer() === layer.getId() ) {
+						const updateValue: OverworldEventUpdateRemove = update.getUpdate() as OverworldEventUpdateRemove;
+						objects.forEach( ( o, i ) => {
+							if ( o.id() === updateValue.getObjectId() ) {
+								layer = layer.updateObject( i, { hidden: true } )
+									.getMapsList()[ selectedMap ].getLayersList()[ selectedLayer ];
+								objects = layer.getObjectsList();
+							}
+						} );
+					}
+				break;
+				case `change`:
+					if ( update.getMap() === map.getId() && update.getLayer() === layer.getId() ) {
+						const updateValue = update.getUpdate();
+						objects.forEach( ( o, i ) => {
+							if ( o.id() === updateValue.getObjectId() ) {
+								layer = layer.updateObject( i, { ...updateValue.getChanges() } )
+									.getMapsList()[ selectedMap ].getLayersList()[ selectedLayer ];
+								objects = layer.getObjectsList();
+							}
+						} );
+					}
+				break;
+			}
+		} );
+	}
 
 	// Select object on left click.
 	const onClick = ( e: SyntheticEvent ) => {
@@ -165,7 +170,7 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 			return;
 		}
 		renderer.updateLayerObjects( selectedLayer, objects, selectedObject );
-	}, [ selectedFrameUpdatesList ] );
+	}, [ selectedFrame, selectedEventFrames ] );
 
 	useEffect( () => {
 		if ( ! renderer ) {

@@ -178,6 +178,7 @@ function createOverworldEvent( frames: OverworldEventFrame[] = [] ): OverworldEv
 			}
 			return frames[ index ];
 		},
+		getFrames: () => frames,
 		getLength: () => frames.length,
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		map: ( callback: ( frame: OverworldEventFrame, index: number ) => any ) => {

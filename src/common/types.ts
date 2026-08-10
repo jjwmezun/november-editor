@@ -378,6 +378,7 @@ interface OverworldEventFrame {
 interface OverworldEvent {
 	addFrame: () => OverworldEvent,
 	getEntry: ( index: number ) => OverworldEventFrame,
+	getFrames: () => readonly OverworldEventFrame[];
 	getLength: () => number,
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	map: ( callback: ( frame: OverworldEventFrame, index: number ) => any ) => any[],
@@ -400,7 +401,8 @@ interface OverworldGridCanvasProps {
 	graphics: GraphicsEntry,
 	map: OverworldMap,
 	palettes: PaletteList,
-	selectedFrameUpdatesList: readonly OverworldEventUpdate[],
+	selectedEventFrames: readonly OverworldEventFrame[],
+	selectedFrame: number,
 	selectedLayer: number,
 	selectedMap: number,
 	selectedObject: number | null,

@@ -131,7 +131,8 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 			graphics={ graphics }
 			map={ map }
 			palettes={ palettes }
-			selectedFrameUpdatesList={ selectedFrameUpdatesList }
+			selectedEventFrames={ selectedEventEntry === null ? [] : selectedEventEntry.getFrames() }
+			selectedFrame={ selectedEventFrame ?? 0 }
 			selectedLayer={ selectedLayer }
 			selectedMap={ selectedMap }
 			selectedObject={ selectedObject }
@@ -161,6 +162,7 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 			removeObject={ removeObject }
 			selectedEventEntry={ selectedEventEntry }
 			selectedEventFrameEntry={ selectedEventFrameEntry }
+			selectedFrame={ selectedEventFrame ?? 0 }
 			selectedLayer={ layer }
 			selectedMap={ map }
 			selectedObject={ layer.getObject( selectedObject ) }
