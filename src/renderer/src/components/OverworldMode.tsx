@@ -22,7 +22,7 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 	const [ selectedLayer, setSelectedLayer ] = useState<number>( 0 );
 	const [ selectedLayerType, setSelectedLayerType ] = useState<OverworldLayerType>( OverworldLayerType.block );
 	const [ selectedEvent, setSelectedEvent ] = useState<number>( 0 );
-	const [ selectedEventFrame, setSelectedEventFrame ] = useState<number | null>( null );
+	const [ selectedEventFrame, setSelectedEventFrame ] = useState<number>( 0 );
 	const [ selectedMap, setSelectedMap ] = useState<number>( 0 );
 	const [ selectedObject, setSelectedObject ] = useState<number | null>( null );
 	const [ selectedObjectType, setSelectedObjectType ] = useState<number>( 0 );
@@ -35,7 +35,7 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 
 	const eventsList = overworld.getEventsList();
 	const selectedEventEntry = selectedEvent > 0 ? eventsList.getEntry( selectedEvent - 1 ) : null;
-	const selectedEventFrameEntry = selectedEventEntry && selectedEventFrame !== null
+	const selectedEventFrameEntry = selectedEventEntry
 		? selectedEventEntry.getEntry( selectedEventFrame )
 		: null;
 
@@ -113,7 +113,7 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 		setOverworld( ( overworld: Overworld ) => {
 			const eventsList = overworld.getEventsList();
 			const selectedEventEntry = selectedEvent > 0 ? eventsList.getEntry( selectedEvent - 1 ) : null;
-			if ( ! selectedEventEntry || selectedEventFrame === null ) {
+			if ( ! selectedEventEntry ) {
 				return overworld;
 			}
 			const updatedEvent = selectedEventEntry.updateFrame( selectedEventFrame, frame );
@@ -185,7 +185,7 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 			removeObject={ removeObject }
 			selectedEventEntry={ selectedEventEntry }
 			selectedEventFrameEntry={ selectedEventFrameEntry }
-			selectedFrame={ selectedEventFrame ?? 0 }
+			selectedFrame={ selectedEventFrame }
 			selectedLayer={ layer }
 			selectedMap={ map }
 			selectedObjectIndex={ selectedObject }

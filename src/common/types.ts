@@ -388,10 +388,10 @@ interface OverworldEvent {
 interface OverworldEventControlsProps {
 	eventsList: OverworldEventsList,
 	selectedEvent: number,
-	selectedEventFrame: number | null,
+	selectedEventFrame: number,
 	setOverworld: ( overworld: Overworld ) => void,
 	setSelectedEvent: ( index: number ) => void,
-	setSelectedEventFrame: ( frame: number | null ) => void,
+	setSelectedEventFrame: ( frame: number ) => void,
 	setSelectedObject: ( object: number | null ) => void,
 }
 
@@ -400,7 +400,7 @@ interface OverworldGridCanvasProps {
 	map: OverworldMap,
 	palettes: PaletteList,
 	selectedEventFrames: readonly OverworldEventFrame[],
-	selectedFrame: number | null,
+	selectedFrame: number,
 	selectedLayer: number,
 	selectedMap: number,
 	selectedObject: number | null,

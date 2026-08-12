@@ -138,7 +138,7 @@ function createOverworldEventsList(
 ): OverworldEventsList {
 	return Object.freeze( {
 		addEvent: () => {
-			const newEvents = [ ...events, createOverworldEvent() ];
+			const newEvents = [ ...events, createOverworldEvent( [ createFrame() ] ) ];
 			return updateEvents( newEvents );
 		},
 		getEntry: ( index: number ): OverworldEvent => {

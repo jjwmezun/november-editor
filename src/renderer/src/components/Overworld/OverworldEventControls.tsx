@@ -23,7 +23,7 @@ function UpdateInfo( props: UpdateInfoProps ): ReactElement {
 			data = { ...value.getObject().toJSON() };
 		}
 		break;
-		case 'change':
+		case `change`:
 		{
 			const value = update.getUpdate() as OverworldEventUpdateChange;
 			data = {
@@ -32,7 +32,7 @@ function UpdateInfo( props: UpdateInfoProps ): ReactElement {
 			};
 		}
 		break;
-		case 'remove':
+		case `remove`:
 		{
 			const value = update.getUpdate() as OverworldEventUpdateRemove;
 			data = { id: value.getObjectId() };
@@ -57,7 +57,7 @@ function OverworldEventControls( props: OverworldEventControlsProps ): ReactElem
 	} = props;
 
 	const selectedEventEntry = selectedEvent > 0 ? eventsList.getEntry( selectedEvent - 1 ) : null;
-	const selectedEventFrameEntry = selectedEventEntry && selectedEventFrame !== null
+	const selectedEventFrameEntry = selectedEventEntry
 		? selectedEventEntry.getEntry( selectedEventFrame )
 		: null;
 	const updatesList: readonly OverworldEventUpdate[] =
@@ -66,14 +66,14 @@ function OverworldEventControls( props: OverworldEventControlsProps ): ReactElem
 	const addEvent = (): void => {
 		setOverworld( eventsList.addEvent() );
 		setSelectedEvent( eventsList.getLength() + 1 );
-		setSelectedEventFrame( null );
+		setSelectedEventFrame( 0 );
 		setSelectedObject( null );
 	};
 
 	const generateEventSelector = ( index: number ) => (): void => {
 		if ( selectedEvent !== index ) {
 			setSelectedEvent( index );
-			setSelectedEventFrame( null );
+			setSelectedEventFrame( 0 );
 		}
 	};
 
@@ -93,7 +93,7 @@ function OverworldEventControls( props: OverworldEventControlsProps ): ReactElem
 	};
 
 	const generateFrameDurationUpdater = ( event: React.ChangeEvent<HTMLInputElement> ): void => {
-		if ( ! selectedEventEntry || selectedEventFrameEntry === null || selectedEventFrame === null ) {
+		if ( ! selectedEventEntry || selectedEventFrameEntry === null ) {
 			return;
 		}
 		const newDuration = Number( event.target.value );
