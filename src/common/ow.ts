@@ -198,6 +198,13 @@ function createOverworldEvent( frames: OverworldEventFrame[] = [] ): OverworldEv
 	} );
 }
 
+function createEventUpdateAdd( object: MapObject ): OverworldEventUpdateAdd {
+	return Object.freeze( {
+		getObject: () => object,
+		toJSON: () => object.toJSON(),
+	} );
+}
+
 function createEventUpdateChange( objectId: number, changes: object ): OverworldEventUpdateChange {
 	return Object.freeze( {
 		getChanges: () => changes,
@@ -220,6 +227,16 @@ function createEventUpdateRemove( objectId: number ): OverworldEventUpdateRemove
 
 function createFrame( duration: number = 8, updates: readonly OverworldEventUpdate[] = [] ): OverworldEventFrame {
 	return Object.freeze( {
+		addEventAdd: ( map: number, layer: number, object: MapObject ) => {
+			const update = createEventUpdate(
+				map,
+				layer,
+				OverworldEventUpdateType.add,
+				createEventUpdateAdd( object ),
+			);
+			const newUpdates = [ ...updates, update ];
+			return createFrame( duration, newUpdates );
+		},
 		addEventChange: ( map: number, layer: number, objectId: number, changes: object ) => {
 			const update = createEventUpdate(
 				map,
@@ -247,6 +264,21 @@ function createFrame( duration: number = 8, updates: readonly OverworldEventUpda
 			updates: updates.map( update => update.toJSON() ),
 		} ),
 		updateDuration: ( newDuration: number ) => createFrame( newDuration, updates ),
+		updateEventAdd: ( index: number, map: number, layer: number, changes: object ) => {
+			if ( index < 0 || index >= updates.length ) {
+				throw new Error( `Update index out o’ bounds: ${ index }` );
+			}
+			const origUpdate = updates[ index ].getUpdate() as OverworldEventUpdateAdd;
+			const update = createEventUpdate(
+				map,
+				layer,
+				OverworldEventUpdateType.add,
+				createEventUpdateAdd( origUpdate.getObject().update( changes ) ),
+			);
+			const newUpdates = [ ...updates ];
+			newUpdates[ index ] = update;
+			return createFrame( duration, newUpdates );
+		},
 		updateEventChange: ( index: number, map: number, layer: number, objectId: number, changes: object ) => {
 			if ( index < 0 || index >= updates.length ) {
 				throw new Error( `Update index out o’ bounds: ${ index }` );
@@ -393,11 +425,28 @@ function createOverworldFromJSON( data: object ): Overworld {
 				const type = updateData[ `type` ] as OverworldEventUpdateType;
 
 				// Default update.
-				let update = createEventUpdateRemove( 0 );
+				let update : OverworldEventUpdateAdd | OverworldEventUpdateChange | OverworldEventUpdateRemove =
+					createEventUpdateRemove( 0 );
 
 				// Generate update from type & value.
 				switch ( type ) {
 					case OverworldEventUpdateType.add:
+					{
+						if (
+							! ( `id` in updateData[ `update` ] )
+							|| typeof updateData[ `update` ][ `id` ] !== `number`
+							|| ! ( `type` in updateData[ `update` ] )
+							|| typeof updateData[ `update` ][ `type` ] !== `number`
+						) {
+							throw new Error( `Invalid overworld layer object data` );
+						}
+						const args : MapObjectArgs = {
+							id: updateData[ `update` ][ `id` ] as number,
+							type: updateData[ `update` ][ `type` ] as number,
+							...updateData[ `update` ],
+						};
+						update = createEventUpdateAdd( createObject( args ) );
+					}
 					break;
 					case OverworldEventUpdateType.change:
 						if (
@@ -499,6 +548,15 @@ function createOverworldLayer(
 			objects: objects.map( obj => obj.toJSON() ),
 			type: OverworldLayerType[ type ],
 		} ),
+		updateLatestId: () => {
+			return updateLayer(
+				layerIndex,
+				{
+					...layer,
+					latestId: latestId + 1,
+				},
+			);
+		},
 		updateObject: ( index: number, object: MapObjectArgs ) => {
 			const newObjects = [ ...objects ];
 			newObjects[ index ] = createObject( { ...newObjects[ index ].toJSON(), ...object } );

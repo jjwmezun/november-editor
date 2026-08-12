@@ -3,6 +3,8 @@ import React, { ReactElement, SyntheticEvent, useEffect, useRef, useState } from
 
 import {
 	Coordinates,
+	OverworldEventUpdateAdd,
+	OverworldEventUpdateChange,
 	OverworldEventUpdateRemove,
 	OverworldGridCanvasProps,
 	OverworldRenderer,
@@ -30,46 +32,56 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 		selectedObjectType,
 		setOverworld,
 		setSelectedObject,
+		updateLayerLatestId,
+		updateSelectedEventFrame,
 	} = props;
 
 	const layers = map.getLayersList();
 	let layer = layers[ selectedLayer ];
-	let objects = layer.getObjectsList();
+	let objects = [ ...layer.getObjectsList() ];
 	const width = map.getWidthBlocks();
 	const height = map.getHeightBlocks();
 	const typeGenerator = getOverworldTypeGenerator( layer.getType() );
 
 	// Update objects shown & editable based on frames going up to current frame.
-	for ( let i = 0; i <= selectedFrame; i++ ) {
-		const updates = selectedEventFrames[ i ] ? selectedEventFrames[ i ].getUpdates() : [];
-		updates.forEach( update => {
-			switch ( update.getType() ) {
-				case `remove`:
-					if ( update.getMap() === map.getId() && update.getLayer() === layer.getId() ) {
-						const updateValue: OverworldEventUpdateRemove = update.getUpdate() as OverworldEventUpdateRemove;
-						objects.forEach( ( o, i ) => {
-							if ( o.id() === updateValue.getObjectId() ) {
-								layer = layer.updateObject( i, { hidden: true } )
-									.getMapsList()[ selectedMap ].getLayersList()[ selectedLayer ];
-								objects = layer.getObjectsList();
-							}
-						} );
-					}
-				break;
-				case `change`:
-					if ( update.getMap() === map.getId() && update.getLayer() === layer.getId() ) {
-						const updateValue = update.getUpdate();
-						objects.forEach( ( o, i ) => {
-							if ( o.id() === updateValue.getObjectId() ) {
-								layer = layer.updateObject( i, { ...updateValue.getChanges() } )
-									.getMapsList()[ selectedMap ].getLayersList()[ selectedLayer ];
-								objects = layer.getObjectsList();
-							}
-						} );
-					}
-				break;
-			}
-		} );
+	if ( selectedFrame !== null ) {
+		for ( let i = 0; i <= selectedFrame; i++ ) {
+			const updates = selectedEventFrames[ i ] ? selectedEventFrames[ i ].getUpdates() : [];
+			updates.forEach( update => {
+				switch ( update.getType() ) {
+					case `add`:
+						if ( update.getMap() === map.getId() && update.getLayer() === layer.getId() ) {
+							const updateValue = update.getUpdate() as OverworldEventUpdateAdd;
+							objects.push( updateValue.getObject() );
+						}
+					break;
+					case `change`:
+						if ( update.getMap() === map.getId() && update.getLayer() === layer.getId() ) {
+							const updateValue = update.getUpdate() as OverworldEventUpdateChange;
+							objects.forEach( ( o, i ) => {
+								if ( o.id() === updateValue.getObjectId() ) {
+									layer = layer.updateObject( i, { ...updateValue.getChanges() } )
+										.getMapsList()[ selectedMap ].getLayersList()[ selectedLayer ];
+									objects = layer.getObjectsList();
+								}
+							} );
+						}
+					break;
+					case `remove`:
+						if ( update.getMap() === map.getId() && update.getLayer() === layer.getId() ) {
+							const updateValue: OverworldEventUpdateRemove = update.getUpdate() as OverworldEventUpdateRemove;
+							objects.forEach( ( o, i ) => {
+								if ( o.id() === updateValue.getObjectId() ) {
+									layer = layer.updateObject( i, { hidden: true } )
+										.getMapsList()[ selectedMap ].getLayersList()[ selectedLayer ];
+									objects = layer.getObjectsList();
+								}
+							} );
+						}
+					break;
+				}
+			} );
+		}
 	}
 
 	// Select object on left click.
@@ -134,7 +146,25 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 		const gridX = Math.floor( x / ( 16 * zoom ) );
 		const gridY = Math.floor( y / ( 16 * zoom ) );
 
-		setOverworld( layer.addObject( typeGenerator( layer.getLatestId(), selectedObjectType, gridX, gridY ) ) );
+		const object = typeGenerator( layer.getLatestId(), selectedObjectType, gridX, gridY );
+
+		// If not in an event frame, add the object globally.
+		// Otherwise, add an event addition instead.
+		if ( selectedFrame === null ) {
+			setOverworld( layer.addObject( object ) );
+		} else {
+			const updatedFrame = selectedEventFrames[ selectedFrame ].addEventAdd(
+				map.getId(),
+				layer.getId(),
+				object,
+			);
+			updateSelectedEventFrame( updatedFrame );
+
+			// Because we’re not updating the layer objects,
+			// we need to manually update the layer’s latest ID
+			// so event add objects don’t share IDs.
+			updateLayerLatestId();
+		}
 		setSelectedObject( null );
 	};
 

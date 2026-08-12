@@ -3,6 +3,9 @@ import {
 	OverworldEvent,
 	OverworldEventControlsProps,
 	OverworldEventUpdate,
+	OverworldEventUpdateAdd,
+	OverworldEventUpdateChange,
+	OverworldEventUpdateRemove,
 } from '../../../../common/types';
 
 interface UpdateInfoProps {
@@ -14,14 +17,26 @@ function UpdateInfo( props: UpdateInfoProps ): ReactElement {
 	let data: object = {};
 
 	switch ( update.getType() ) {
+		case `add`:
+		{
+			const value = update.getUpdate() as OverworldEventUpdateAdd;
+			data = { ...value.getObject().toJSON() };
+		}
+		break;
 		case 'change':
+		{
+			const value = update.getUpdate() as OverworldEventUpdateChange;
 			data = {
-				id: update.getUpdate().getObjectId(),
-				...update.getUpdate().getChanges()
+				id: value.getObjectId(),
+				...value.getChanges(),
 			};
+		}
 		break;
 		case 'remove':
-			data = { id: update.getUpdate().getObjectId() };
+		{
+			const value = update.getUpdate() as OverworldEventUpdateRemove;
+			data = { id: value.getObjectId() };
+		}
 		break;
 	}
 
@@ -35,7 +50,6 @@ function OverworldEventControls( props: OverworldEventControlsProps ): ReactElem
 		eventsList,
 		selectedEvent,
 		selectedEventFrame,
-		selectedObject,
 		setOverworld,
 		setSelectedEvent,
 		setSelectedEventFrame,
@@ -53,6 +67,7 @@ function OverworldEventControls( props: OverworldEventControlsProps ): ReactElem
 		setOverworld( eventsList.addEvent() );
 		setSelectedEvent( eventsList.getLength() + 1 );
 		setSelectedEventFrame( null );
+		setSelectedObject( null );
 	};
 
 	const generateEventSelector = ( index: number ) => (): void => {

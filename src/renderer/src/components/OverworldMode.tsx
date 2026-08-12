@@ -2,7 +2,13 @@
 import React, { ReactElement, useState } from "react";
 
 import { getOverworldTypeFactory } from '../../../common/objects';
-import { MapObjectArgs, OverworldEventFrame, OverworldLayerType, OverworldModeProps } from '../../../common/types';
+import {
+	MapObjectArgs,
+	Overworld,
+	OverworldEventFrame,
+	OverworldLayerType,
+	OverworldModeProps,
+} from '../../../common/types';
 import OverworldEventControls from './Overworld/OverworldEventControls';
 import OverworldGridCanvas from './Overworld/OverworldGridCanvas';
 import OverworldLayerControls from './Overworld/OverworldLayerControls';
@@ -32,7 +38,6 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 	const selectedEventFrameEntry = selectedEventEntry && selectedEventFrame !== null
 		? selectedEventEntry.getEntry( selectedEventFrame )
 		: null;
-	const selectedFrameUpdatesList = selectedEventFrameEntry ? selectedEventFrameEntry.getUpdates() : [];
 
 	const addLayer = (): void => setOverworld( map.addLayer( selectedLayerType ) );
 
@@ -105,11 +110,27 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 	};
 
 	const updateSelectedEventFrame = ( frame: OverworldEventFrame ): void => {
-		if ( ! selectedEventEntry || selectedEventFrame === null ) {
-			return;
-		}
-		const updatedEvent = selectedEventEntry.updateFrame( selectedEventFrame, frame );
-		setOverworld( eventsList.updateEvent( selectedEvent - 1, updatedEvent ) );
+		setOverworld( ( overworld: Overworld ) => {
+			const eventsList = overworld.getEventsList();
+			const selectedEventEntry = selectedEvent > 0 ? eventsList.getEntry( selectedEvent - 1 ) : null;
+			if ( ! selectedEventEntry || selectedEventFrame === null ) {
+				return overworld;
+			}
+			const updatedEvent = selectedEventEntry.updateFrame( selectedEventFrame, frame );
+			return eventsList.updateEvent( selectedEvent - 1, updatedEvent );
+		} );
+	};
+
+	const updateLayerLatestId = (): void => {
+		setOverworld( ( overworld: Overworld ) => {
+			// Make sure we reload these so we’re not updating the o’erworld with outdated data.
+			const maps = overworld.getMapsList();
+			const map = maps[ selectedMap ];
+			const layers = map.getLayersList();
+			const layer = layers[ selectedLayer ];
+
+			return layer.updateLatestId();
+		} );
 	};
 
 	return <div>
@@ -132,13 +153,15 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 			map={ map }
 			palettes={ palettes }
 			selectedEventFrames={ selectedEventEntry === null ? [] : selectedEventEntry.getFrames() }
-			selectedFrame={ selectedEventFrame ?? 0 }
+			selectedFrame={ selectedEventFrame }
 			selectedLayer={ selectedLayer }
 			selectedMap={ selectedMap }
 			selectedObject={ selectedObject }
 			selectedObjectType={ selectedObjectType }
 			setOverworld={ setOverworld }
 			setSelectedObject={ setSelectedObject }
+			updateLayerLatestId={ updateLayerLatestId }
+			updateSelectedEventFrame={ updateSelectedEventFrame }
 		/>
 		<OverworldLayerControls
 			addLayer={ addLayer }
@@ -165,7 +188,6 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 			selectedFrame={ selectedEventFrame ?? 0 }
 			selectedLayer={ layer }
 			selectedMap={ map }
-			selectedObject={ layer.getObject( selectedObject ) }
 			selectedObjectIndex={ selectedObject }
 			setSelectedObject={ setSelectedObject }
 			typesFactory={ typesFactory }
@@ -176,7 +198,6 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 			eventsList={ overworld.getEventsList() }
 			selectedEvent={ selectedEvent }
 			selectedEventFrame={ selectedEventFrame }
-			selectedObject={ selectedObject ? layer.getObject( selectedObject ) : null }
 			setOverworld={ setOverworld }
 			setSelectedEvent={ setSelectedEvent }
 			setSelectedEventFrame={ setSelectedEventFrame }

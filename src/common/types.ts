@@ -332,10 +332,7 @@ interface OverworldEventUpdateRemove {
 }
 
 interface OverworldEventUpdateAdd {
-	getObjectType: () => number,
-	getOtherParameters: () => object,
-	getX: () => number,
-	getY: () => number,
+	getObject: () => MapObject,
 	toJSON: () => object,
 }
 
@@ -360,12 +357,14 @@ interface OverworldEventUpdate {
 }
 
 interface OverworldEventFrame {
-	addEventRemove: ( map: number, layer: number, objectId: number ) => OverworldEventFrame,
+	addEventAdd: ( map: number, layer: number, object: MapObject ) => OverworldEventFrame,
 	addEventChange: ( map: number, layer: number, objectId: number, changes: object ) => OverworldEventFrame,
+	addEventRemove: ( map: number, layer: number, objectId: number ) => OverworldEventFrame,
 	getDuration: () => number,
 	getUpdates: () => readonly OverworldEventUpdate[],
 	toJSON: () => object,
 	updateDuration: ( newDuration: number ) => OverworldEventFrame,
+	updateEventAdd: ( index: number, map: number, layer: number, changes: object ) => OverworldEventFrame,
 	updateEventChange: (
 		index: number,
 		map: number,
@@ -390,7 +389,6 @@ interface OverworldEventControlsProps {
 	eventsList: OverworldEventsList,
 	selectedEvent: number,
 	selectedEventFrame: number | null,
-	selectedObject: MapObject | null,
 	setOverworld: ( overworld: Overworld ) => void,
 	setSelectedEvent: ( index: number ) => void,
 	setSelectedEventFrame: ( frame: number | null ) => void,
@@ -402,13 +400,15 @@ interface OverworldGridCanvasProps {
 	map: OverworldMap,
 	palettes: PaletteList,
 	selectedEventFrames: readonly OverworldEventFrame[],
-	selectedFrame: number,
+	selectedFrame: number | null,
 	selectedLayer: number,
 	selectedMap: number,
 	selectedObject: number | null,
 	selectedObjectType: number,
 	setOverworld: ( overworld: Overworld ) => void,
 	setSelectedObject: ( object: number | null ) => void,
+	updateLayerLatestId: () => void,
+	updateSelectedEventFrame: ( frame: OverworldEventFrame ) => void,
 }
 
 interface OverworldLayer {
@@ -421,6 +421,7 @@ interface OverworldLayer {
 	encode: () => ByteBlock[];
 	removeObject: ( index: number ) => Overworld;
 	toJSON: () => object;
+	updateLatestId: () => Overworld;
 	updateObject: ( index: number, object: MapObjectArgs ) => Overworld;
 }
 
@@ -498,7 +499,7 @@ interface OverworldModeProps {
 	graphics: GraphicsEntry,
 	overworld: Overworld,
 	palettes: PaletteList,
-	setOverworld: ( overworld: Overworld ) => void,
+	setOverworld: ( overworld: Overworld | ( ( overworld: Overworld ) => Overworld ) ) => void,
 }
 
 interface OverworldObjectControlsProps {
