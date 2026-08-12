@@ -70,6 +70,16 @@ function OverworldEventControls( props: OverworldEventControlsProps ): ReactElem
 		setSelectedObject( null );
 	};
 
+	const removeEvent = (): void => {
+		if ( selectedEvent <= 0 ) {
+			return;
+		}
+		setOverworld( eventsList.removeEvent( selectedEvent - 1 ) );
+		setSelectedEvent( 0 );
+		setSelectedEventFrame( 0 );
+		setSelectedObject( null );
+	};
+
 	const generateEventSelector = ( index: number ) => (): void => {
 		if ( selectedEvent !== index ) {
 			setSelectedEvent( index );
@@ -90,6 +100,20 @@ function OverworldEventControls( props: OverworldEventControlsProps ): ReactElem
 		}
 		setOverworld( eventsList.updateEvent( selectedEvent - 1, selectedEventEntry.addFrame() ) );
 		setSelectedEventFrame( selectedEventEntry.getLength() );
+	};
+
+	const removeLatestFrame = (): void => {
+		if ( ! selectedEventEntry || selectedEventFrameEntry === null || selectedEventEntry.getLength() < 2 ) {
+			return;
+		}
+		setOverworld(
+			eventsList.updateEvent( selectedEvent - 1, selectedEventEntry.removeLatestFrame() ),
+		);
+
+		// If the selected frame is the last, change to the previous, as the current last is no longer valid.
+		if ( selectedEventFrame >= selectedEventEntry.getLength() - 1 ) {
+			setSelectedEventFrame( selectedEventEntry.getLength() - 2 );
+		}
 	};
 
 	const generateFrameDurationUpdater = ( event: React.ChangeEvent<HTMLInputElement> ): void => {
@@ -117,8 +141,9 @@ function OverworldEventControls( props: OverworldEventControlsProps ): ReactElem
 				</li> ) }
 			</ul>
 			<button onClick={ addEvent }>Add Event</button>
+			<button disabled={ selectedEvent === 0 } onClick={ removeEvent }>Remove Event</button>
 		</div>
-		{ selectedEventEntry && <div>
+		{ selectedEventEntry !== null && <div>
 			<ul>
 				{ selectedEventEntry.map( ( _frame, index: number ) => <li key={ index }>
 					<button
@@ -130,6 +155,12 @@ function OverworldEventControls( props: OverworldEventControlsProps ): ReactElem
 				</li> ) }
 			</ul>
 			<button onClick={ addFrame }>Add Frame</button>
+			<button
+				disabled={ selectedEventEntry.getLength() < 2 }
+				onClick={ removeLatestFrame }
+			>
+				Remove Last Frame
+			</button>
 		</div> }
 		{ selectedEventFrameEntry && <div>
 			<label>Duration:

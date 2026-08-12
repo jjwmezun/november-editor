@@ -322,6 +322,7 @@ interface OverworldEventsList {
 	getLength: () => number,
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	map: ( callback: ( event: OverworldEvent, index: number ) => any ) => any[],
+	removeEvent: ( index: number ) => Overworld,
 	toJSON: () => object,
 	updateEvent: ( index: number, event: OverworldEvent ) => Overworld,
 }
@@ -381,6 +382,7 @@ interface OverworldEvent {
 	getLength: () => number,
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	map: ( callback: ( frame: OverworldEventFrame, index: number ) => any ) => any[],
+	removeLatestFrame: () => OverworldEvent,
 	toJSON: () => object,
 	updateFrame: ( index: number, frame: OverworldEventFrame ) => OverworldEvent,
 }

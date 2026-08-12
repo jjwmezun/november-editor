@@ -155,6 +155,14 @@ function createOverworldEventsList(
 		toJSON: () => ( {
 			events: events.map( event => event.toJSON() ),
 		} ),
+		removeEvent: ( index: number ) => {
+			if ( index < 0 || index >= events.length ) {
+				throw new Error( `Event index out o’ bounds: ${ index }` );
+			}
+			const newEvents = [ ...events ];
+			newEvents.splice( index, 1 );
+			return updateEvents( newEvents );
+		},
 		updateEvent: ( index: number, event: OverworldEvent ) => {
 			if ( index < 0 || index >= events.length ) {
 				throw new Error( `Event index out o’ bounds: ${ index }` );
@@ -183,6 +191,14 @@ function createOverworldEvent( frames: OverworldEventFrame[] = [] ): OverworldEv
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		map: ( callback: ( frame: OverworldEventFrame, index: number ) => any ) => {
 			return frames.map( callback );
+		},
+		removeLatestFrame: () => {
+			if ( frames.length < 2 ) {
+				throw new Error( `No frames to remove` );
+			}
+			const newFrames = [ ...frames ];
+			newFrames.splice( newFrames.length - 1, 1 );
+			return createOverworldEvent( newFrames );
 		},
 		toJSON: () => ( {
 			frames: frames.map( frame => frame.toJSON() ),
