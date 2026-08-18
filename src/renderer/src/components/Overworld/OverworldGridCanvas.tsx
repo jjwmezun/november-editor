@@ -44,7 +44,7 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 	const typeGenerator = getOverworldTypeGenerator( layer.getType() );
 
 	// Update objects shown & editable based on frames going up to current frame.
-	if ( selectedFrame !== null ) {
+	if ( selectedEventFrames.length !== 0 ) {
 		for ( let i = 0; i <= selectedFrame; i++ ) {
 			const updates = selectedEventFrames[ i ] ? selectedEventFrames[ i ].getUpdates() : [];
 			updates.forEach( update => {
@@ -150,7 +150,7 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 
 		// If not in an event frame, add the object globally.
 		// Otherwise, add an event addition instead.
-		if ( selectedFrame === null ) {
+		if ( selectedEventFrames.length === 0 ) {
 			setOverworld( layer.addObject( object ) );
 		} else {
 			const updatedFrame = selectedEventFrames[ selectedFrame ].addEventAdd(

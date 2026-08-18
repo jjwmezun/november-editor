@@ -280,41 +280,60 @@ function createFrame( duration: number = 8, updates: readonly OverworldEventUpda
 			updates: updates.map( update => update.toJSON() ),
 		} ),
 		updateDuration: ( newDuration: number ) => createFrame( newDuration, updates ),
-		updateEventAdd: ( index: number, map: number, layer: number, changes: object ) => {
-			if ( index < 0 || index >= updates.length ) {
-				throw new Error( `Update index out o’ bounds: ${ index }` );
+		updateEvent: ( objectId: number, changes: object ) => {
+			for ( let i = 0; i < updates.length; i++ ) {
+				const update = updates[ i ];
+				switch ( update.getType() ) {
+					case `add`: {
+						const updateValue = update.getUpdate() as OverworldEventUpdateAdd;
+						const object = updateValue.getObject();
+						if ( object.id() === objectId ) {
+							const origUpdate = update.getUpdate() as OverworldEventUpdateAdd;
+							const newUpdate = createEventUpdate(
+								update.getMap(),
+								update.getLayer(),
+								OverworldEventUpdateType.add,
+								createEventUpdateAdd( origUpdate.getObject().update( changes ) ),
+							);
+							const newUpdates = [ ...updates ];
+							newUpdates[ i ] = newUpdate;
+							return createFrame( duration, newUpdates );
+						}
+					}
+					break;
+					case `change`: {
+						const updateValue = update.getUpdate() as OverworldEventUpdateChange;
+						if ( updateValue.getObjectId() === objectId ) {
+							const origUpdate = update.getUpdate() as OverworldEventUpdateChange;
+							const newUpdate = createEventUpdate(
+								update.getMap(),
+								update.getLayer(),
+								OverworldEventUpdateType.change,
+								createEventUpdateChange(
+									objectId,
+									{
+										...origUpdate.getChanges(),
+										...changes,
+									},
+								),
+							);
+							const newUpdates = [ ...updates ];
+							newUpdates[ i ] = newUpdate;
+							return createFrame( duration, newUpdates );
+						}
+					}
+					break;
+					case `remove`: {
+						const updateValue = update.getUpdate() as OverworldEventUpdateRemove;
+						if ( updateValue.getObjectId() === objectId ) {
+							throw new Error( `Cannot update a removed object with ID: ${ objectId }` );
+						}
+					}
+					break;
+				}
 			}
-			const origUpdate = updates[ index ].getUpdate() as OverworldEventUpdateAdd;
-			const update = createEventUpdate(
-				map,
-				layer,
-				OverworldEventUpdateType.add,
-				createEventUpdateAdd( origUpdate.getObject().update( changes ) ),
-			);
-			const newUpdates = [ ...updates ];
-			newUpdates[ index ] = update;
-			return createFrame( duration, newUpdates );
-		},
-		updateEventChange: ( index: number, map: number, layer: number, objectId: number, changes: object ) => {
-			if ( index < 0 || index >= updates.length ) {
-				throw new Error( `Update index out o’ bounds: ${ index }` );
-			}
-			const origUpdate = updates[ index ].getUpdate() as OverworldEventUpdateChange;
-			const update = createEventUpdate(
-				map,
-				layer,
-				OverworldEventUpdateType.change,
-				createEventUpdateChange(
-					objectId,
-					{
-						...origUpdate.getChanges(),
-						...changes,
-					},
-				),
-			);
-			const newUpdates = [ ...updates ];
-			newUpdates[ index ] = update;
-			return createFrame( duration, newUpdates );
+
+			throw new Error( `No update found for object with ID: ${ objectId }` );
 		},
 	} );
 }

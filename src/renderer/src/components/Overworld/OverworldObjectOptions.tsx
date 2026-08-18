@@ -7,7 +7,6 @@ import {
 	MapObjectType,
 	OverworldEvent,
 	OverworldEventFrame,
-	OverworldEventUpdate,
 	OverworldEventUpdateChange,
 	OverworldEventUpdateAdd,
 	OverworldLayer,
@@ -47,21 +46,21 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 		? []
 		: selectedEventEntry.getFrames();
 
-	let selectedObjectIsEvent: boolean = false;
-	let selectedObject: MapObject | null = null;
-
-	// Search global objects to see if any are selected.
-	selectedLayer.getObjectsList().forEach( object => {
-		if ( object.id() === selectedObjectIndex ) {
-			selectedObject = object;
+	const selectedObject = ( (): MapObject | null => {
+		// Search global objects to see if any are selected.
+		const objectList = selectedLayer.getObjectsList();
+		for ( let i = 0; i < objectList.length; ++i ) {
+			const object = objectList[ i ];
+			if ( object.id() === selectedObjectIndex ) {
+				return object;
+			}
 		}
-	} );
 
-	// Otherwise, search event frames to see if any added object is selected.
-	if ( selectedObject === null ) {
+		// Otherwise, search event frames to see if any added object is selected.
 		for ( let i = 0; i <= selectedFrame; ++i ) {
 			const updates = eventFrames[ i ] ? eventFrames[ i ].getUpdates() : [];
-			updates.forEach( update => {
+			for ( let j = 0; j < updates.length; ++j ) {
+				const update = updates[ j ];
 				switch ( update.getType() ) {
 					case `add`: {
 						const updateValue = update.getUpdate() as OverworldEventUpdateAdd;
@@ -71,15 +70,15 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 							&& update.getLayer() === selectedLayer.getId()
 							&& object.id() === selectedObjectIndex
 						) {
-							selectedObjectIsEvent = true;
-							selectedObject = object;
-							break;
+							return object;
 						}
 					}
 				}
-			} );
+			}
 		}
-	}
+
+		return null;
+	} )();
 
 	const deleteObject = (): void => {
 		if ( selectedObject === null ) {
@@ -105,6 +104,7 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 		? <></>
 		: <div>
 			<h2>Object options</h2>
+			<div>ID: { selectedObject.id() } </div>
 			{
 				typesFactory[ selectedObject.type() ].options.map( ( options, i ) => {
 					const {
@@ -125,7 +125,6 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 							: atts[ key ];
 					}
 
-					let updateIndex: number | null = null;
 					let selectedObjectFrame: number | null = null;
 
 					// Default to showing object value.
@@ -144,7 +143,6 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 										&& update.getLayer() === selectedLayer.getId()
 										&& object.id() === selectedObject.id()
 									) {
-										updateIndex = index;
 										selectedObjectFrame = i;
 										if ( key in object ) {
 											value = object.getProp( key );
@@ -159,7 +157,6 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 										&& update.getLayer() === selectedLayer.getId()
 										&& updateValue.getObjectId() === selectedObject.id()
 									) {
-										updateIndex = index;
 										selectedObjectFrame = i;
 										const changes = updateValue.getChanges();
 										if ( key in changes ) {
@@ -173,18 +170,20 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 					}
 
 					// If not editing an event, update the object itself.
-					// If updating a frame, if there is already an update for the selected object,
-					// update that update instead o’ creating a new 1.
-					// If the update is an event object:
-					// * If the object is from a past frame, add a change event.
-					// * If the object is from the current frame, update the existing add event.
-					const onUpdateObject = selectedObjectIsEvent
-						? ( e: React.ChangeEvent<HTMLInputElement> ): void => {
-							if ( selectedEventFrameEntry === null || updateIndex === null || selectedObject === null ) {
-								return;
-							}
-							const updatedFrame = selectedObjectFrame !== selectedFrame
-								? selectedEventFrameEntry.addEventChange(
+					// Otherwise, if updating in an event & the object is from a past frame, add a change event.
+					// Otherwise, change the existing event update.
+					const onUpdateObject = ( e: React.ChangeEvent<HTMLInputElement> ) => {
+						if ( selectedEventEntry === null ) {
+							updateObject(
+								selectedObjectIndex,
+								{
+									[ key ]: update( e.target.value ),
+									...extraUpdate( selectedObject, e.target.value ),
+								},
+							);
+						} else if ( selectedEventFrameEntry !== null ) {
+							if ( selectedObjectFrame !== selectedFrame ) {
+								const updatedFrame = selectedEventFrameEntry.addEventChange(
 									selectedMap.getId(),
 									selectedLayer.getId(),
 									selectedObject.id(),
@@ -192,53 +191,20 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 										[ key ]: update( e.target.value ),
 										...extraUpdate( selectedObject, e.target.value ),
 									},
-								)
-								: selectedEventFrameEntry.updateEventAdd(
-									updateIndex,
-									selectedMap.getId(),
-									selectedLayer.getId(),
+								);
+								updateSelectedEventFrame( updatedFrame );
+							} else {
+								const updatedFrame = selectedEventFrameEntry.updateEvent(
+									selectedObject.id(),
 									{
 										[ key ]: update( e.target.value ),
 										...extraUpdate( selectedObject, e.target.value ),
 									},
 								);
-							updateSelectedEventFrame( updatedFrame );
-						}
-						: ( selectedEventEntry === null )
-							? ( e: React.ChangeEvent<HTMLInputElement> ): void => {
-								updateObject(
-									selectedObjectIndex,
-									{
-										[ key ]: update( e.target.value ),
-										...extraUpdate( selectedObject, e.target.value ),
-									},
-								);
+								updateSelectedEventFrame( updatedFrame );
 							}
-							: ( selectedEventFrameEntry !== null )
-								? ( e: React.ChangeEvent<HTMLInputElement> ): void => {
-									const updatedFrame = updateIndex !== null
-										? selectedEventFrameEntry.updateEventChange(
-											updateIndex,
-											selectedMap.getId(),
-											selectedLayer.getId(),
-											selectedObject.id(),
-											{
-												[ key ]: update( e.target.value ),
-												...extraUpdate( selectedObject, e.target.value ),
-											},
-										)
-										: selectedEventFrameEntry.addEventChange(
-											selectedMap.getId(),
-											selectedLayer.getId(),
-											selectedObject.id(),
-											{
-												[ key ]: update( e.target.value ),
-												...extraUpdate( selectedObject, e.target.value ),
-											},
-										);
-									updateSelectedEventFrame( updatedFrame );
-								}
-								: () => null;
+						}
+					};
 
 					return <label key={ i }>
 						<span>{ title }:</span>
