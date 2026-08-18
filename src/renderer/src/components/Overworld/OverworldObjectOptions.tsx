@@ -129,6 +129,7 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 
 					// Default to showing object value.
 					let value = selectedObject.getProp( key );
+					let prevValue = value;
 
 					// But if there is an event update for the selected event frames current or below, o’erride with that.
 					for ( let i = 0; i <= selectedFrame; i++ ) {
@@ -147,6 +148,11 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 										if ( key in object ) {
 											value = object.getProp( key );
 										}
+
+										// If not current frame, update prevValue.
+										if ( i < selectedFrame ) {
+											prevValue = value;
+										}
 									}
 								}
 								break;
@@ -161,6 +167,11 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 										const changes = updateValue.getChanges();
 										if ( key in changes ) {
 											value = changes[ key ];
+										}
+
+										// If not current frame, update prevValue.
+										if ( i < selectedFrame ) {
+											prevValue = value;
 										}
 									}
 								}
@@ -194,12 +205,23 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 								);
 								updateSelectedEventFrame( updatedFrame );
 							} else {
+								const value = update( e.target.value );
+								const changes = {
+									[ key ]: value,
+									...extraUpdate( selectedObject, e.target.value ),
+								};
+
+								// If changing to value that already existed in previous frame,
+								// just remove change.
+								if ( value === prevValue ) {
+									for ( const key in changes ) {
+										changes[ key ] = undefined;
+									}
+								}
+
 								const updatedFrame = selectedEventFrameEntry.updateEvent(
 									selectedObject.id(),
-									{
-										[ key ]: update( e.target.value ),
-										...extraUpdate( selectedObject, e.target.value ),
-									},
+									changes,
 								);
 								updateSelectedEventFrame( updatedFrame );
 							}

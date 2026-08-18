@@ -305,16 +305,27 @@ function createFrame( duration: number = 8, updates: readonly OverworldEventUpda
 						const updateValue = update.getUpdate() as OverworldEventUpdateChange;
 						if ( updateValue.getObjectId() === objectId ) {
 							const origUpdate = update.getUpdate() as OverworldEventUpdateChange;
+
+							// Combine existing changes with new changes.
+							const newChanges = {
+								...origUpdate.getChanges(),
+								...changes,
+							};
+
+							// Values set to undefined should be removed.
+							for ( const key in newChanges ) {
+								if ( newChanges[ key ] === undefined ) {
+									delete newChanges[ key ];
+								}
+							}
+
 							const newUpdate = createEventUpdate(
 								update.getMap(),
 								update.getLayer(),
 								OverworldEventUpdateType.change,
 								createEventUpdateChange(
 									objectId,
-									{
-										...origUpdate.getChanges(),
-										...changes,
-									},
+									newChanges,
 								),
 							);
 							const newUpdates = [ ...updates ];
