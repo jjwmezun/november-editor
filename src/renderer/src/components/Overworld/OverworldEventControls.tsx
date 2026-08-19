@@ -17,14 +17,12 @@ function UpdateInfo( props: UpdateInfoProps ): ReactElement {
 	let data: object = {};
 
 	switch ( update.getType() ) {
-		case `add`:
-		{
+		case `add`: {
 			const value = update.getUpdate() as OverworldEventUpdateAdd;
 			data = { ...value.getObject().toJSON() };
 		}
 		break;
-		case `change`:
-		{
+		case `change`: {
 			const value = update.getUpdate() as OverworldEventUpdateChange;
 			data = {
 				id: value.getObjectId(),
@@ -32,8 +30,7 @@ function UpdateInfo( props: UpdateInfoProps ): ReactElement {
 			};
 		}
 		break;
-		case `remove`:
-		{
+		case `remove`: {
 			const value = update.getUpdate() as OverworldEventUpdateRemove;
 			data = { id: value.getObjectId() };
 		}
@@ -106,9 +103,10 @@ function OverworldEventControls( props: OverworldEventControlsProps ): ReactElem
 		if ( ! selectedEventEntry || selectedEventFrameEntry === null || selectedEventEntry.getLength() < 2 ) {
 			return;
 		}
-		setOverworld(
-			eventsList.updateEvent( selectedEvent - 1, selectedEventEntry.removeLatestFrame() ),
-		);
+		setOverworld( eventsList.updateEvent(
+			selectedEvent - 1,
+			selectedEventEntry.removeLatestFrame(),
+		) );
 
 		// If the selected frame is the last, change to the previous, as the current last is no longer valid.
 		if ( selectedEventFrame >= selectedEventEntry.getLength() - 1 ) {

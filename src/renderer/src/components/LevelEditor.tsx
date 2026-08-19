@@ -1,4 +1,4 @@
-import { ReactElement, useEffect, useState } from 'react';
+import { ReactElement, SyntheticEvent, useEffect, useState } from 'react';
 import {
 	createMap,
 	generateDataBytes,
@@ -6,6 +6,7 @@ import {
 } from '../../../common/levels';
 import {
 	LevelEditorProps,
+	LvMap,
 } from '../../../common/types';
 
 import MapEditor from './LevelEditor/MapEditor';
@@ -13,8 +14,8 @@ import { LevelOptions } from './LevelEditor/LevelOptions';
 import { MapSelectorList } from './LevelEditor/MapSelectorList';
 
 const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
-	const [ selectedMap, setSelectedMap ] = useState( null );
-	const [ selectedMapIndex, setSelectedMapIndex ] = useState( null );
+	const [ selectedMap, setSelectedMap ] = useState<LvMap | null>( null );
+	const [ selectedMapIndex, setSelectedMapIndex ] = useState<number | null>( null );
 
 	const { closeLevel, goal, graphics, maps, name, palettes, setGoal, setMaps, setName } = props;
 
@@ -38,6 +39,9 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 	};
 
 	const exportMap = () => {
+		if ( selectedMapIndex === null ) {
+			return;
+		}
 		window.electronAPI.exportMap( maps[ selectedMapIndex ] );
 	};
 
@@ -51,7 +55,7 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 		window.electronAPI.importMap();
 	};
 
-	const importMapData = ( _event, data ) => {
+	const importMapData = ( _event: SyntheticEvent, data: Buffer<ArrayBuffer> ) => {
 		const map = transformMapDataToObject( data.buffer );
 		setSelectedMap( map );
 		setSelectedMapIndex( maps.length );
@@ -59,6 +63,9 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 	};
 
 	const moveMapDown = () => {
+		if ( selectedMapIndex === null || selectedMapIndex === maps.length - 1 ) {
+			return;
+		}
 		setMaps( ( () => {
 			const newMaps = [ ...maps ];
 			const temp = newMaps[ selectedMapIndex ];
@@ -70,6 +77,9 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 	};
 
 	const moveMapUp = () => {
+		if ( selectedMapIndex === null || selectedMapIndex === 0 ) {
+			return;
+		}
 		setMaps( ( () => {
 			const newMaps = [ ...maps ];
 			const temp = newMaps[ selectedMapIndex ];

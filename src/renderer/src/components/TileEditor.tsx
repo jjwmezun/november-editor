@@ -1,4 +1,4 @@
-import { ReactElement, useEffect, useRef, useState } from 'react';
+import { MouseEvent, ReactElement, useEffect, useRef, useState } from 'react';
 import { getMousePosition } from '../../../common/utils';
 import { tileSize } from '../../../common/constants';
 import {
@@ -7,6 +7,7 @@ import {
 	PaletteList,
 	ShaderType,
 	TileEditorProps,
+	TileRenderer,
 } from '../../../common/types';
 import { createMat3 } from '../../../common/mat';
 import {
@@ -205,7 +206,7 @@ const createRenderer = (
 	ctx: WebGL2RenderingContext,
 	palettes: PaletteList,
 	graphics: GraphicsEntry,
-) => {
+): TileRenderer => {
 	ctx.enable( ctx.BLEND );
 	ctx.blendFunc( ctx.SRC_ALPHA, ctx.ONE_MINUS_SRC_ALPHA );
 
@@ -375,7 +376,7 @@ const createRenderer = (
 			brushSize = Math.max( 1, Math.min( 8, brushSize ) );
 			const brush = brushLayouts[ brushSize - 1 ];
 			instances = brush.length;
-			let modelList = [];
+			let modelList: number[] = [];
 			brush.forEach( brush => {
 				const xrel = ( x + brush.x - 4 ) / 4 + 1 / 8;
 				const yrel = ( ( 7 - ( y + brush.y ) ) - 4 ) / 4 + 1 / 8;
@@ -508,7 +509,7 @@ const createRenderer = (
 			brushSize = Math.max( 1, Math.min( 8, brushSize ) );
 			const brush = brushLayouts[ brushSize - 1 ];
 			instances = brush.length;
-			let modelList = [];
+			let modelList: number[] = [];
 			brush.forEach( brush => {
 				const xrel = ( x + brush.x - 4 ) / 4 + 1 / 8;
 				const yrel = ( ( 7 - ( y + brush.y ) ) - 4 ) / 4 + 1 / 8;
@@ -652,12 +653,12 @@ const createRenderer = (
 };
 
 const TileEditor = ( props: TileEditorProps ): ReactElement => {
-	const canvasRef = useRef();
+	const canvasRef = useRef<HTMLCanvasElement | null>( null );
 	const { clearTile, drawPixel, graphics, palettes, selectedColor, selectedPalette, tileX, tileY } = props;
 	const [ selected, setSelected ] = useState( { x: 0, y: 0 } );
 	const [ mouseDown, setMouseDown ] = useState( false );
 	const [ brushSize, setBrushSize ] = useState( 1 );
-	const [ renderer, setRenderer ] = useState( null );
+	const [ renderer, setRenderer ] = useState<TileRenderer | null>( null );
 
 	const tilemapWidth = graphics.getWidthTiles();
 	const tilemapHeight = graphics.getHeightTiles();
@@ -699,7 +700,7 @@ const TileEditor = ( props: TileEditorProps ): ReactElement => {
 	const onMouseUp = () => setMouseDown( false );
 
 	// Update cursor visuals on mouse move.
-	const onMouseMove = e => {
+	const onMouseMove = ( e: MouseEvent ): void => {
 		const { x, y } = getMousePosition( e );
 
 		const gridX = Math.floor( x / pixelZoom );

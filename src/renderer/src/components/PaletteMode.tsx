@@ -1,4 +1,4 @@
-import { ReactElement, SyntheticBaseEvent, useState } from 'react';
+import { ReactElement, SyntheticEvent, useState } from 'react';
 import { Color, Palette, PaletteModeProps } from '../../../common/types';
 import { convertHexColorToObject } from '../../../common/palettes';
 import { testCharacters } from '../../../common/text';
@@ -38,8 +38,9 @@ const PaletteTableRow = ( props: PaletteTableRowProps ): ReactElement => {
 		? { disabled: true }
 		: { onClick: removePalette };
 
-	const updateName = ( event: SyntheticBaseEvent ): void => {
-		const newName = event.target.value.toUpperCase();
+	const updateName = ( event: SyntheticEvent<HTMLInputElement> ): void => {
+		const target = event.target as HTMLInputElement;
+		const newName = target.value.toUpperCase();
 
 		// If name contains invalid characters, do not update.
 		if ( ! testCharacters( newName ) ) {
@@ -76,15 +77,16 @@ const PaletteTableRow = ( props: PaletteTableRowProps ): ReactElement => {
 
 const PaletteMode = ( props: PaletteModeProps ): ReactElement => {
 	const { exitMode, palettes, setPalettes } = props;
-	const [ selectedPalette, setSelectedPalette ] = useState( null );
-	const [ selectedColor, setSelectedColor ] = useState( null );
+	const [ selectedPalette, setSelectedPalette ] = useState<number | null>( null );
+	const [ selectedColor, setSelectedColor ] = useState<number | null>( null );
 
-	const updateSelectedColor = ( event: SyntheticBaseEvent ): void => {
+	const updateSelectedColor = ( event: SyntheticEvent<HTMLInputElement> ): void => {
 		if ( selectedPalette === null || selectedColor === null ) {
 			return;
 		}
 
-		const newColor = event.target.value;
+		const target = event.target as HTMLInputElement;
+		const newColor = target.value;
 		setPalettes( palettes.updatePalette(
 			selectedPalette,
 			palettes.nth( selectedPalette ).updateColor( selectedColor, convertHexColorToObject( newColor ) ),
@@ -103,6 +105,9 @@ const PaletteMode = ( props: PaletteModeProps ): ReactElement => {
 							palettes.getLength() === 1
 								? null
 								: () => {
+									if ( selectedPalette === null ) {
+										return;
+									}
 									if ( selectedPalette === index ) {
 										setSelectedPalette( null );
 										setSelectedColor( null );

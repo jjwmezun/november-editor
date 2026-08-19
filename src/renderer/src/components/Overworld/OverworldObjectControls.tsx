@@ -1,5 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import React, { SyntheticBaseEvent } from "react";
+import React, { SyntheticEvent } from "react";
 
 import { OverworldObjectControlsProps } from "../../../../common/types";
 
@@ -10,8 +10,9 @@ function OverworldObjectControls( props: OverworldObjectControlsProps ): React.R
 		setSelectedObjectType,
 	} = props;
 
-	const updateSelectedObjectType = ( e: SyntheticBaseEvent ): void => {
-		const value = e.target.value;
+	const updateSelectedObjectType = ( e: SyntheticEvent ): void => {
+		const target = e.target as HTMLSelectElement;
+		const value = target.value;
 		setSelectedObjectType( parseInt( value ) );
 	};
 

@@ -25,11 +25,11 @@ const createShaderProgram = ( ctx: WebGLRenderingContext, shaders: Shader[] ): W
 
 	ctx.linkProgram( program );
 
-	const uniformLocations = {};
+	const uniformLocations: Record<string, WebGLUniformLocation | null> = {};
 
 	// If already cached, return cached location;
 	// otherwise, get location from program and cache it.
-	const getLocation = ( name: string ): number => {
+	const getLocation = ( name: string ): WebGLUniformLocation | null => {
 		if ( ! ( name in uniformLocations ) ) {
 			uniformLocations[ name ] = ctx.getUniformLocation( program, name );
 		}
@@ -118,27 +118,30 @@ const createRenderObject = (
 	},
 	addTextureUniform: ( name: string, index: number, texture: WebGLTexture ) => {
 		program.setUniform1i( name, index );
+
+		// @ts-expect-error – We know WebGLRenderingContext has `TEXTURE#`.
 		ctx.activeTexture( ctx[ `TEXTURE${ index }` ] );
+
 		ctx.bindTexture( ctx.TEXTURE_2D, texture );
 	},
 	addUniform: ( name: string, type: string, value: number | Float32Array | number[] ) => {
 		switch ( type ) {
-		case `1f`:
-			program.setUniform1f( name, value as number );
+			case `1f`:
+				program.setUniform1f( name, value as number );
 			break;
-		case `1i`:
-			program.setUniform1i( name, value as number );
+			case `1i`:
+				program.setUniform1i( name, value as number );
 			break;
-		case `2f`: {
-			const [ v1, v2 ] = value as number[];
-			program.setUniform2f( name, v1, v2 );
+			case `2f`: {
+				const [ v1, v2 ] = value as number[];
+				program.setUniform2f( name, v1, v2 );
+			}
 			break;
-		}
-		case `3fv`:
-			program.setUniformMatrix3fv( name, value as Float32Array );
+			case `3fv`:
+				program.setUniformMatrix3fv( name, value as Float32Array );
 			break;
-		default:
-			throw new Error( `Unknown uniform type: ${ type }` );
+			default:
+				throw new Error( `Unknown uniform type: ${ type }` );
 		}
 	},
 	render: () => {

@@ -1,4 +1,4 @@
-import { DecodedGraphicsData, Graphics, GraphicsEntry } from "./types";
+import { DecodedGraphicsData, Graphics, GraphicsEntry, GraphicsType } from "./types";
 import { tileSize } from "./constants";
 import { combineUint8ArrayIntoUint32, getBitsFromByte } from "./bytes";
 
@@ -105,7 +105,10 @@ const createGraphicsEntry = (
 		},
 		createTexture: ( ctx: WebGLRenderingContext, index: number ): WebGLTexture => {
 			const texture = ctx.createTexture();
+
+			// @ts-expect-error – We know that WebGLRenderingContext has `TEXTURE#` properties for each index.
 			ctx.activeTexture( ctx[ `TEXTURE${ index }` ] );
+
 			ctx.bindTexture( ctx.TEXTURE_2D, texture );
 			ctx.texImage2D(
 				ctx.TEXTURE_2D,
@@ -125,7 +128,7 @@ const createGraphicsEntry = (
 			return texture;
 		},
 		getData: () => ( {
-			data: pixels,
+			pixels,
 			width: getWidthPixels(),
 			height: getHeightPixels(),
 		} ),
@@ -199,7 +202,7 @@ const loadGraphicsFromData = async ( data: Uint8Array ): Promise<DecodedGraphics
 	const graphics: Graphics = createNewGraphics();
 
 	// Gather list o’ data sizes.
-	const sizes = [ `blocks`, `sprites`, `overworld` ].map( ( type: string ) => {
+	const sizes = [ GraphicsType.blocks, GraphicsType.sprites, GraphicsType.overworld ].map( ( type: GraphicsType ) => {
 		const dataSize = combineUint8ArrayIntoUint32( Array.from( data.slice( 0, 4 ) ) );
 		const prevData = [ ...data ];
 		data = data.slice( dataSize + 4 );

@@ -11,12 +11,15 @@ const LevelList = ( props: LevelListProps ): ReactElement => {
 	const { exitMode, generateLevelNameUpdater, levels, setLevels, setSelectedLevel } = props;
 	const [ selectedGame, setSelectedGame ] = useState( 0 );
 	const [ selectedCircle, setSelectedCircle ] = useState( 0 );
-	const [ selectedSwitchLevel, setSelectedSwitchLevel ] = useState( null );
+	const [ selectedSwitchLevel, setSelectedSwitchLevel ] = useState<number | null>( null );
 	const [ selectedSwitchCircle, setSelectedSwitchCircle ] = useState( 0 );
 
-	const generateLevelSelector = i => () => setSelectedLevel( i );
+	const generateLevelSelector = ( i: number ) => () => setSelectedLevel( i );
 
 	const switchLevelCircle = () => {
+		if ( selectedSwitchLevel === null ) {
+			return;
+		}
 		const selectedLevel = getNthLevelOfCircle( selectedGame, selectedCircle, selectedSwitchLevel );
 		const levelToSwitch = getNthLevelOfCircle( selectedGame, selectedSwitchCircle, selectedSwitchLevel );
 		const newLevels = [ ...levels ];
@@ -125,7 +128,7 @@ const LevelList = ( props: LevelListProps ): ReactElement => {
 					min={ 0 }
 					max={ circlesPerGame - 1 }
 					value={ selectedSwitchCircle }
-					onChange={ e => setSelectedSwitchCircle( e.target.value ) }
+					onChange={ e => setSelectedSwitchCircle( parseInt( e.target.value ) ) }
 				/>
 			</div>
 			<div>

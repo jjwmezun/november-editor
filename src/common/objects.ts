@@ -1,5 +1,5 @@
 import { pixelsPerBlock, tilesPerBlock } from "./constants";
-import { GraphicTile, LayerType, MapObject, MapObjectArgs, MapObjectType, OverworldLayerType } from "./types";
+import { DataType, GraphicTile, LayerType, MapObject, MapObjectArgs, MapObjectType, OverworldLayerType } from "./types";
 
 const createTile = ( options: object ) => {
 	return {
@@ -72,11 +72,11 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 			return list;
 		},
 		exportData: [
-			{ type: `Uint16`, key: `id` },
-			{ type: `Uint16`, key: `x` },
-			{ type: `Uint16`, key: `y` },
-			{ type: `Uint16`, key: `width` },
-			{ type: `Uint8`, key: `height` },
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint16, key: `width` },
+			{ type: DataType.Uint8, key: `height` },
 		],
 		options: [
 			{
@@ -155,9 +155,9 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 			return tiles;
 		},
 		exportData: [
-			{ type: `Uint16`, key: `id` },
-			{ type: `Uint16`, key: `x` },
-			{ type: `Uint16`, key: `y` },
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
 		],
 		options: [
 			{
@@ -228,11 +228,11 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 			return tiles;
 		},
 		exportData: [
-			{ type: `Uint16`, key: `id` },
-			{ type: `Uint16`, key: `x` },
-			{ type: `Uint16`, key: `y` },
-			{ type: `Uint8`, key: `width` },
-			{ type: `Uint8`, key: `height` },
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `width` },
+			{ type: DataType.Uint8, key: `height` },
 		],
 		options: [
 			{
@@ -385,12 +385,12 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 			return tiles;
 		},
 		exportData: [
-			{ type: `Uint16`, key: `id` },
-			{ type: `Uint16`, key: `x` },
-			{ type: `Uint16`, key: `y` },
-			{ type: `Uint8`, key: `width` },
-			{ type: `Uint8`, key: `height` },
-			{ type: `Uint8`, key: `door` },
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `width` },
+			{ type: DataType.Uint8, key: `height` },
+			{ type: DataType.Uint8, key: `door` },
 		],
 		options: [
 			{
@@ -512,10 +512,10 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 			return tiles;
 		},
 		exportData: [
-			{ type: `Uint16`, key: `id` },
-			{ type: `Uint16`, key: `x` },
-			{ type: `Uint16`, key: `y` },
-			{ type: `Uint16`, key: `width` },
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint16, key: `width` },
 		],
 		options: [
 			{
@@ -582,9 +582,9 @@ const spriteTypes: readonly MapObjectType[] = Object.freeze( [
 			} ),
 		],
 		exportData: [
-			{ type: `Uint16`, key: `id` },
-			{ type: `Uint16`, key: `x` },
-			{ type: `Uint16`, key: `y` },
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
 		],
 		options: [
 			{
@@ -640,10 +640,10 @@ const spriteTypes: readonly MapObjectType[] = Object.freeze( [
 			} ),
 		],
 		exportData: [
-			{ type: `Uint16`, key: `id` },
-			{ type: `Uint16`, key: `x` },
-			{ type: `Uint16`, key: `y` },
-			{ type: `Uint8`, key: `direction` },
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `direction` },
 		],
 		options: [
 			{
@@ -712,11 +712,11 @@ const owTileTypes: readonly MapObjectType[] = Object.freeze( [
 			return list;
 		},
 		exportData: [
-			{ type: `Uint16`, key: `id` },
-			{ type: `Uint16`, key: `x` },
-			{ type: `Uint16`, key: `y` },
-			{ type: `Uint8`, key: `width` },
-			{ type: `Uint8`, key: `height` },
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `width` },
+			{ type: DataType.Uint8, key: `height` },
 		],
 		options: [
 			{
@@ -837,10 +837,10 @@ const owTileTypes: readonly MapObjectType[] = Object.freeze( [
 			return list;
 		},
 		exportData: [
-			{ type: `Uint16`, key: `id` },
-			{ type: `Uint16`, key: `x` },
-			{ type: `Uint16`, key: `y` },
-			{ type: `Uint8`, key: `width` },
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `width` },
 		],
 		options: [
 			{
@@ -951,10 +951,10 @@ const owTileTypes: readonly MapObjectType[] = Object.freeze( [
 			return list;
 		},
 		exportData: [
-			{ type: `Uint16`, key: `id` },
-			{ type: `Uint16`, key: `x` },
-			{ type: `Uint16`, key: `y` },
-			{ type: `Uint8`, key: `height` },
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `height` },
 		],
 		options: [
 			{
@@ -1044,9 +1044,9 @@ const owSpriteTypes: readonly MapObjectType[] = Object.freeze( [
 			} ),
 		],
 		exportData: [
-			{ type: `Uint16`, key: `id` },
-			{ type: `Uint16`, key: `x` },
-			{ type: `Uint16`, key: `y` },
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
 		],
 		options: [
 			{
@@ -1130,10 +1130,10 @@ const owSpriteTypes: readonly MapObjectType[] = Object.freeze( [
 			} ),
 		],
 		exportData: [
-			{ type: `Uint16`, key: `id` },
-			{ type: `Uint16`, key: `x` },
-			{ type: `Uint16`, key: `y` },
-			{ type: `Uint8`, key: `level` },
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `level` },
 		],
 		options: [
 			{
@@ -1164,6 +1164,127 @@ const owSpriteTypes: readonly MapObjectType[] = Object.freeze( [
 				atts: {
 					min: 0,
 					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Warp`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			map: 0,
+			warpx: 0,
+			warpy: 0,
+		} ),
+		generateHighlight: ( object: MapObject ) => [
+			{
+				x: object.xBlocks(),
+				y: object.yBlocks(),
+				width: 1,
+				height: 1,
+			},
+		],
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				x: object.xTiles(),
+				y: object.yTiles(),
+				srcx: 6,
+				srcy: 2,
+				w: 1,
+				h: 1,
+				animation: 9,
+			} ),
+			createTile( {
+				x: object.xTiles() + 1,
+				y: object.yTiles(),
+				srcx: 6,
+				srcy: 2,
+				w: 1,
+				h: 1,
+				animation: 9,
+				flipx: true,
+			} ),
+			createTile( {
+				x: object.xTiles(),
+				y: object.yTiles() + 1,
+				srcx: 6,
+				srcy: 2,
+				w: 1,
+				h: 1,
+				animation: 9,
+				flipy: true,
+			} ),
+			createTile( {
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 1,
+				srcx: 6,
+				srcy: 2,
+				w: 1,
+				h: 1,
+				animation: 9,
+				flipx: true,
+				flipy: true,
+			} ),
+		],
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `map` },
+			{ type: DataType.Uint16, key: `warpx` },
+			{ type: DataType.Uint16, key: `warpy` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Map`,
+				key: `map`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+			{
+				title: `Warp X`,
+				key: `warpx`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Warp Y`,
+				key: `warpy`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
 				},
 			},
 		],
@@ -1209,7 +1330,7 @@ const createObject = ( object: MapObjectArgs ): MapObject => {
 		bottomTiles: () => ( y + height ) * tilesPerBlock,
 		bottomPixels: () => ( y + height ) * pixelsPerBlock,
 		toJSON: () => object,
-		update: newObject => createObject( { ...object, ...newObject } ),
+		update: ( newObject: MapObjectArgs ) => createObject( { ...object, ...newObject } ),
 	} );
 };
 
@@ -1234,7 +1355,7 @@ const getOverworldTypeGenerator = ( layerType: OverworldLayerType ): (
 		if ( !type ) {
 			throw new Error( `Invalid overworld tile type: ${ objectType }` );
 		}
-		const object = type.create( id, x, y );
+		const object : MapObjectArgs = type.create( id, x, y );
 		object[ `type` ] = objectType;
 		return createObject( object );
 	};

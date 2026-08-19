@@ -27,7 +27,6 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 		selectedEventFrames,
 		selectedFrame,
 		selectedLayer,
-		selectedMap,
 		selectedObject,
 		selectedObjectType,
 		setOverworld,
@@ -37,8 +36,8 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 	} = props;
 
 	const layers = map.getLayersList();
-	let layer = layers[ selectedLayer ];
-	let objects = [ ...layer.getObjectsList() ];
+	const layer = layers[ selectedLayer ];
+	const objects = [ ...layer.getObjectsList() ];
 	const width = map.getWidthBlocks();
 	const height = map.getHeightBlocks();
 	const typeGenerator = getOverworldTypeGenerator( layer.getType() );
@@ -48,36 +47,34 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 		for ( let i = 0; i <= selectedFrame; i++ ) {
 			const updates = selectedEventFrames[ i ] ? selectedEventFrames[ i ].getUpdates() : [];
 			updates.forEach( update => {
+				if ( update.getMap() !== map.getId() || update.getLayer() !== layer.getId() ) {
+					return;
+				}
+
 				switch ( update.getType() ) {
-					case `add`:
-						if ( update.getMap() === map.getId() && update.getLayer() === layer.getId() ) {
-							const updateValue = update.getUpdate() as OverworldEventUpdateAdd;
-							objects.push( updateValue.getObject() );
-						}
+					case `add`: {
+						const updateValue = update.getUpdate() as OverworldEventUpdateAdd;
+						objects.push( updateValue.getObject() );
+					}
 					break;
-					case `change`:
-						if ( update.getMap() === map.getId() && update.getLayer() === layer.getId() ) {
-							const updateValue = update.getUpdate() as OverworldEventUpdateChange;
-							objects.forEach( ( o, i ) => {
-								if ( o.id() === updateValue.getObjectId() ) {
-									layer = layer.updateObject( i, { ...updateValue.getChanges() } )
-										.getMapsList()[ selectedMap ].getLayersList()[ selectedLayer ];
-									objects = layer.getObjectsList();
-								}
-							} );
-						}
+					case `change`: {
+						const updateValue = update.getUpdate() as OverworldEventUpdateChange;
+						objects.forEach( ( o, i ) => {
+							if ( o.id() === updateValue.getObjectId() ) {
+								objects[ i ] = objects[ i ].update( updateValue.getChanges() );
+							}
+						} );
+					}
 					break;
-					case `remove`:
-						if ( update.getMap() === map.getId() && update.getLayer() === layer.getId() ) {
-							const updateValue: OverworldEventUpdateRemove = update.getUpdate() as OverworldEventUpdateRemove;
-							objects.forEach( ( o, i ) => {
-								if ( o.id() === updateValue.getObjectId() ) {
-									layer = layer.updateObject( i, { hidden: true } )
-										.getMapsList()[ selectedMap ].getLayersList()[ selectedLayer ];
-									objects = layer.getObjectsList();
-								}
-							} );
-						}
+					case `remove`: {
+						// eslint-disable-next-line max-len
+						const updateValue: OverworldEventUpdateRemove = update.getUpdate() as OverworldEventUpdateRemove;
+						objects.forEach( ( o, i ) => {
+							if ( o.id() === updateValue.getObjectId() ) {
+								objects[ i ] = objects[ i ].update( { hidden: true } );
+							}
+						} );
+					}
 					break;
 				}
 			} );
@@ -108,7 +105,7 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 				&& gridY >= object.yBlocks()
 				&& gridY < object.bottomBlocks()
 			) {
-				newSelectedObject = i;
+				newSelectedObject = objects[ i ].id();
 				break;
 			}
 		}

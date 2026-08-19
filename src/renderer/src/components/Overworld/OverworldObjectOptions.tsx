@@ -118,11 +118,12 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 						extraUpdate: () => ( {} ),
 						...options,
 					};
-					const extraAtts = {};
-					for ( const key in atts ) {
-						extraAtts[ key ] = typeof atts[ key ] === `function`
-							? atts[ key ]( selectedObject )
-							: atts[ key ];
+					const extraAtts : Record<string, unknown> = {};
+					const atts_ = atts as Record<string, unknown>;
+					for ( const key in atts_ ) {
+						extraAtts[ key ] = typeof atts_[ key ] === `function`
+							? atts_[ key ]( selectedObject )
+							: atts_[ key ];
 					}
 
 					let selectedObjectFrame: number | null = null;
@@ -131,53 +132,55 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 					let value = selectedObject.getProp( key );
 					let prevValue = value;
 
-					// But if there is an event update for the selected event frames current or below, o’erride with that.
+					// But if there is an event update for the selected event frames current or below,
+					// o’erride with that.
 					for ( let i = 0; i <= selectedFrame; i++ ) {
-						const updates = eventFrames[ i ] ? eventFrames[ i ].getUpdates() : [];
-						updates.forEach( ( update, index ) => {
-							switch ( update.getType() ) {
-								case `add`: {
-									const updateValue = update.getUpdate() as OverworldEventUpdateAdd;
-									const object = updateValue.getObject();
-									if (
-										update.getMap() === selectedMap.getId()
-										&& update.getLayer() === selectedLayer.getId()
-										&& object.id() === selectedObject.id()
-									) {
-										selectedObjectFrame = i;
-										if ( key in object ) {
-											value = object.getProp( key );
-										}
+						if ( !eventFrames[ i ] ) {
+							continue;
+						}
 
-										// If not current frame, update prevValue.
-										if ( i < selectedFrame ) {
-											prevValue = value;
-										}
-									}
-								}
-								break;
-								case `change`: {
-									const updateValue = update.getUpdate() as OverworldEventUpdateChange;
-									if (
-										update.getMap() === selectedMap.getId()
-										&& update.getLayer() === selectedLayer.getId()
-										&& updateValue.getObjectId() === selectedObject.id()
-									) {
-										selectedObjectFrame = i;
-										const changes = updateValue.getChanges();
-										if ( key in changes ) {
-											value = changes[ key ];
-										}
+						const update = eventFrames[ i ].getUpdateById( selectedObject.id() );
 
-										// If not current frame, update prevValue.
-										if ( i < selectedFrame ) {
-											prevValue = value;
-										}
-									}
+						if (
+							update === null
+							|| update.getLayer() !== selectedLayer.getId()
+							|| update.getMap() !== selectedMap.getId()
+						) {
+							continue;
+						}
+
+						switch ( update.getType() ) {
+							case `add`: {
+								const updateValue = update.getUpdate() as OverworldEventUpdateAdd;
+								const object = updateValue.getObject();
+								selectedObjectFrame = i;
+								if ( key in object ) {
+									value = object.getProp( key );
 								}
-								break;
+
+								// If not current frame, update prevValue.
+								if ( i < selectedFrame ) {
+									prevValue = value;
+								}
 							}
-						} );
+							break;
+							case `change`: {
+								const updateValue = update.getUpdate() as OverworldEventUpdateChange;
+								selectedObjectFrame = i;
+
+								// eslint-disable-next-line max-len
+								const changes : Record<string, unknown> = updateValue.getChanges() as Record<string, unknown>;
+								if ( key in changes ) {
+									value = changes[ key ];
+								}
+
+								// If not current frame, update prevValue.
+								if ( i < selectedFrame ) {
+									prevValue = value;
+								}
+							}
+							break;
+						}
 					}
 
 					// If not editing an event, update the object itself.
@@ -186,7 +189,7 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 					const onUpdateObject = ( e: React.ChangeEvent<HTMLInputElement> ) => {
 						if ( selectedEventEntry === null ) {
 							updateObject(
-								selectedObjectIndex,
+								selectedObject.id(),
 								{
 									[ key ]: update( e.target.value ),
 									...extraUpdate( selectedObject, e.target.value ),
@@ -206,7 +209,7 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 								updateSelectedEventFrame( updatedFrame );
 							} else {
 								const value = update( e.target.value );
-								const changes = {
+								const changes : Record<string, unknown> = {
 									[ key ]: value,
 									...extraUpdate( selectedObject, e.target.value ),
 								};

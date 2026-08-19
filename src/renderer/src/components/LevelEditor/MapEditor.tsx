@@ -1,4 +1,4 @@
-import { ReactElement, SyntheticEvent, useEffect, useRef, useState } from 'react';
+import { MouseEvent, ReactElement, SyntheticEvent, useEffect, useRef, useState } from 'react';
 import {
 	generateDataBytes,
 	layerTypeNames,
@@ -106,7 +106,7 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 	};
 
 	// Select object on left click.
-	const onClick = ( e: SyntheticEvent ) => {
+	const onClick = ( e: MouseEvent ) => {
 		const { x, y } = getMousePosition( e );
 
 		const gridX = Math.floor( x / 16 );
@@ -134,7 +134,7 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 	};
 
 	// Update cursor visuals on mouse move.
-	const onMouseMove = ( e: SyntheticEvent ) => {
+	const onMouseMove = ( e: MouseEvent ) => {
 		const { x, y } = getMousePosition( e );
 
 		const gridX = Math.floor( x / 16 );
@@ -160,7 +160,7 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 	};
 
 	// Create object on right click.
-	const onRightClick = ( e: SyntheticEvent ) => {
+	const onRightClick = ( e: MouseEvent ) => {
 		if ( selectedLayer === null
 			|| layers.length < selectedLayer
 			|| selectedType === null
@@ -402,12 +402,12 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 					</button>
 				</div>
 			</div>
-			{ selectedLayer !== null && layers.length < selectedLayer && <LayerOptions
+			{ selectedLayer !== null && selectedLayer < layers.length && <LayerOptions
 				selectedLayer={ layers[ selectedLayer ] }
 				updateLayer={ selectedMap.updateLayer( selectedLayer ) }
 				updateMap={ updateMap }
 			/> }
-			{ selectedLayer !== null && layers.length < selectedLayer && <div>
+			{ selectedLayer !== null && selectedLayer < layers.length && <div>
 				<label>
 					<span>Type:</span>
 					<select value={ selectedType } onChange={ e => setSelectedType( Number( e.target.value ) ) }>

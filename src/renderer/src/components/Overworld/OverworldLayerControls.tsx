@@ -1,5 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import React, { SyntheticBaseEvent } from "react";
+import React, { SyntheticEvent } from "react";
 
 import { OverworldLayerControlsProps, OverworldLayerType } from "../../../../common/types";
 
@@ -24,7 +24,7 @@ function OverworldLayerControls( props: OverworldLayerControlsProps ): React.Rea
 		setSelectedObjectType( 0 );
 	};
 
-	const updateLayerType = ( e: SyntheticBaseEvent<HTMLSelectElement> ): void => {
+	const updateLayerType = ( e: SyntheticEvent<HTMLSelectElement> ): void => {
 		const value = e.currentTarget.value as OverworldLayerType;
 		setSelectedLayerType( value );
 	};
@@ -49,7 +49,7 @@ function OverworldLayerControls( props: OverworldLayerControlsProps ): React.Rea
 						key={ i }
 						value={ key }
 					>
-						{ OverworldLayerType[ key ] }
+						{ OverworldLayerType[ key as OverworldLayerType ] }
 					</option> ) }
 				</select>
 			</label>

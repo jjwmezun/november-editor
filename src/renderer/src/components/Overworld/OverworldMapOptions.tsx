@@ -1,18 +1,20 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import React, { ReactElement, SyntheticBaseEvent } from "react";
+import React, { ReactElement, SyntheticEvent } from "react";
 
 import { OverworldMapOptionsProps } from '../../../../common/types';
 
 function OverworldMapOptions( props: OverworldMapOptionsProps ): ReactElement {
 	const { map, setOverworld } = props;
 
-	const updateMapHeight = ( e: SyntheticBaseEvent ) => {
-		const value = e.target.value;
+	const updateMapHeight = ( e: SyntheticEvent ) => {
+		const target = e.target as HTMLInputElement;
+		const value = target.value;
 		setOverworld( map.updateHeight( parseInt( value ) ) );
 	};
 
-	const updateMapWidth = ( e: SyntheticBaseEvent ) => {
-		const value = e.target.value;
+	const updateMapWidth = ( e: SyntheticEvent ) => {
+		const target = e.target as HTMLInputElement;
+		const value = target.value;
 		setOverworld( map.updateWidth( parseInt( value ) ) );
 	};
 

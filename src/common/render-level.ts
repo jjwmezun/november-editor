@@ -1,6 +1,7 @@
 import { getTypeFactory } from './objects';
 import {
 	Graphics,
+	GraphicsType,
 	GraphicTile,
 	Layer,
 	LayerType,
@@ -103,7 +104,7 @@ const createObjectRenderer = (
 
 	// Setup textures.
 	const paletteTexture = palettes.createTexture( ctx, 0 );
-	const graphicsType: string = layerType === LayerType.block ? `blocks` : `sprites`;
+	const graphicsType: GraphicsType = layerType === LayerType.block ? GraphicsType.blocks : GraphicsType.sprites;
 	const textureIndex = layerType === LayerType.block ? 1 : 2;
 	const tilesetTexture = graphics[ graphicsType ].createTexture( ctx, textureIndex );
 	renderObject.addTextureUniform( `u_palette_texture`, 0, paletteTexture );
@@ -202,7 +203,7 @@ const createObjectRenderer = (
 			const typeFactory = getTypeFactory( layerType );
 			tiles = objects.reduce(
 				( acc: GraphicTile[], object: MapObject ) => {
-					return acc.concat( typeFactory[ object.type() ].generateTiles( object ) );
+					return acc.concat( typeFactory[ object.type() ].generateTiles( object, acc ) );
 				},
 				[],
 			);

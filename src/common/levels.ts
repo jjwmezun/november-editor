@@ -4,6 +4,7 @@ import { createGoal, goals } from './goals';
 import { encodeText, decodeText } from './text';
 import {
 	ByteBlock,
+	DataType,
 	DecodedLevelData,
 	Goal,
 	Layer,
@@ -23,10 +24,10 @@ const generateDataList = (
 	palette: number = 0,
 ): ByteBlock[] => {
 	return [
-		{ type: `Uint16`, value: width },
-		{ type: `Uint16`, value: height },
-		{ type: `Uint8`, value: palette },
-		{ type: `Uint8`, value: layerCount },
+		{ type: DataType.Uint16, value: width },
+		{ type: DataType.Uint16, value: height },
+		{ type: DataType.Uint8, value: palette },
+		{ type: DataType.Uint8, value: layerCount },
 	];
 };
 
@@ -52,23 +53,23 @@ const layerTypeNames = Object.freeze( {
 
 const convertLayerTypeToByte = ( type: LayerType ): number => {
 	switch ( type ) {
-	case LayerType.block:
-		return 0;
-	case LayerType.sprite:
-		return 1;
-	default:
-		throw new Error( `Invalid layer type: ${ type }` );
+		case LayerType.block:
+			return 0;
+		case LayerType.sprite:
+			return 1;
+		default:
+			throw new Error( `Invalid layer type: ${ type }` );
 	}
 };
 
 const convertByteToLayerType = ( byte: number ): LayerType => {
 	switch ( byte ) {
-	case 0:
-		return LayerType.block;
-	case 1:
-		return LayerType.sprite;
-	default:
-		throw new Error( `Invalid layer type byte: ${ byte }` );
+		case 0:
+			return LayerType.block;
+		case 1:
+			return LayerType.sprite;
+		default:
+			throw new Error( `Invalid layer type byte: ${ byte }` );
 	}
 };
 
@@ -97,9 +98,9 @@ const createLevel = (
 			goal: goal.toJSON(),
 			maps: maps.map( map => transformMapDataToObject( map ).toJSON() ),
 		} ),
-		updateGoal: newGoal => createLevel( name, newGoal, maps ),
-		updateMaps: newMaps => createLevel( name, goal, newMaps ),
-		updateName: newName => createLevel( newName, goal, maps ),
+		updateGoal: ( newGoal: Goal ) => createLevel( name, newGoal, maps ),
+		updateMaps: ( newMaps: ArrayBuffer[] ) => createLevel( name, goal, newMaps ),
+		updateName: ( newName: string ) => createLevel( newName, goal, maps ),
 	} );
 };
 
@@ -117,7 +118,7 @@ const createMap = (
 			layers,
 			palette,
 		} ),
-		removeLayer: index => {
+		removeLayer: ( index: number ) => {
 			const newLayers = [ ...layers ];
 			newLayers.splice( index, 1 );
 			return createMap( width, height, newLayers, palette );
@@ -139,14 +140,14 @@ const createMap = (
 			} ) ),
 			palette,
 		} ),
-		updateLayer: index => {
+		updateLayer: ( index: number ) => {
 			return {
-				addObject: object => {
+				addObject: ( object: MapObjectArgs ) => {
 					const newLayers = [ ...layers ];
 					newLayers[ index ].objects.push( createObject( object ) );
 					return createMap( width, height, newLayers, palette );
 				},
-				removeObject: objectIndex => {
+				removeObject: ( objectIndex: number ) => {
 					const newLayers = [ ...layers ];
 					newLayers[ index ].objects.splice( objectIndex, 1 );
 					return createMap( width, height, newLayers, palette );
@@ -157,20 +158,20 @@ const createMap = (
 						newLayers[ index ].objects[ objectIndex ].update( newObject );
 					return createMap( width, height, newLayers, palette );
 				},
-				updateOption: ( key, value ) => {
+				updateOption: ( key: string, value: unknown ) => {
 					const newLayers = [ ...layers ];
 					newLayers[ index ] = { ...newLayers[ index ], [ key ]: value };
 					return createMap( width, height, newLayers, palette );
 				},
 			};
 		},
-		updateHeight: newHeight => {
+		updateHeight: ( newHeight: number ) => {
 			return createMap( width, newHeight, layers, palette );
 		},
-		updateWidth: newWidth => {
+		updateWidth: ( newWidth: number ) => {
 			return createMap( newWidth, height, layers, palette );
 		},
-		updatePalette: newPalette => {
+		updatePalette: ( newPalette: number ) => {
 			return createMap( width, height, layers, newPalette );
 		},
 	} );
@@ -214,7 +215,7 @@ const transformMapDataToObject = ( data: ArrayBuffer ): LvMap => {
 		} else {
 			// Initialize object with type’s default.
 			const typeFactory = getTypeFactory( convertByteToLayerType( layerType ) );
-			const object = typeFactory[ objectType ].create( 0, 0 );
+			const object = typeFactory[ objectType ].create( 0, 0, 0 );
 
 			// Go thru each object data type, read from buffer, then move forward bytes read.
 			const data = typeFactory[ objectType ].exportData;
@@ -241,19 +242,19 @@ const generateDataBytes = ( map: LvMap ): ArrayBuffer => {
 		const typeFactory = getTypeFactory( layer.type );
 
 		// Add layer options.
-		dataList.push( { type: `Uint8`, value: convertLayerTypeToByte( layer.type ) } );
-		dataList.push( { type: `Float32`, value: layer.scrollX } );
+		dataList.push( { type: DataType.Uint8, value: convertLayerTypeToByte( layer.type ) } );
+		dataList.push( { type: DataType.Float32, value: layer.scrollX } );
 
 		// For each object, add 2 bytes for type, then add bytes for each object data type
 		// & add each datum to data list.
 		layer.objects.forEach( object => {
-			dataList.push( { type: `Uint16`, value: object.type() } );
+			dataList.push( { type: DataType.Uint16, value: object.type() } );
 			const data = typeFactory[ object.type() ].exportData;
 			dataList.push( ...data.map( ( { type, key } ) => ( { type, value: object.getProp( key ) } ) ) );
 		} );
 
 		// Add terminator for layer.
-		dataList.push( { type: `Uint16`, value: 0xFFFF } );
+		dataList.push( { type: DataType.Uint16, value: 0xFFFF } );
 	} );
 
 	// Having calculated the total size, create a buffer, view, & iterate through data list
@@ -375,14 +376,14 @@ const encodeLevels = ( levels: Level[] ): ByteBlock[] => {
 	return levels.map( ( level: Level ): ByteBlock[] => {
 		const { goal, maps, name } = level.getProps();
 		const data: ByteBlock[] = encodeText( name );
-		data.push( { type: `Uint8`, value: goal.getId() } );
+		data.push( { type: DataType.Uint8, value: goal.getId() } );
 		const goalExportData = goals[ goal.getId() ].exportData ?? [];
 		goalExportData.forEach( ( { key, type } ) => {
-			data.push( { type, value: parseInt( goal.getOption( key ) ) } );
+			data.push( { type, value: goal.getOptionData( key ) } );
 		} );
-		data.push( { type: `Uint8`, value: maps.length } );
+		data.push( { type: DataType.Uint8, value: maps.length } );
 		maps.forEach( map => {
-			new Uint8Array( map ).forEach( byte => data.push( { type: `Uint8`, value: byte } ) );
+			new Uint8Array( map ).forEach( byte => data.push( { type: DataType.Uint8, value: byte } ) );
 		} );
 		return data;
 	} ).flat( 1 );

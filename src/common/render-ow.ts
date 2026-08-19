@@ -295,12 +295,26 @@ function generateRenderer(
 				canvasHeight = newHeight;
 				updateModels();
 			},
-			setSelected: ( i: number | null, objects: readonly MapObject[] ) => {
+			setSelected: ( id: number | null, objects: readonly MapObject[] ) => {
 				program.use();
 				const typeFactory = getOverworldTypeFactory( OverworldLayerType.block );
-				rects = i === null
-					? []
-					: typeFactory[ objects[ i ].type() ].generateHighlight( objects[ i ] );
+
+				// Reset rects.
+				rects = [];
+
+				// If ID is set, search for object & set rects based on that object.
+				if ( id !== null ) {
+					let object : MapObject | null = null;
+					for ( let i = 0; i < objects.length; ++i ) {
+						if ( objects[ i ].id() === id ) {
+							object = objects[ i ];
+							break;
+						}
+					}
+					if ( object ) {
+						rects = typeFactory[ object.type() ].generateHighlight( object );
+					}
+				}
 				updateModels();
 			},
 		} );
@@ -471,8 +485,8 @@ function generateRenderer(
 
 	return Object.freeze( {
 		render,
-		setSelectedObject: ( i: number | null, objects: readonly MapObject[] ) => {
-			selectedObject.setSelected( i, objects );
+		setSelectedObject: ( id: number | null, objects: readonly MapObject[] ) => {
+			selectedObject.setSelected( id, objects );
 		},
 		updateAnimationFrame: ( frame: number ): void => {
 			objectRenderers.forEach( ( objectRenderer: OverworldObjectRenderer ) => {

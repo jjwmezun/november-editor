@@ -1,7 +1,9 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import React, { ReactElement, useEffect, useState } from 'react';
+import React, { ReactElement, SyntheticEvent, useEffect, useState } from 'react';
 
+// @ts-expect-error – CSS import, doesn’t follow normal JS rules, obviously.
 import '../assets/editor.scss';
+
 import { getDataTypeSize } from '../../../common/bytes';
 import { levelCount } from '../../../common/constants';
 import { modeKeys } from '../../../common/modes';
@@ -30,7 +32,10 @@ import { createObject }	from '../../../common/objects';
 import {
 	ByteBlock,
 	Color,
+	DataType,
+	GoalAtts,
 	Graphics,
+	GraphicsType,
 	Layer,
 	LayerType,
 	Level,
@@ -61,12 +66,18 @@ const generateExportData = async (
 	const blockGFX = Array.from( await compressPixels( graphics.blocks.getPixels(), `blocks` ) );
 	const spriteGFX = Array.from( await compressPixels( graphics.sprites.getPixels(), `sprites` ) );
 	const overworldGFX = Array.from( await compressPixels( graphics.overworld.getPixels(), `overworld` ) );
-	saveData.push( { type: `Uint32`, value: blockGFX.length } );
-	saveData = saveData.concat( blockGFX.map( ( byte: number ): ByteBlock => ( { type: `Uint8`, value: byte } ) ) );
-	saveData.push( { type: `Uint32`, value: spriteGFX.length } );
-	saveData = saveData.concat( spriteGFX.map( ( byte: number ): ByteBlock => ( { type: `Uint8`, value: byte } ) ) );
-	saveData.push( { type: `Uint32`, value: overworldGFX.length } );
-	saveData = saveData.concat( overworldGFX.map( ( byte: number ): ByteBlock => ( { type: `Uint8`, value: byte } ) ) );
+	saveData.push( { type: DataType.Uint32, value: blockGFX.length } );
+	saveData = saveData.concat(
+		blockGFX.map( ( byte: number ): ByteBlock => ( { type: DataType.Uint8, value: byte } ) ),
+	);
+	saveData.push( { type: DataType.Uint32, value: spriteGFX.length } );
+	saveData = saveData.concat(
+		spriteGFX.map( ( byte: number ): ByteBlock => ( { type: DataType.Uint8, value: byte } ) ),
+	);
+	saveData.push( { type: DataType.Uint32, value: overworldGFX.length } );
+	saveData = saveData.concat(
+		overworldGFX.map( ( byte: number ): ByteBlock => ( { type: DataType.Uint8, value: byte } ) ),
+	);
 
 	// For each level, generate bytes for name, goal, and maps.
 	saveData = saveData.concat( encodeLevels( levels ) );
@@ -91,13 +102,17 @@ const generateExportData = async (
 };
 
 const Editor = (): ReactElement => {
-	const [ graphics, setGraphics ] = useState( null );
-	const [ levels, setLevels ] = useState( null );
-	const [ palettes, setPalettes ] = useState( null );
-	const [ overworld, setOverworld ] = useState( null );
+	const [ graphics, setGraphics ] = useState<Graphics | null>( null );
+	const [ levels, setLevels ] = useState<Level[] | null>( null );
+	const [ palettes, setPalettes ] = useState<PaletteList | null>( null );
+	const [ overworld, setOverworld ] = useState<Overworld | null>( null );
 	const [ mode, setMode ] = useState( modeKeys.select );
 
-	const onImport = ( _event, data: Uint8Array ) => {
+	// @ts-expect-error – TypeScript is too dumb to realize that a function that only returns an Overworld
+	// should be compatible with a function that returns an Overworld or null.
+	const updateOverworld = ( o: Overworld | ( ( o: Overworld ) => Overworld ) ) => setOverworld( o );
+
+	const onImport = ( _event: SyntheticEvent, data: Uint8Array ) => {
 		const paletteData = decodePaletteData( data );
 
 		// Load graphics data.
@@ -121,7 +136,7 @@ const Editor = (): ReactElement => {
 		} );
 	};
 
-	const onOpen = ( _event, data: object ) => {
+	const onOpen = ( _event: SyntheticEvent, data: object ) => {
 		resetMode();
 
 		if ( ! data || typeof data !== `object` ) {
@@ -150,41 +165,45 @@ const Editor = (): ReactElement => {
 		}
 
 		// Load palettes.
-		const palettes: Palette[] = data[ `palettes` ].map( ( palette: unknown, i: number ): Palette => {
-			if ( ! palette || typeof palette !== `object` ) {
-				throw new Error( `Invalid palette data for palette #${ i }` );
-			}
-			if ( typeof palette[ `name` ] !== `string` ) {
-				throw new Error( `Invalid palette name for palette #${ i }` );
-			}
-			if ( ! Array.isArray( palette[ `colors` ] ) ) {
-				throw new Error( `Invalid palette colors for palette #${ i }` );
-			}
-			if ( palette[ `colors` ].length !== 8 ) {
-				throw new Error( `Invalid palette color count for palette #${ i }` );
-			}
+		const palettes: Palette[] = data[ `palettes` ].map(
+			( palette: Record<string, unknown>, i: number ): Palette => {
+				if ( ! palette || typeof palette !== `object` ) {
+					throw new Error( `Invalid palette data for palette #${ i }` );
+				}
+				if ( typeof palette[ `name` ] !== `string` ) {
+					throw new Error( `Invalid palette name for palette #${ i }` );
+				}
+				if ( ! Array.isArray( palette[ `colors` ] ) ) {
+					throw new Error( `Invalid palette colors for palette #${ i }` );
+				}
+				if ( palette[ `colors` ].length !== 8 ) {
+					throw new Error( `Invalid palette color count for palette #${ i }` );
+				}
 
-			const colors: Color[] = palette[ `colors` ].map( ( color: unknown, j: number ): Color => {
-				if ( ! color || typeof color !== `object` ) {
-					throw new Error( `Invalid color data for color #${ j } o’ palette #${ i }` );
-				}
-				if ( typeof color[ `r` ] !== `number` ) {
-					throw new Error( `Invalid color red for color #${ j } o’ palette #${ i }` );
-				}
-				if ( typeof color[ `g` ] !== `number` ) {
-					throw new Error( `Invalid color green for color #${ j } o’ palette #${ i }` );
-				}
-				if ( typeof color[ `b` ] !== `number` ) {
-					throw new Error( `Invalid color blue for color #${ j } o’ palette #${ i }` );
-				}
-				if ( typeof color[ `a` ] !== `number` ) {
-					throw new Error( `Invalid color alpha for color #${ j } o’ palette #${ i }` );
-				}
-				return createColor( color[ `r` ], color[ `g` ], color[ `b` ], color[ `a` ] );
-			} );
+				const colors: Color[] = palette[ `colors` ].map(
+					( color: Record<string, unknown>, j: number ): Color => {
+						if ( ! color || typeof color !== `object` ) {
+							throw new Error( `Invalid color data for color #${ j } o’ palette #${ i }` );
+						}
+						if ( typeof color[ `r` ] !== `number` ) {
+							throw new Error( `Invalid color red for color #${ j } o’ palette #${ i }` );
+						}
+						if ( typeof color[ `g` ] !== `number` ) {
+							throw new Error( `Invalid color green for color #${ j } o’ palette #${ i }` );
+						}
+						if ( typeof color[ `b` ] !== `number` ) {
+							throw new Error( `Invalid color blue for color #${ j } o’ palette #${ i }` );
+						}
+						if ( typeof color[ `a` ] !== `number` ) {
+							throw new Error( `Invalid color alpha for color #${ j } o’ palette #${ i }` );
+						}
+						return createColor( color[ `r` ], color[ `g` ], color[ `b` ], color[ `a` ] );
+					},
+				);
 
-			return createPalette( palette[ `name` ], colors );
-		} );
+				return createPalette( palette[ `name` ], colors );
+			},
+		);
 
 		setPalettes( createPaletteList( palettes ) );
 
@@ -201,15 +220,19 @@ const Editor = (): ReactElement => {
 				overworld: createBlankGraphicsEntry( `overworld`, 128, 128 ),
 			};
 
-			Promise.all( [ `blocks`, `sprites`, `overworld` ].map( ( type: string ) => {
-				if ( ! data[ `graphics` ] || typeof data[ `graphics` ] !== `object` ) {
+			const graphicsTypes = [ GraphicsType.blocks, GraphicsType.sprites, GraphicsType.overworld ];
+
+			Promise.all( graphicsTypes.map( ( type: GraphicsType ) => {
+				if ( ! data[ `graphics` ] || typeof data.graphics !== `object` ) {
 					throw new Error( `Invalid graphics data` );
 				}
-				if ( ! ( type in data[ `graphics` ] ) || typeof data[ `graphics` ][ type ] !== `object` ) {
+				if ( ! ( type in data.graphics )
+					|| typeof ( data.graphics as Record<string, unknown> )[ type ] !== `object`
+				) {
 					throw new Error( `Invalid graphics ${ type } data` );
 				}
 
-				const dataItem = data[ `graphics` ][ type ];
+				const dataItem = ( data.graphics as Record<string, unknown> )[ type ] as Record<string, unknown>;
 
 				if ( ! dataItem[ `widthTiles` ] || typeof dataItem[ `widthTiles` ] !== `number` ) {
 					throw new Error( `Invalid graphics width` );
@@ -218,7 +241,6 @@ const Editor = (): ReactElement => {
 					throw new Error( `Invalid graphics height` );
 				}
 				if ( ! dataItem[ `pixels` ] || typeof dataItem[ `pixels` ] !== `string` ) {
-					dataItem[ `pixels` ].map( ( pixel: unknown ) => console.log( typeof pixel ) );
 					throw new Error( `Invalid graphics pixels` );
 				}
 
@@ -232,8 +254,8 @@ const Editor = (): ReactElement => {
 					decompressPixels( pixelList, type ).then( pixelData => {
 						graphics[ type ] = createGraphicsEntry(
 							type,
-							dataItem[ `widthTiles` ],
-							dataItem[ `heightTiles` ],
+							dataItem.widthTiles as number,
+							dataItem.heightTiles as number,
 							pixelData,
 						);
 						resolve( null );
@@ -261,110 +283,113 @@ const Editor = (): ReactElement => {
 			if ( ! level || typeof level !== `object` ) {
 				throw new Error( `Invalid level data for level #${ i }` );
 			}
-			if ( typeof level[ `name` ] !== `string` ) {
+			if ( ! ( `name` in level ) || typeof level.name !== `string` ) {
 				throw new Error( `Invalid level name for level #${ i }` );
 			}
-			if ( ! level[ `goal` ] || typeof level[ `goal` ] !== `object` ) {
+			if ( ! ( `goal` in level ) || typeof level.goal !== `object` ) {
 				throw new Error( `Invalid level goal for level #${ i }` );
 			}
-			if ( typeof level[ `goal` ][ `id` ] !== `number` ) {
+			const goal = ( level.goal as Record<string, unknown> );
+			if ( ! ( `id` in goal ) || typeof goal.id !== `number` ) {
 				throw new Error( `Invalid goal ID for level #${ i }` );
 			}
-			if ( ! level[ `goal` ][ `options` ] || typeof level[ `goal` ][ `options` ] !== `object` ) {
+			if ( ! ( `options` in goal ) || typeof goal.options !== `object` ) {
 				throw new Error( `Invalid goal options for level #${ i }` );
 			}
-			if ( ! Array.isArray( level[ `maps` ] ) ) {
+			if ( ! ( `maps` in level ) || ! Array.isArray( level[ `maps` ] ) ) {
 				throw new Error( `Invalid level maps for level #${ i }` );
 			}
 
-			const maps = level[ `maps` ].map( ( map: unknown, j: number ): ArrayBuffer => {
+			const maps = level.maps.map( ( map: Record<string, unknown>, j: number ): ArrayBuffer => {
 				if ( ! map || typeof map !== `object` ) {
 					throw new Error( `Invalid map data for map #${ j } o’ level #${ i }` );
 				}
-				if ( typeof map[ `width` ] !== `number` ) {
+				if ( typeof map.width !== `number` ) {
 					throw new Error( `Invalid map width for map #${ j } o’ level #${ i }` );
 				}
-				if ( typeof map[ `height` ] !== `number` ) {
+				if ( typeof map.height !== `number` ) {
 					throw new Error( `Invalid map height for map #${ j } o’ level #${ i }` );
 				}
-				if ( typeof map[ `palette` ] !== `number` ) {
+				if ( typeof map.palette !== `number` ) {
 					throw new Error( `Invalid map palette for map #${ j } o’ level #${ i }` );
 				}
-				if ( ! Array.isArray( map[ `layers` ] ) ) {
+				if ( ! Array.isArray( map.layers ) ) {
 					throw new Error( `Invalid map layers for map #${ j } o’ level #${ i }` );
 				}
 
-				const layers = map[ `layers` ].map( ( layer: unknown, k: number ): Layer => {
+				const layers = map.layers.map( ( layer: Record<string, unknown>, k: number ): Layer => {
 					if ( ! layer || typeof layer !== `object` ) {
 						throw new Error( `Invalid layer data for layer #${ k } o’ map #${ j } o’ level #${ i }` );
 					}
-					if ( typeof layer[ `type` ] !== `string` ) {
+					if ( typeof layer.type !== `string` ) {
 						throw new Error( `Invalid layer type for layer #${ k } o’ map #${ j } o’ level #${ i }` );
 					}
-					if ( ! Array.isArray( layer[ `objects` ] ) ) {
+					if ( ! Array.isArray( layer.objects ) ) {
 						// eslint-disable-next-line max-len
 						throw new Error( `Invalid layer objects for layer #${ k } o’ map #${ j } o’ level #${ i }` );
 					}
-					if ( typeof layer[ `scrollX` ] !== `number` ) {
+					if ( typeof layer.scrollX !== `number` ) {
 						// eslint-disable-next-line max-len
 						throw new Error( `Invalid layer scrollX for layer #${ k } o’ map #${ j } o’ level #${ i }` );
 					}
 
-					const objects = layer[ `objects` ].map( ( object: unknown, l: number ): MapObject => {
-						if ( ! object || typeof object !== `object` ) {
-							// eslint-disable-next-line max-len
-							throw new Error( `Invalid object data for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
-						}
-						if ( typeof object[ `type` ] !== `number` ) {
-							// eslint-disable-next-line max-len
-							throw new Error( `Invalid object type for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
-						}
-						if ( typeof object[ `x` ] !== `number` ) {
-							// eslint-disable-next-line max-len
-							throw new Error( `Invalid object x for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
-						}
-						if ( typeof object[ `y` ] !== `number` ) {
-							// eslint-disable-next-line max-len
-							throw new Error( `Invalid object y for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
-						}
-						if ( `width` in object && typeof object[ `width` ] !== `number` ) {
-							// eslint-disable-next-line max-len
-							throw new Error( `Invalid object width for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
-						}
-						if ( `height` in object && typeof object[ `height` ] !== `number` ) {
-							// eslint-disable-next-line max-len
-							throw new Error( `Invalid object height for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
-						}
+					const objects = layer.objects.map(
+						( object: Record<string, unknown>, l: number ): MapObject => {
+							if ( ! object || typeof object !== `object` ) {
+								// eslint-disable-next-line max-len
+								throw new Error( `Invalid object data for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+							}
+							if ( typeof object[ `type` ] !== `number` ) {
+								// eslint-disable-next-line max-len
+								throw new Error( `Invalid object type for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+							}
+							if ( typeof object[ `x` ] !== `number` ) {
+								// eslint-disable-next-line max-len
+								throw new Error( `Invalid object x for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+							}
+							if ( typeof object[ `y` ] !== `number` ) {
+								// eslint-disable-next-line max-len
+								throw new Error( `Invalid object y for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+							}
+							if ( `width` in object && typeof object[ `width` ] !== `number` ) {
+								// eslint-disable-next-line max-len
+								throw new Error( `Invalid object width for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+							}
+							if ( `height` in object && typeof object[ `height` ] !== `number` ) {
+								// eslint-disable-next-line max-len
+								throw new Error( `Invalid object height for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+							}
 
-						return createObject( {
-							type: object[ `type` ],
-							x: object[ `x` ],
-							y: object[ `y` ],
-							width: object[ `width` ],
-							height: object[ `height` ],
-							...object,
-						} );
-					} );
+							return createObject( {
+								type: object.type,
+								x: object.x,
+								y: object.y,
+								width: object.width as number,
+								height: object.height as number,
+								...object,
+							} );
+						},
+					);
 
 					return createLayer(
-						layer[ `type` ] as LayerType,
+						layer.type as LayerType,
 						objects,
-						layer[ `scrollX` ],
+						layer.scrollX,
 					);
 				} );
 
 				const mapBlock: LvMap = createMap(
-					map[ `width` ],
-					map[ `height` ],
+					map.width,
+					map.height,
 					layers,
-					map[ `palette` ],
+					map.palette,
 				);
 
 				return generateDataBytes( mapBlock );
 			} );
 			return createLevel(
-				level[ `name` ],
-				createGoal( level[ `goal` ][ `id` ], level[ `goal` ][ `options` ] ),
+				level.name,
+				createGoal( goal.id, goal.options as GoalAtts ),
 				maps,
 			);
 		} ) );
@@ -445,7 +470,7 @@ const Editor = (): ReactElement => {
 	}, [ graphics, levels, overworld, palettes ] ); // Update whene’er levels change so they always reflect latest data.
 
 	return <div>
-		{ graphics !== null && levels !== null && palettes !== null && <div>
+		{ graphics !== null && levels !== null && palettes !== null && overworld !== null && <div>
 			{ mode === modeKeys.select && <SelectMode setMode={ setMode } /> }
 			{ mode === modeKeys.levelList && <LevelMode
 				exitMode={ resetMode }
@@ -470,7 +495,7 @@ const Editor = (): ReactElement => {
 				graphics={ graphics.overworld }
 				overworld={ overworld }
 				palettes={ palettes }
-				setOverworld={ setOverworld }
+				setOverworld={ updateOverworld }
 			/> }
 		</div> }
 	</div>;

@@ -1,4 +1,4 @@
-import { ReactElement, useEffect, useRef, useState } from 'react';
+import { MouseEvent, ReactElement, useEffect, useRef, useState } from 'react';
 import { getMousePosition } from '../../../common/utils';
 import {
 	Coordinates,
@@ -7,6 +7,7 @@ import {
 	PaletteList,
 	ShaderType,
 	TileGridProps,
+	TileGridRenderer,
 } from '../../../common/types';
 import { createMat3 } from '../../../common/mat';
 import {
@@ -35,17 +36,13 @@ const generateHiddenMatrix = (): Mat3 => createMat3()
 	.translate( [ -1000, -1000 ] )
 	.scale( [ 0, 0 ] );
 
-// Create a tile grid renderer.
-//
-// Since this is given to useState, make it a function that returns a function,
-// as useState will call the outer function when being set.
 const createTileGridRenderer = (
 	ctx: WebGL2RenderingContext,
 	width: number,
 	height: number,
 	palettes: PaletteList,
 	graphics: GraphicsEntry,
-) => {
+): TileGridRenderer => {
 	ctx.enable( ctx.BLEND );
 	ctx.blendFunc( ctx.SRC_ALPHA, ctx.ONE_MINUS_SRC_ALPHA );
 	ctx.viewport( 0, 0, width, height );
@@ -309,11 +306,11 @@ const createTileGridRenderer = (
 };
 
 const TileGrid = ( props: TileGridProps ): ReactElement => {
-	const canvasRef = useRef();
+	const canvasRef = useRef<HTMLCanvasElement | null>( null );
 	const { graphics, palettes, selectedPalette, selectedTile, setSelectedTile } = props;
 	const [ hovered, setHovered ] = useState( { x: 0, y: 0 } );
 	const [ showGridLines, setShowGridLines ] = useState( true );
-	const [ renderer, setRenderer ] = useState( null );
+	const [ renderer, setRenderer ] = useState<TileGridRenderer | null>( null );
 	const width = graphics.getWidthPixels() * zoom;
 	const height = graphics.getHeightPixels() * zoom;
 
@@ -340,7 +337,7 @@ const TileGrid = ( props: TileGridProps ): ReactElement => {
 	};
 
 	// Update cursor visuals on mouse move.
-	const onMouseMove = e => {
+	const onMouseMove = ( e: MouseEvent ) => {
 		const { x, y } = getMousePosition( e );
 
 		const gridX = Math.floor( x / tileSize );
@@ -354,7 +351,7 @@ const TileGrid = ( props: TileGridProps ): ReactElement => {
 	};
 
 	// Update cursor visuals on mouse move.
-	const onClick = e => {
+	const onClick = ( e: MouseEvent ) => {
 		const { x, y } = getMousePosition( e );
 
 		const gridX = Math.floor( x / tileSize );

@@ -1,10 +1,10 @@
 interface ByteBlock {
-	type: string,
+	type: DataType,
 	value: number,
 }
 
 interface ByteBlockRef {
-	type: string,
+	type: DataType,
 	key: string,
 }
 
@@ -33,6 +33,13 @@ interface Coordinates {
 	y: number,
 }
 
+enum DataType {
+	Uint8 = `Uint8`,
+	Uint16 = `Uint16`,
+	Uint32 = `Uint32`,
+	Float32 = `Float32`,
+}
+
 interface DecodedLevelData {
 	level: Level,
 	remainingBytes: Uint8Array,
@@ -51,22 +58,30 @@ interface DecodedGraphicsData {
 
 interface Goal {
 	getId: () => number,
-	getOption: ( key: string ) => string,
+	getOption: ( key: string ) => GoalValue,
+	getOptionData: ( key: string ) => number,
+	getOptionText: ( key: string ) => string,
 	toJSON: () => object,
-	updateOption: ( key: string, value: string ) => Goal,
+	updateOption: ( key: string, value: GoalValue ) => Goal,
+}
+
+type GoalAtts = Record<string, GoalValue>;
+
+interface GoalOptions {
+	slug: string,
+	title: string,
+	type: string,
+	default: GoalValue,
+	atts: GoalAtts,
 }
 
 interface GoalTemplate {
 	name: string,
-	options?: {
-		slug: string,
-		title: string,
-		type: string,
-		default: string,
-		atts?: { [key: string]: string },
-	}[],
+	options?: GoalOptions[],
 	exportData?: ByteBlockRef[],
 }
+
+type GoalValue = string | number | boolean;
 
 interface Graphics {
 	blocks: GraphicsEntry,
@@ -77,7 +92,7 @@ interface Graphics {
 interface GraphicsEntry {
 	clearTile: ( tileIndex: number ) => void,
 	createTexture: ( ctx: WebGLRenderingContext, index: number ) => WebGLTexture,
-	getData: () => { data: number[], width: number, height: number },
+	getData: () => GraphicsEntryRaw,
 	getWidthTiles: () => number,
 	getHeightTiles: () => number,
 	getWidthPixels: () => number,
@@ -90,7 +105,7 @@ interface GraphicsEntry {
 }
 
 interface GraphicsEntryRaw {
-	data: number[],
+	pixels: number[],
 	width: number,
 	height: number,
 }
@@ -105,6 +120,12 @@ interface GraphicTile {
 	y: number;
 	flipx: boolean;
 	flipy: boolean;
+}
+
+enum GraphicsType {
+	blocks = `blocks`,
+	overworld = `overworld`,
+	sprites = `sprites`,
 }
 
 interface BlockLayer {
@@ -241,7 +262,7 @@ interface MapObjectTypeOption {
 
 interface MapObjectType {
 	name: string,
-	create: ( id: number, x: number, y: number ) => object,
+	create: ( id: number, x: number, y: number ) => MapObjectArgs,
 	generateHighlight: ( object: MapObject ) => Rect[],
 	generateTiles: ( object: MapObject, currentTiles: GraphicTile[] ) => GraphicTile[],
 	exportData: ByteBlockRef[],
@@ -350,6 +371,7 @@ enum OverworldEventUpdateType {
 }
 
 interface OverworldEventUpdate {
+	getObjectId: () => number,
 	getLayer: () => number,
 	getMap: () => number,
 	getType: () => OverworldEventUpdateType,
@@ -363,6 +385,7 @@ interface OverworldEventFrame {
 	addEventRemove: ( map: number, layer: number, objectId: number ) => OverworldEventFrame,
 	getDuration: () => number,
 	getUpdates: () => readonly OverworldEventUpdate[],
+	getUpdateById: ( objectId: number ) => OverworldEventUpdate | null,
 	toJSON: () => object,
 	updateDuration: ( newDuration: number ) => OverworldEventFrame,
 	updateEvent: ( objectId: number, changes: object ) => OverworldEventFrame,
@@ -397,7 +420,6 @@ interface OverworldGridCanvasProps {
 	selectedEventFrames: readonly OverworldEventFrame[],
 	selectedFrame: number,
 	selectedLayer: number,
-	selectedMap: number,
 	selectedObject: number | null,
 	selectedObjectType: number,
 	setOverworld: ( overworld: Overworld ) => void,
@@ -417,7 +439,7 @@ interface OverworldLayer {
 	removeObject: ( index: number ) => Overworld;
 	toJSON: () => object;
 	updateLatestId: () => Overworld;
-	updateObject: ( index: number, object: MapObjectArgs ) => Overworld;
+	updateObject: ( id: number, changes: MapObjectArgs ) => Overworld;
 }
 
 interface OverworldLayerControlsProps {
@@ -508,7 +530,7 @@ interface OverworldRenderer {
 	setSelectedObject: ( i: number | null, objects: readonly MapObject[] ) => void,
 	updateAnimationFrame: ( frame: number ) => void,
 	updateLayers: ( map: OverworldMap, selectedLayer: number ) => void,
-	updateLayerObjects: ( layer: number, objects: readonly MapObject[], i: number ) => void,
+	updateLayerObjects: ( layer: number, objects: readonly MapObject[], i: number | null ) => void,
 	updateHoverTile: ( x: number, y: number ) => void,
 	updateResolution: ( width: number, height: number ) => void,
 	updateSelectedObject: ( i: number | null, objects: readonly MapObject[] ) => void,
@@ -600,14 +622,6 @@ interface TextTrie {
 	code?: number[],
 }
 
-interface TileGridProps {
-	graphics: GraphicsEntry,
-	palettes: PaletteList,
-	selectedPalette: number,
-	selectedTile: number | null,
-	setSelectedTile: ( tile: number ) => void,
-}
-
 interface TileEditorProps {
 	clearTile: () => void,
 	drawPixel: ( x: number, y: number ) => void,
@@ -617,6 +631,31 @@ interface TileEditorProps {
 	selectedPalette: number,
 	tileX: number,
 	tileY: number,
+}
+
+interface TileGridProps {
+	graphics: GraphicsEntry,
+	palettes: PaletteList,
+	selectedPalette: number,
+	selectedTile: number | null,
+	setSelectedTile: ( tile: number ) => void,
+}
+
+interface TileGridRenderer {
+	render: ( hovered: Coordinates, selected: Coordinates | null, showGridLines: boolean ) => void,
+	updateSelectedPalette: ( selectedPalette: number ) => void,
+	updateResolution: ( width: number, height: number ) => void,
+	updateGraphics: ( graphics: GraphicsEntry ) => void,
+}
+
+interface TileRenderer {
+	render: () => void,
+	updateBrush: ( x: number, y: number, brushSize: number ) => void,
+	updateResolution: ( width: number, height: number ) => void,
+	updateSelected: ( x: number, y: number ) => void,
+	updateSelectedColor: ( color: number ) => void,
+	updateSelectedPalette: ( selectedPalette: number ) => void,
+	updateGraphicsEntry: ( graphics: GraphicsEntry ) => void,
 }
 
 interface TileRendererArgs {
@@ -663,15 +702,20 @@ export {
 	Color,
 	ColorSelectorProps,
 	Coordinates,
+	DataType,
 	DecodedLevelData,
 	DecodedTextData,
 	DecodedGraphicsData,
 	Goal,
+	GoalAtts,
+	GoalOptions,
 	GoalTemplate,
+	GoalValue,
 	Graphics,
 	GraphicsEntry,
 	GraphicsEntryRaw,
 	GraphicTile,
+	GraphicsType,
 	Layer,
 	LayerType,
 	Level,
@@ -723,8 +767,10 @@ export {
 	Shader,
 	ShaderType,
 	TextTrie,
-	TileGridProps,
 	TileEditorProps,
+	TileGridProps,
+	TileGridRenderer,
+	TileRenderer,
 	TileRendererArgs,
 	WebGL2Program,
 };

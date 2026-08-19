@@ -21,12 +21,12 @@ import { createObject, getOverworldTypeFactory } from './objects';
 
 function convertLayerTypeToByte( type: OverworldLayerType ): number {
 	switch ( type ) {
-	case OverworldLayerType.block:
-		return 0;
-	case OverworldLayerType.sprite:
-		return 1;
-	default:
-		throw new Error( `Invalid layer type: ${ type }` );
+		case OverworldLayerType.block:
+			return 0;
+		case OverworldLayerType.sprite:
+			return 1;
+		default:
+			throw new Error( `Invalid layer type: ${ type }` );
 	}
 }
 
@@ -245,6 +245,7 @@ function createFrame( duration: number = 8, updates: readonly OverworldEventUpda
 	return Object.freeze( {
 		addEventAdd: ( map: number, layer: number, object: MapObject ) => {
 			const update = createEventUpdate(
+				object.id(),
 				map,
 				layer,
 				OverworldEventUpdateType.add,
@@ -255,6 +256,7 @@ function createFrame( duration: number = 8, updates: readonly OverworldEventUpda
 		},
 		addEventChange: ( map: number, layer: number, objectId: number, changes: object ) => {
 			const update = createEventUpdate(
+				objectId,
 				map,
 				layer,
 				OverworldEventUpdateType.change,
@@ -265,6 +267,7 @@ function createFrame( duration: number = 8, updates: readonly OverworldEventUpda
 		},
 		addEventRemove: ( map: number, layer: number, objectId: number ) => {
 			const update = createEventUpdate(
+				objectId,
 				map,
 				layer,
 				OverworldEventUpdateType.remove,
@@ -275,70 +278,76 @@ function createFrame( duration: number = 8, updates: readonly OverworldEventUpda
 		},
 		getDuration: () => duration,
 		getUpdates: () => updates,
+		getUpdateById: ( objectId: number ) => {
+			for ( const update of updates ) {
+				if ( update.getObjectId() === objectId ) {
+					return update;
+				}
+			}
+			return null;
+		},
 		toJSON: () => ( {
 			duration,
 			updates: updates.map( update => update.toJSON() ),
 		} ),
 		updateDuration: ( newDuration: number ) => createFrame( newDuration, updates ),
-		updateEvent: ( objectId: number, changes: object ) => {
+		updateEvent: function( objectId: number, changes: object ) {
 			for ( let i = 0; i < updates.length; i++ ) {
 				const update = updates[ i ];
+
+				// Skip if not the update we seek.
+				if ( update.getObjectId() !== objectId ) {
+					continue;
+				}
+
 				switch ( update.getType() ) {
 					case `add`: {
-						const updateValue = update.getUpdate() as OverworldEventUpdateAdd;
-						const object = updateValue.getObject();
-						if ( object.id() === objectId ) {
-							const origUpdate = update.getUpdate() as OverworldEventUpdateAdd;
-							const newUpdate = createEventUpdate(
-								update.getMap(),
-								update.getLayer(),
-								OverworldEventUpdateType.add,
-								createEventUpdateAdd( origUpdate.getObject().update( changes ) ),
-							);
-							const newUpdates = [ ...updates ];
-							newUpdates[ i ] = newUpdate;
-							return createFrame( duration, newUpdates );
-						}
+						const origUpdate = update.getUpdate() as OverworldEventUpdateAdd;
+						const newUpdate = createEventUpdate(
+							objectId,
+							update.getMap(),
+							update.getLayer(),
+							OverworldEventUpdateType.add,
+							createEventUpdateAdd( origUpdate.getObject().update( changes ) ),
+						);
+						const newUpdates = [ ...updates ];
+						newUpdates[ i ] = newUpdate;
+						return createFrame( duration, newUpdates );
 					}
 					break;
 					case `change`: {
-						const updateValue = update.getUpdate() as OverworldEventUpdateChange;
-						if ( updateValue.getObjectId() === objectId ) {
-							const origUpdate = update.getUpdate() as OverworldEventUpdateChange;
+						const origUpdate = update.getUpdate() as OverworldEventUpdateChange;
 
-							// Combine existing changes with new changes.
-							const newChanges = {
-								...origUpdate.getChanges(),
-								...changes,
-							};
+						// Combine existing changes with new changes.
+						const newChanges : Record<string, unknown> = {
+							...origUpdate.getChanges(),
+							...changes,
+						};
 
-							// Values set to undefined should be removed.
-							for ( const key in newChanges ) {
-								if ( newChanges[ key ] === undefined ) {
-									delete newChanges[ key ];
-								}
+						// Values set to undefined should be removed.
+						for ( const key in newChanges ) {
+							if ( newChanges[ key ] === undefined ) {
+								delete newChanges[ key ];
 							}
-
-							const newUpdate = createEventUpdate(
-								update.getMap(),
-								update.getLayer(),
-								OverworldEventUpdateType.change,
-								createEventUpdateChange(
-									objectId,
-									newChanges,
-								),
-							);
-							const newUpdates = [ ...updates ];
-							newUpdates[ i ] = newUpdate;
-							return createFrame( duration, newUpdates );
 						}
+
+						const newUpdate = createEventUpdate(
+							objectId,
+							update.getMap(),
+							update.getLayer(),
+							OverworldEventUpdateType.change,
+							createEventUpdateChange(
+								objectId,
+								newChanges,
+							),
+						);
+						const newUpdates = [ ...updates ];
+						newUpdates[ i ] = newUpdate;
+						return createFrame( duration, newUpdates );
 					}
 					break;
 					case `remove`: {
-						const updateValue = update.getUpdate() as OverworldEventUpdateRemove;
-						if ( updateValue.getObjectId() === objectId ) {
-							throw new Error( `Cannot update a removed object with ID: ${ objectId }` );
-						}
+						throw new Error( `Cannot update a removed object with ID: ${ objectId }` );
 					}
 					break;
 				}
@@ -350,12 +359,14 @@ function createFrame( duration: number = 8, updates: readonly OverworldEventUpda
 }
 
 function createEventUpdate(
+	objectId: number,
 	map: number,
 	layer: number,
 	type: OverworldEventUpdateType,
 	update: OverworldEventUpdateAdd | OverworldEventUpdateChange | OverworldEventUpdateRemove,
 ): OverworldEventUpdate {
 	return Object.freeze( {
+		getObjectId: () => objectId,
 		getLayer: () => layer,
 		getMap: () => map,
 		getType: () => type,
@@ -469,27 +480,26 @@ function createOverworldFromJSON( data: object ): Overworld {
 				const layer = updateData[ `layer` ] as number;
 				const map = updateData[ `map` ] as number;
 				const type = updateData[ `type` ] as OverworldEventUpdateType;
+				let objectId : number = 0;
 
 				// Default update.
 				let update : OverworldEventUpdateAdd | OverworldEventUpdateChange | OverworldEventUpdateRemove =
-					createEventUpdateRemove( 0 );
+					createEventUpdateRemove( objectId );
 
 				// Generate update from type & value.
 				switch ( type ) {
-					case OverworldEventUpdateType.add:
-					{
+					case OverworldEventUpdateType.add: {
 						if (
-							! ( `id` in updateData[ `update` ] )
-							|| typeof updateData[ `update` ][ `id` ] !== `number`
-							|| ! ( `type` in updateData[ `update` ] )
-							|| typeof updateData[ `update` ][ `type` ] !== `number`
+							! ( `id` in updateData.update )
+							|| typeof updateData.update.id !== `number`
+							|| ! ( `type` in updateData.update )
+							|| typeof updateData.update.type !== `number`
 						) {
 							throw new Error( `Invalid overworld layer object data` );
 						}
+						objectId = updateData.update.id as number;
 						const args : MapObjectArgs = {
-							id: updateData[ `update` ][ `id` ] as number,
-							type: updateData[ `update` ][ `type` ] as number,
-							...updateData[ `update` ],
+							...( updateData.update as MapObjectArgs ),
 						};
 						update = createEventUpdateAdd( createObject( args ) );
 					}
@@ -504,20 +514,24 @@ function createOverworldFromJSON( data: object ): Overworld {
 						) {
 							throw new Error( `Invalid overworld event change update data` );
 						}
+						objectId = updateData[ `update` ][ `id` ] as number;
 						update = createEventUpdateChange(
-							updateData[ `update` ][ `id` ],
+							objectId,
 							{ ...updateData[ `update` ][ `changes` ] },
 						);
 					break;
-					case OverworldEventUpdateType.remove:
-						if ( ! ( `id` in updateData[ `update` ] ) || typeof updateData[ `update` ][ `id` ] !== `number` ) {
+					case OverworldEventUpdateType.remove: {
+						if ( ! ( `id` in updateData[ `update` ] )
+							|| typeof updateData[ `update` ][ `id` ] !== `number` ) {
 							throw new Error( `Invalid overworld event remove update data` );
 						}
-						update = createEventUpdateRemove( updateData[ `update` ][ `id` ] );
+						objectId = updateData[ `update` ][ `id` ];
+						update = createEventUpdateRemove( objectId );
+					}
 					break;
 				}
 
-				return createEventUpdate( map, layer, type, update );
+				return createEventUpdate( objectId, map, layer, type, update );
 			} );
 
 			return createFrame( duration, updates );
@@ -576,9 +590,13 @@ function createOverworldLayer(
 
 			return dataList;
 		},
-		removeObject: ( index: number ) => {
+		removeObject: ( id: number ) => {
 			const newObjects = [ ...objects ];
-			newObjects.splice( index, 1 );
+			const objectIndex = newObjects.findIndex( obj => obj.id() === id );
+			if ( objectIndex === -1 ) {
+				throw new Error( `Object with id ${ id } not found.` );
+			}
+			newObjects.splice( objectIndex, 1 );
 			const newLayer = {
 				...layer,
 				objects: newObjects,
@@ -603,9 +621,13 @@ function createOverworldLayer(
 				},
 			);
 		},
-		updateObject: ( index: number, object: MapObjectArgs ) => {
+		updateObject: ( id: number, changes: MapObjectArgs ) => {
 			const newObjects = [ ...objects ];
-			newObjects[ index ] = createObject( { ...newObjects[ index ].toJSON(), ...object } );
+			const objectIndex = newObjects.findIndex( obj => obj.id() === id );
+			if ( objectIndex === -1 ) {
+				throw new Error( `Object with id ${ id } not found.` );
+			}
+			newObjects[ objectIndex ] = createObject( { ...newObjects[ objectIndex ].toJSON(), ...changes } );
 			const newLayer = {
 				...layer,
 				objects: newObjects,
@@ -723,17 +745,17 @@ function createOverworldMap(
 }
 
 function loadOverworldFromData( data: Uint8Array ): Overworld {
-	const content: object = { maps: [] };
+	const content: Record<string, unknown> = { maps: [] };
 	let i = 0;
 	const mapCount = data[ i++ ];
 	for ( let m = 0; m < mapCount; m++ ) {
-		const mapData: object = {};
+		const mapData: Record<string, unknown> = {};
 		mapData[ `width` ] = data[ i++ ];
 		mapData[ `height` ] = data[ i++ ];
 		const layerCount = data[ i++ ];
 		mapData[ `layers` ] = [];
 		for ( let l = 0; l < layerCount; l++ ) {
-			const layerData: object = {};
+			const layerData: Record<string, unknown> = {};
 			const layerTypeByte = data[ i++ ];
 			layerData[ `type` ] = layerTypeByte === 0 ? OverworldLayerType.block : OverworldLayerType.sprite;
 			layerData[ `objects` ] = [];
@@ -745,32 +767,33 @@ function loadOverworldFromData( data: Uint8Array ): Overworld {
 				if ( objectType === 0xFFFF ) {
 					break;
 				}
-				const objData: object = { type: objectType };
+				const objData: Record<string, unknown> = { type: objectType };
 				const exportData = typeFactory[ objectType ].exportData;
 				for ( let d = 0; d < exportData.length; d++ ) {
 					const { type, key } = exportData[ d ];
 					switch ( type ) {
-					case `Uint8`:
-						objData[ key ] = data[ i++ ];
+						case `Uint8`:
+							objData[ key ] = data[ i++ ];
 						break;
-					case `Uint16`:
-						objData[ key ] = ( ( data[ i++ ] << 8 ) | data[ i++ ] ) >>> 0;
+						case `Uint16`:
+							objData[ key ] = ( ( data[ i++ ] << 8 ) | data[ i++ ] ) >>> 0;
+							break;
+						case `Int8`:
+							objData[ key ] = ( data[ i++ ] << 24 ) >> 24;
+							break;
+						case `Int16`:
+							objData[ key ] = ( ( ( data[ i++ ] << 8 ) | data[ i++ ] ) << 16 ) >> 16;
+							break;
+						default:
+							throw new Error( `Unsupported data type: ${ type }` );
 						break;
-					case `Int8`:
-						objData[ key ] = ( data[ i++ ] << 24 ) >> 24;
-						break;
-					case `Int16`:
-						objData[ key ] = ( ( ( data[ i++ ] << 8 ) | data[ i++ ] ) << 16 ) >> 16;
-						break;
-					default:
-						throw new Error( `Unsupported data type: ${ type }` );
 					}
 				}
-				layerData[ `objects` ].push( objData );
+				( layerData.objects as object[] ).push( objData );
 			}
-			( mapData[ `layers` ] as object[] ).push( layerData );
+			( mapData.layers as object[] ).push( layerData );
 		}
-		content.maps.push( mapData );
+		( content.maps as object[] ).push( mapData );
 	}
 	return createOverworldFromJSON( content );
 }

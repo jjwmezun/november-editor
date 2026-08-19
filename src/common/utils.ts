@@ -1,4 +1,4 @@
-import { SyntheticBaseEvent } from 'react';
+import { MouseEvent } from 'react';
 import { MousePosition } from './types';
 
 function createRange( min: number, max: number ): number[] {
@@ -9,8 +9,8 @@ function createRange( min: number, max: number ): number[] {
 	return range;
 }
 
-function getMousePosition( e: SyntheticBaseEvent ): MousePosition {
-	const canvas: EventTarget | null = e.target;
+function getMousePosition( e: MouseEvent ): MousePosition {
+	const canvas = e.target as HTMLCanvasElement;
 	if ( canvas === null || !( canvas instanceof HTMLCanvasElement ) ) {
 		throw new Error( `getMousePosition: Event target is not a canvas element` );
 	}
