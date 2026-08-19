@@ -38,6 +38,9 @@ enum DataType {
 	Uint16 = `Uint16`,
 	Uint32 = `Uint32`,
 	Float32 = `Float32`,
+	Int8 = `Int8`,
+	Int16 = `Int16`,
+	Int32 = `Int32`,
 }
 
 interface DecodedLevelData {
@@ -339,27 +342,31 @@ interface Overworld {
 
 interface OverworldEventsList {
 	addEvent: () => Overworld,
+	encode: ( maps: readonly OverworldMap[] ) => ByteBlock[];
 	getEntry: ( index: number ) => OverworldEvent,
 	getLength: () => number,
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	map: ( callback: ( event: OverworldEvent, index: number ) => any ) => any[],
 	removeEvent: ( index: number ) => Overworld,
-	toJSON: () => object,
+	toJSON: () => object[],
 	updateEvent: ( index: number, event: OverworldEvent ) => Overworld,
 }
 
 interface OverworldEventUpdateRemove {
+	encode: () => ByteBlock[];
 	getObjectId: () => number,
 	toJSON: () => object,
 }
 
 interface OverworldEventUpdateAdd {
+	encode: ( layerType: OverworldLayerType ) => ByteBlock[];
 	getObject: () => MapObject,
 	toJSON: () => object,
 }
 
 interface OverworldEventUpdateChange {
-	getChanges: () => object,
+	encode: ( layerType: OverworldLayerType, objectType: number ) => ByteBlock[];
+	getChanges: () => MapObjectArgs,
 	getObjectId: () => number,
 	toJSON: () => object,
 }
@@ -371,6 +378,7 @@ enum OverworldEventUpdateType {
 }
 
 interface OverworldEventUpdate {
+	encode: ( maps: readonly OverworldMap[], events: readonly OverworldEvent[] ) => ByteBlock[];
 	getObjectId: () => number,
 	getLayer: () => number,
 	getMap: () => number,
@@ -383,6 +391,7 @@ interface OverworldEventFrame {
 	addEventAdd: ( map: number, layer: number, object: MapObject ) => OverworldEventFrame,
 	addEventChange: ( map: number, layer: number, objectId: number, changes: object ) => OverworldEventFrame,
 	addEventRemove: ( map: number, layer: number, objectId: number ) => OverworldEventFrame,
+	encode: ( maps: readonly OverworldMap[], events: readonly OverworldEvent[] ) => ByteBlock[];
 	getDuration: () => number,
 	getUpdates: () => readonly OverworldEventUpdate[],
 	getUpdateById: ( objectId: number ) => OverworldEventUpdate | null,
@@ -393,6 +402,7 @@ interface OverworldEventFrame {
 
 interface OverworldEvent {
 	addFrame: () => OverworldEvent,
+	encode: ( maps: readonly OverworldMap[], events: readonly OverworldEvent[] ) => ByteBlock[];
 	getEntry: ( index: number ) => OverworldEventFrame,
 	getFrames: () => readonly OverworldEventFrame[];
 	getLength: () => number,

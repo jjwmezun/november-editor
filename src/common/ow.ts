@@ -1,5 +1,6 @@
 import {
 	ByteBlock,
+	DataType,
 	MapObject,
 	MapObjectArgs,
 	Overworld,
@@ -27,6 +28,32 @@ function convertLayerTypeToByte( type: OverworldLayerType ): number {
 			return 1;
 		default:
 			throw new Error( `Invalid layer type: ${ type }` );
+	}
+}
+
+function convertOverworldEventTypeToByte( type: OverworldEventUpdateType ): number {
+	switch ( type ) {
+		case OverworldEventUpdateType.add:
+			return 0;
+		case OverworldEventUpdateType.change:
+			return 1;
+		case OverworldEventUpdateType.remove:
+			return 2;
+		default:
+			throw new Error( `Unknown OverworldEventUpdateType: ${ type }` );
+	}
+}
+
+function convertByteToOverworldEventType( value: number ): OverworldEventUpdateType {
+	switch ( value ) {
+		case 0:
+			return OverworldEventUpdateType.add;
+		case 1:
+			return OverworldEventUpdateType.change;
+		case 2:
+			return OverworldEventUpdateType.remove;
+		default:
+			throw new Error( `Unknown OverworldEventUpdateType number: ${ value }` );
 	}
 }
 
@@ -82,12 +109,15 @@ function createOverworld(
 			const data: ByteBlock[] = [];
 
 			// Write maps count to data list.
-			data.push( { type: `Uint8`, value: maps_.length } );
+			data.push( { type: DataType.Uint8, value: maps_.length } );
 
 			// Write each map to data list.
 			maps_.forEach( map => {
 				data.push( ...map.encode() );
 			} );
+
+			// Write each event to data list.
+			data.push( ...eventsList.encode( maps_ ) );
 
 			return data;
 		},
@@ -141,6 +171,20 @@ function createOverworldEventsList(
 			const newEvents = [ ...events, createOverworldEvent( [ createFrame() ] ) ];
 			return updateEvents( newEvents );
 		},
+		encode: ( maps: readonly OverworldMap[] ) => {
+			// Init data list.
+			const data: ByteBlock[] = [];
+
+			// Write events count to data list.
+			data.push( { type: DataType.Uint8, value: events.length } );
+
+			// Write each event to data list.
+			events.forEach( event => {
+				data.push( ...event.encode( maps, events ) );
+			} );
+
+			return data;
+		},
 		getEntry: ( index: number ): OverworldEvent => {
 			if ( index < 0 || index >= events.length ) {
 				throw new Error( `Event index out o’ bounds: ${ index }` );
@@ -152,9 +196,7 @@ function createOverworldEventsList(
 		map: ( callback: ( event: OverworldEvent, index: number ) => any ) => {
 			return events.map( callback );
 		},
-		toJSON: () => ( {
-			events: events.map( event => event.toJSON() ),
-		} ),
+		toJSON: () => events.map( event => event.toJSON() ),
 		removeEvent: ( index: number ) => {
 			if ( index < 0 || index >= events.length ) {
 				throw new Error( `Event index out o’ bounds: ${ index }` );
@@ -179,6 +221,20 @@ function createOverworldEvent( frames: OverworldEventFrame[] = [] ): OverworldEv
 		addFrame: () => {
 			const newFrames = [ ...frames, createFrame() ];
 			return createOverworldEvent( newFrames );
+		},
+		encode: ( maps: readonly OverworldMap[], events: readonly OverworldEvent[] ) => {
+			// Init data list.
+			const data: ByteBlock[] = [];
+
+			// Write frames count to data list.
+			data.push( { type: DataType.Uint8, value: frames.length } );
+
+			// Write each frame to data list.
+			frames.forEach( frame => {
+				data.push( ...frame.encode( maps, events ) );
+			} );
+
+			return data;
 		},
 		getEntry: ( index: number ): OverworldEventFrame => {
 			if ( index < 0 || index >= frames.length ) {
@@ -216,13 +272,54 @@ function createOverworldEvent( frames: OverworldEventFrame[] = [] ): OverworldEv
 
 function createEventUpdateAdd( object: MapObject ): OverworldEventUpdateAdd {
 	return Object.freeze( {
+		encode: ( layerType: OverworldLayerType ) => {
+			// Init data list.
+			const data: ByteBlock[] = [];
+
+			// Encode object data just like encoding a static map layer’s objects.
+			data.push( { type: DataType.Uint16, value: object.type() } );
+			const typeFactory = getOverworldTypeFactory( layerType );
+			const exportData = typeFactory[ object.type() ].exportData;
+			data.push( ...exportData.map( ( { type, key } ) => ( { type, value: object.getProp( key ) } ) ) );
+
+			return data;
+		},
 		getObject: () => object,
 		toJSON: () => object.toJSON(),
 	} );
 }
 
-function createEventUpdateChange( objectId: number, changes: object ): OverworldEventUpdateChange {
+function createEventUpdateChange( objectId: number, changes: MapObjectArgs ): OverworldEventUpdateChange {
 	return Object.freeze( {
+		encode: ( layerType: OverworldLayerType, objectType: number ) => {
+			// Init data list.
+			const data: ByteBlock[] = [];
+
+			// Write change count to data.
+			data.push( { type: DataType.Uint8, value: Object.keys( changes ).length } );
+
+			const typeFactory = getOverworldTypeFactory( layerType );
+			const exportData = typeFactory[ objectType ].exportData;
+			for ( const key in changes ) {
+				for ( let i = 0; i < exportData.length; i++ ) {
+					const { type } = exportData[ i ];
+
+					if ( key === exportData[ i ].key ) {
+						// Store export data index so we can use it when loading data
+						// to pull in specific export data.
+						// Write the index of the changed property to the data.
+						data.push( { type: DataType.Uint8, value: i } );
+
+						// & then save the value for that export data.
+						// Write value itself to data.
+						const value = changes[ key ] as number;
+						data.push( { type, value } );
+					}
+				}
+			}
+
+			return data;
+		},
 		getChanges: () => changes,
 		getObjectId: () => objectId,
 		toJSON: () => ( {
@@ -234,6 +331,7 @@ function createEventUpdateChange( objectId: number, changes: object ): Overworld
 
 function createEventUpdateRemove( objectId: number ): OverworldEventUpdateRemove {
 	return Object.freeze( {
+		encode: () => [],
 		getObjectId: () => objectId,
 		toJSON: () => ( {
 			id: objectId,
@@ -254,7 +352,7 @@ function createFrame( duration: number = 8, updates: readonly OverworldEventUpda
 			const newUpdates = [ ...updates, update ];
 			return createFrame( duration, newUpdates );
 		},
-		addEventChange: ( map: number, layer: number, objectId: number, changes: object ) => {
+		addEventChange: ( map: number, layer: number, objectId: number, changes: MapObjectArgs ) => {
 			const update = createEventUpdate(
 				objectId,
 				map,
@@ -275,6 +373,23 @@ function createFrame( duration: number = 8, updates: readonly OverworldEventUpda
 			);
 			const newUpdates = [ ...updates, update ];
 			return createFrame( duration, newUpdates );
+		},
+		encode: ( maps: readonly OverworldMap[], events: readonly OverworldEvent[] ) => {
+			// Init data list.
+			const data: ByteBlock[] = [];
+
+			// Write updates count to data list.
+			data.push( { type: DataType.Uint8, value: updates.length } );
+
+			// Write duration to data list.
+			data.push( { type: DataType.Uint8, value: duration } );
+
+			// Write each update to data list.
+			updates.forEach( update => {
+				data.push( ...update.encode( maps, events ) );
+			} );
+
+			return data;
 		},
 		getDuration: () => duration,
 		getUpdates: () => updates,
@@ -366,6 +481,105 @@ function createEventUpdate(
 	update: OverworldEventUpdateAdd | OverworldEventUpdateChange | OverworldEventUpdateRemove,
 ): OverworldEventUpdate {
 	return Object.freeze( {
+		encode: ( maps: readonly OverworldMap[], events: readonly OverworldEvent[] ) => {
+			// Init data list.
+			const data: ByteBlock[] = [];
+
+			// Write object ID to data list.
+			data.push( { type: DataType.Uint16, value: objectId } );
+
+			// Write map ID to data list.
+			data.push( { type: DataType.Uint8, value: map } );
+
+			// Write layer ID to data list.
+			data.push( { type: DataType.Uint8, value: layer } );
+
+			// Write update type to data list.
+			data.push( { type: DataType.Uint8, value: convertOverworldEventTypeToByte( type ) } );
+
+			// Write update data to data list.
+			//
+			// We need the layer type for most update types,
+			// so loop thru all maps & all layers in each map
+			// till we find that which matches this update.
+			let encoded = false;
+			for ( let i = 0; i < maps.length; ++i ) {
+				if ( maps[ i ].getId() === map ) {
+					const layers = maps[ i ].getLayersList();
+					for ( let j = 0; j < layers.length; ++j ) {
+						if ( layers[ j ].getId() === layer ) {
+							const layerType = layers[ j ].getType();
+
+							switch ( type ) {
+								case `add`:
+									data.push( ...( update as OverworldEventUpdateAdd ).encode( layerType ) );
+									encoded = true;
+								break;
+								case `change`: {
+									let object : MapObject | null = null;
+
+									// Start by searching thru all static map layer objects
+									// till we find one that matches the ID.
+									const objects = layers[ j ].getObjectsList();
+									for ( let k = 0; k < objects.length; ++k ) {
+										if ( objects[ k ].id() === objectId ) {
+											object = objects[ k ];
+											break;
+										}
+									}
+
+									// If we haven’t found the object yet
+									// next search thru all add event updates.
+									if ( object === null ) {
+										for ( let e = 0; e < events.length; ++e ) {
+											const frames = events[ e ].getFrames();
+											for ( let f = 0; f < frames.length; ++f ) {
+												const updates = frames[ f ].getUpdates();
+												for ( let u = 0; u < updates.length; ++u ) {
+													if (
+														updates[ u ].getType() === `add`
+														&& updates[ u ].getMap() === maps[ i ].getId()
+														&& updates[ u ].getLayer() === layers[ j ].getId()
+														&& updates[ u ].getObjectId() === objectId
+													) {
+														// eslint-disable-next-line max-len
+														object = ( updates[ u ].getUpdate() as OverworldEventUpdateAdd ).getObject();
+														break;
+													}
+												}
+											}
+										}
+									}
+
+									if ( object === null ) {
+										// eslint-disable-next-line max-len
+										throw new Error( `Failed to find object with ID: ${ objectId } when exporting change event update` );
+									}
+
+									// eslint-disable-next-line max-len
+									data.push( ...( update as OverworldEventUpdateChange ).encode( layerType, object.type() ) );
+									encoded = true;
+								}
+								break;
+								case `remove`:
+									data.push( ...( update as OverworldEventUpdateRemove ).encode() );
+									encoded = true;
+								break;
+							}
+
+							break;
+						}
+					}
+					break;
+				}
+			}
+
+			if ( !encoded ) {
+				throw new Error( `Failed to encode update type ${ type } for object with ID: ${ objectId }` );
+			}
+
+			return data;
+		},
 		getObjectId: () => objectId,
 		getLayer: () => layer,
 		getMap: () => map,
@@ -385,8 +599,7 @@ function createOverworldFromJSON( data: object ): Overworld {
 		! ( `maps` in data ) ||
 		! Array.isArray( data[ `maps` ] ) ||
 			! ( `events` in data ) ||
-			typeof data[ `events` ] !== `object` ||
-			data[ `events` ] === null
+			! Array.isArray( data[ `events` ] )
 	) {
 		throw new Error( `Invalid overworld data` );
 	}
@@ -430,13 +643,7 @@ function createOverworldFromJSON( data: object ): Overworld {
 		} );
 	} );
 
-	const eventsData: object = data[ `events` ];
-
-	if ( ! ( `events` in eventsData ) || ! Array.isArray( eventsData[ `events` ] ) ) {
-		throw new Error( `Invalid overworld events data` );
-	}
-
-	const eventsList: object[] = eventsData[ `events` ];
+	const eventsList: object[] = data[ `events` ];
 	const events = eventsList.map( eventData => {
 		if (
 			typeof eventData !== `object` ||
@@ -572,21 +779,24 @@ function createOverworldLayer(
 			// Init data list.
 			const dataList: ByteBlock[] = [];
 
+			// Add ID to data list.
+			dataList.push( { type: DataType.Uint8, value: id } );
+
 			const typeFactory = getOverworldTypeFactory( layer.type );
 
 			// Add layer options.
-			dataList.push( { type: `Uint8`, value: convertLayerTypeToByte( layer.type ) } );
+			dataList.push( { type: DataType.Uint8, value: convertLayerTypeToByte( layer.type ) } );
 
 			// For each object, add 2 bytes for type, then add bytes for each object data type
 			// & add each datum to data list.
 			layer.objects.forEach( object => {
-				dataList.push( { type: `Uint16`, value: object.type() } );
+				dataList.push( { type: DataType.Uint16, value: object.type() } );
 				const data = typeFactory[ object.type() ].exportData;
 				dataList.push( ...data.map( ( { type, key } ) => ( { type, value: object.getProp( key ) } ) ) );
 			} );
 
 			// Add terminator for layer.
-			dataList.push( { type: `Uint16`, value: 0xFFFF } );
+			dataList.push( { type: DataType.Uint16, value: 0xFFFF } );
 
 			return dataList;
 		},
@@ -687,12 +897,13 @@ function createOverworldMap(
 			// Init data list.
 			const data: ByteBlock[] = [];
 
-			// Write width and height to data list.
-			data.push( { type: `Uint8`, value: width } );
-			data.push( { type: `Uint8`, value: height } );
+			// Write ID, width, & height to data list.
+			data.push( { type: DataType.Uint8, value: id } );
+			data.push( { type: DataType.Uint8, value: width } );
+			data.push( { type: DataType.Uint8, value: height } );
 
 			// Write layers count to data list.
-			data.push( { type: `Uint8`, value: layers_.length } );
+			data.push( { type: DataType.Uint8, value: layers_.length } );
 
 			// Write each layer to data list.
 			layers_.forEach( layer => {
@@ -747,19 +958,45 @@ function createOverworldMap(
 function loadOverworldFromData( data: Uint8Array ): Overworld {
 	const content: Record<string, unknown> = { maps: [] };
 	let i = 0;
+
+	// Load map data.
 	const mapCount = data[ i++ ];
+	content.latestId = 0;
 	for ( let m = 0; m < mapCount; m++ ) {
 		const mapData: Record<string, unknown> = {};
-		mapData[ `width` ] = data[ i++ ];
-		mapData[ `height` ] = data[ i++ ];
+		mapData.id = data[ i++ ];
+
+		// Make sure the o’erworld’s latest ID is bigger than all maps’ IDs
+		// so we don’t get ID conflicts when making new maps.
+		// @ts-expect-error – Dynamic object.
+		if ( mapData.id >= content.latestId ) {
+			// @ts-expect-error – Dynamic object.
+			content.latestId = mapData.id + 1;
+		}
+
+		mapData.width = data[ i++ ];
+		mapData.height = data[ i++ ];
 		const layerCount = data[ i++ ];
-		mapData[ `layers` ] = [];
+		mapData.latestId = 0;
+		mapData.layers = [];
 		for ( let l = 0; l < layerCount; l++ ) {
 			const layerData: Record<string, unknown> = {};
+			layerData.id = data[ i++ ];
+
+			// Make sure the map’s latest ID is bigger than all layers’ IDs
+			// so we don’t get ID conflicts when making new layers.
+			// @ts-expect-error – Dynamic object.
+			if ( layerData.id >= mapData.latestId ) {
+				// @ts-expect-error – Dynamic object.
+				mapData.latestId = layerData.id + 1;
+			}
+
+			layerData.latestId = 0;
+
 			const layerTypeByte = data[ i++ ];
-			layerData[ `type` ] = layerTypeByte === 0 ? OverworldLayerType.block : OverworldLayerType.sprite;
-			layerData[ `objects` ] = [];
-			const typeFactory = getOverworldTypeFactory( layerData[ `type` ] as OverworldLayerType );
+			layerData.type = layerTypeByte === 0 ? OverworldLayerType.block : OverworldLayerType.sprite;
+			layerData.objects = [] as object[];
+			const typeFactory = getOverworldTypeFactory( layerData.type as OverworldLayerType );
 
 			// eslint-disable-next-line no-constant-condition
 			while ( true ) {
@@ -772,29 +1009,217 @@ function loadOverworldFromData( data: Uint8Array ): Overworld {
 				for ( let d = 0; d < exportData.length; d++ ) {
 					const { type, key } = exportData[ d ];
 					switch ( type ) {
-						case `Uint8`:
+						case DataType.Uint8:
 							objData[ key ] = data[ i++ ];
 						break;
-						case `Uint16`:
+						case DataType.Uint16:
 							objData[ key ] = ( ( data[ i++ ] << 8 ) | data[ i++ ] ) >>> 0;
-							break;
-						case `Int8`:
+						break;
+						case DataType.Int8:
 							objData[ key ] = ( data[ i++ ] << 24 ) >> 24;
-							break;
-						case `Int16`:
+						break;
+						case DataType.Int16:
 							objData[ key ] = ( ( ( data[ i++ ] << 8 ) | data[ i++ ] ) << 16 ) >> 16;
-							break;
+						break;
 						default:
 							throw new Error( `Unsupported data type: ${ type }` );
 						break;
 					}
 				}
+
+				// Make sure the layer’s latest ID is always bigger than all objects’ IDs
+				// so we don’t get ID conflicts when making new objects.
+				// @ts-expect-error – Dynamic object.
+				if ( `id` in objData && objData.id >= layerData.latestId ) {
+					// @ts-expect-error – Dynamic object.
+					layerData.latestId = objData.id + 1;
+				}
+
 				( layerData.objects as object[] ).push( objData );
 			}
+
 			( mapData.layers as object[] ).push( layerData );
 		}
 		( content.maps as object[] ).push( mapData );
 	}
+
+	// Load event data.
+	content.events = [];
+	const eventCount = data[ i++ ];
+	for ( let e = 0; e < eventCount; e++ ) {
+		const eventData: Record<string, unknown> = {
+			frames: [],
+		};
+		const frameCount = data[ i++ ];
+		for ( let f = 0; f < frameCount; f++ ) {
+			const frameData: Record<string, unknown> = {
+				updates: [],
+			};
+			const updateCount = data[ i++ ];
+			frameData.duration = data[ i++ ];
+			for ( let u = 0; u < updateCount; u++ ) {
+				const objectId = ( ( data[ i++ ] << 8 ) | data[ i++ ] ) >>> 0;
+				const updateData : Record<string, unknown> = {
+					map: data[ i++ ],
+					layer: data[ i++ ],
+					type: convertByteToOverworldEventType( data[ i++ ] ),
+					update: {
+						id: objectId,
+					},
+				};
+
+				// For most event types, we need that event’s layer data,
+				// so we need to loop thru the maps & each map’s layers till
+				// we find the layer with the matching ID.
+				const maps = content.maps as Record<string, unknown>[];
+				for ( let m = 0; m < maps.length; m++ ) {
+					// Skip if not the right map.
+					if ( maps[ m ].id !== updateData.map ) {
+						continue;
+					}
+					const layers = maps[ m ].layers as Record<string, unknown>[];
+					for ( let l = 0; l < layers.length; l++ ) {
+						// Skip if not the right layer.
+						if ( layers[ l ].id !== updateData.layer ) {
+							continue;
+						}
+
+						// Once we have the correct layer for this event, we need to save its type
+						// for use in gathering object data.
+						const layerType = layers[ l ].type as OverworldLayerType;
+						const typeFactory = getOverworldTypeFactory( layerType );
+						switch ( updateData.type ) {
+							case ( `add` ): {
+								// Make sure the layer’s latest ID is always bigger than all objects’ IDs
+								// so we don’t get ID conflicts when making new objects.
+								// @ts-expect-error – Dynamic object.
+								if ( objectId >= layers[ l ].latestId ) {
+									layers[ l ].latestId = objectId + 1;
+								}
+
+								const objectType = ( ( data[ i++ ] << 8 ) | data[ i++ ] ) >>> 0;
+
+								// @ts-expect-error – Dynamic object.
+								updateData.update.type = objectType;
+
+								// Gather object data just like in layers.
+								const exportData = typeFactory[ objectType ].exportData;
+								for ( let d = 0; d < exportData.length; d++ ) {
+									const { type, key } = exportData[ d ];
+									switch ( type ) {
+										case DataType.Uint8:
+											// @ts-expect-error – Dynamic object.
+											updateData.update[ key ] = data[ i++ ];
+										break;
+										case DataType.Uint16:
+											// @ts-expect-error – Dynamic object.
+											updateData.update[ key ] = ( ( data[ i++ ] << 8 ) | data[ i++ ] ) >>> 0;
+										break;
+										case DataType.Int8:
+											// @ts-expect-error – Dynamic object.
+											updateData.update[ key ] = ( data[ i++ ] << 24 ) >> 24;
+										break;
+										case DataType.Int16:
+											// @ts-expect-error – Dynamic object.
+											// eslint-disable-next-line
+											updateData.update[ key ] = ( ( ( data[ i++ ] << 8 ) | data[ i++ ] ) << 16 ) >> 16;
+										break;
+										default:
+											throw new Error( `Unsupported data type: ${ type }` );
+										break;
+									}
+								}
+							}
+							break;
+							case ( `change` ): {
+								// @ts-expect-error – Dynamic object.
+								updateData.update.changes = {} as Record<string, unknown>;
+								let object : Record<string, unknown> | null = null;
+
+								// 1st try looping thru all static map layer objects to find the change object.
+								const objects = layers[ l ].objects as Record<string, unknown>[];
+								for ( let o = 0; o < objects.length; o++ ) {
+									if ( objects[ o ].id === objectId ) {
+										object = objects[ o ];
+										break;
+									}
+								}
+
+								// If we still haven’t found the right object, loop thru event objects
+								// to see if the change object is an add event object.
+								if ( object === null ) {
+									const frames = eventData.frames as Record<string, unknown>[];
+									for ( let f = 0; f < frames.length; ++f ) {
+										const updates = frames[ f ].updates as Record<string, unknown>[];
+										for ( let u = 0; u < updates.length; ++u ) {
+											const update = updates[ u ];
+											const updateData = update.update as Record<string, unknown>;
+											if (
+												update.type === `add`
+												&& update.map === maps[ m ].id
+												&& update.layer === layers[ l ].id
+												&& updateData.id === objectId
+											) {
+												object = update.update as Record<string, unknown>;
+												break;
+											}
+										}
+									}
+								}
+
+								// If we still haven’t found the object by now, there must be an error.
+								if ( object === null ) {
+									// eslint-disable-next-line max-len
+									throw new Error( `Couldn’t find object with ID: ${ objectId } for change event import.` );
+								}
+
+								const changeCount = data[ i++ ];
+								const exportData = typeFactory[ object.type as number ].exportData;
+
+								// Now that we’ve confirmed that we have an object,
+								// pull in the changed data like with static layer objects,
+								// using the saved change indices to pull in specific change values.
+								for ( let c = 0; c < changeCount; c++ ) {
+									const changeIndex = data[ i++ ];
+									const { type, key } = exportData[ changeIndex ];
+									switch ( type ) {
+										case DataType.Uint8:
+											// @ts-expect-error – Dynamic object.
+											updateData.update.changes[ key ] = data[ i++ ];
+										break;
+										case DataType.Uint16:
+											// @ts-expect-error – Dynamic object.
+											// eslint-disable-next-line
+											updateData.update.changes[ key ] = ( ( data[ i++ ] << 8 ) | data[ i++ ] ) >>> 0;
+										break;
+										case DataType.Int8:
+											// @ts-expect-error – Dynamic object.
+											updateData.update.changes[ key ] = ( data[ i++ ] << 24 ) >> 24;
+										break;
+										case DataType.Int16:
+											// @ts-expect-error – Dynamic object.
+											// eslint-disable-next-line
+											updateData.update.changes[ key ] = ( ( ( data[ i++ ] << 8 ) | data[ i++ ] ) << 16 ) >> 16;
+										break;
+										default:
+											throw new Error( `Unsupported data type: ${ type }` );
+										break;
+									}
+								}
+							}
+							break;
+						}
+					}
+				}
+
+				( frameData.updates as object[] ).push( updateData );
+			}
+
+			( eventData.frames as object[] ).push( frameData );
+		}
+		( content.events as object[] ).push( eventData );
+	}
+
 	return createOverworldFromJSON( content );
 }
 
