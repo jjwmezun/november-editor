@@ -1,8 +1,6 @@
-import { LvMap } from '../../../../common/types';
-
 interface MapSelectorList {
 	generateMapSelector: ( i: number ) => () => void;
-	maps: LvMap[];
+	maps: ArrayBuffer[];
 	selectedMapIndex: number | null;
 }
 

@@ -1,4 +1,4 @@
-import { SyntheticBaseEvent } from 'react';
+import { SyntheticEvent } from 'react';
 import { createGoal, goals } from '../../../../common/goals';
 import { Goal } from '../../../../common/types';
 
@@ -12,8 +12,10 @@ interface LevelOptionsProps {
 const LevelOptions = ( props: LevelOptionsProps ) => {
 	const { goal, name, setGoal, setName } = props;
 
-	const onChangeGoal = ( e: SyntheticBaseEvent ) => {
-		setGoal( createGoal( e.target.value ) );
+	const onChangeGoal = ( e: SyntheticEvent ) => {
+		const index = ( e.target as HTMLSelectElement ).value;
+		console.log( index );
+		setGoal( createGoal( parseInt( index ) ) );
 		window.electronAPI.enableSave();
 	};
 
@@ -47,7 +49,7 @@ const LevelOptions = ( props: LevelOptionsProps ) => {
 				<input
 					type={ type }
 					onChange={ e => setGoal( goal.updateOption( slug, e.target.value ) ) }
-					value={ goal.getOption( slug ) }
+					value={ goal.getOptionText( slug ) }
 					{ ...atts }
 				/>
 			</label> )

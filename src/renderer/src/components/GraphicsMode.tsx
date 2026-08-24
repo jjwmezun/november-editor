@@ -1,9 +1,9 @@
-import { ReactElement, SyntheticBaseEvent, useEffect, useState } from 'react';
+import { ReactElement, SyntheticEvent, useEffect, useState } from 'react';
 import TileGrid from './TileGrid';
 import TileEditor from './TileEditor';
 import ColorSelector from './ColorSelector';
 import { tileSize } from '../../../common/constants';
-import { Graphics, PaletteList } from '../../../common/types';
+import { Graphics, GraphicsEntryRaw, GraphicsType, PaletteList } from '../../../common/types';
 
 type GraphicsProps = {
 	exitMode: () => void,
@@ -15,14 +15,14 @@ type GraphicsProps = {
 const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 	const { exitMode, graphics, palettes, setGraphics } = props;
 
-	const [ selectedGraphicType, setSelectedGraphicType ] = useState( `blocks` );
+	const [ selectedGraphicType, setSelectedGraphicType ] = useState( GraphicsType.blocks );
 	const [ selectedTile, setSelectedTile ] = useState( 0 );
 	const [ selectedColor, setSelectedColor ] = useState( 0 );
 	const [ selectedPalette, setSelectedPalette ] = useState( 0 );
 
 	const selectedGraphicsEntry = graphics[ selectedGraphicType ];
 
-	const drawPixel = ( x, y ) => {
+	const drawPixel = ( x: number, y: number ) => {
 		const tileY = Math.floor( selectedTile / selectedGraphicsEntry.getWidthTiles() );
 		const tileX = selectedTile % selectedGraphicsEntry.getWidthTiles();
 		const pixelY = tileY * tileSize + y;
@@ -44,15 +44,15 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 		} );
 	};
 
-	const updatePalette = ( e: SyntheticBaseEvent ) => {
-		const target: HTMLSelectElement = e.target;
+	const updatePalette = ( e: SyntheticEvent ) => {
+		const target = e.target as HTMLSelectElement;
 		const paletteIndex = parseInt( target.value );
 		setSelectedPalette( paletteIndex );
 	};
 
-	const changeGraphicEntry = ( e: SyntheticBaseEvent ) => {
-		const target: HTMLSelectElement = e.target;
-		const graphicType = target.value as keyof Graphics;
+	const changeGraphicEntry = ( e: SyntheticEvent ) => {
+		const target = e.target as HTMLSelectElement;
+		const graphicType = target.value as GraphicsType;
 		setSelectedGraphicType( graphicType );
 		setSelectedTile( 0 );
 	};
@@ -60,7 +60,7 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 	const exportTiles = () => window.electronAPI.openTileExportWindow( selectedGraphicsEntry.getData() );
 
 	useEffect( () => {
-		const handleImportTiles = ( _event, data ) => {
+		const handleImportTiles = ( _event: SyntheticEvent, data: GraphicsEntryRaw ) => {
 			const { pixels, width, height } = data;
 			setGraphics( {
 				...graphics,
@@ -89,6 +89,7 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 			<select onChange={ changeGraphicEntry }>
 				<option value="blocks">Blocks</option>
 				<option value="sprites">Sprites</option>
+				<option value="overworld">O’erworld</option>
 			</select>
 			<TileGrid
 				graphics={ selectedGraphicsEntry }

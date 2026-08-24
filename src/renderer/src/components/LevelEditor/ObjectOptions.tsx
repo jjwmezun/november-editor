@@ -1,5 +1,6 @@
 import {
 	MapObject,
+	MapObjectArgs,
 	MapObjectType,
 } from '../../../../common/types';
 
@@ -8,7 +9,7 @@ interface ObjectOptionsProps {
 	removeObject: () => void;
 	selectedObject: number;
 	typesFactory: readonly MapObjectType[];
-	updateObject: ( index: number, o: MapObject ) => void;
+	updateObject: ( index: number, o: MapObjectArgs ) => void;
 }
 
 const ObjectOptions = ( props: ObjectOptionsProps ) => {
@@ -29,11 +30,12 @@ const ObjectOptions = ( props: ObjectOptionsProps ) => {
 					extraUpdate: () => ( {} ),
 					...options,
 				};
-				const extraAtts = {};
-				for ( const key in atts ) {
-					extraAtts[ key ] = typeof atts[ key ] === `function`
-						? atts[ key ]( objects[ selectedObject ] )
-						: atts[ key ];
+				const extraAtts : Record<string, unknown> = {};
+				const atts_ = atts as Record<string, unknown>;
+				for ( const key in atts_ ) {
+					extraAtts[ key ] = typeof atts_[ key ] === `function`
+						? atts_[ key ]( objects[ selectedObject ] )
+						: atts_[ key ];
 				}
 				return <label key={ i }>
 					<span>{ title }:</span>

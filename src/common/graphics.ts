@@ -1,6 +1,6 @@
-import { Graphics, GraphicsEntry } from "./types";
+import { DecodedGraphicsData, Graphics, GraphicsEntry, GraphicsType } from "./types";
 import { tileSize } from "./constants";
-import { getBitsFromByte } from "./bytes";
+import { combineUint8ArrayIntoUint32, getBitsFromByte } from "./bytes";
 
 // Convert color index into list o’ 3 bits.
 const getBitsFromColor = ( color: number ): number[] => {
@@ -105,7 +105,10 @@ const createGraphicsEntry = (
 		},
 		createTexture: ( ctx: WebGLRenderingContext, index: number ): WebGLTexture => {
 			const texture = ctx.createTexture();
+
+			// @ts-expect-error – We know that WebGLRenderingContext has `TEXTURE#` properties for each index.
 			ctx.activeTexture( ctx[ `TEXTURE${ index }` ] );
+
 			ctx.bindTexture( ctx.TEXTURE_2D, texture );
 			ctx.texImage2D(
 				ctx.TEXTURE_2D,
@@ -125,7 +128,7 @@ const createGraphicsEntry = (
 			return texture;
 		},
 		getData: () => ( {
-			data: pixels,
+			pixels,
 			width: getWidthPixels(),
 			height: getHeightPixels(),
 		} ),
@@ -191,8 +194,43 @@ const createBlankGraphicsEntry = (
 
 const createNewGraphics = (): Graphics => ( {
 	blocks: createBlankGraphicsEntry( `blocks`, 64, 64 ),
+	overworld: createBlankGraphicsEntry( `overworld`, 128, 128 ),
 	sprites: createBlankGraphicsEntry( `sprites`, 64, 64 ),
 } );
+
+const loadGraphicsFromData = async ( data: Uint8Array ): Promise<DecodedGraphicsData> => {
+	const graphics: Graphics = createNewGraphics();
+
+	// Gather list o’ data sizes.
+	const sizes = [ GraphicsType.blocks, GraphicsType.sprites, GraphicsType.overworld ].map( ( type: GraphicsType ) => {
+		const dataSize = combineUint8ArrayIntoUint32( Array.from( data.slice( 0, 4 ) ) );
+		const prevData = [ ...data ];
+		data = data.slice( dataSize + 4 );
+		return {
+			dataSize,
+			data: prevData,
+			type,
+		};
+	} );
+
+	// For each data size, decompress graphics & add to graphics.
+	return Promise.all( sizes.map( async ( { data, dataSize, type } ) => {
+		const wh = type === `overworld` ? 128 : 64;
+		let entry = createBlankGraphicsEntry( type, wh, wh );
+		return new Promise<void>( resolve => {
+			decompressPixels( Array.from( data ).slice( 4, dataSize + 4 ), type ).then( ( pixels: number[] ) => {
+				entry = entry.updatePixels( pixels );
+				graphics[ type ] = entry;
+				resolve();
+			} );
+		} );
+	} ) ).then( () => {
+		return {
+			graphics,
+			remainingBytes: data,
+		};
+	} );
+};
 
 export {
 	compressPixels,
@@ -200,4 +238,5 @@ export {
 	createGraphicsEntry,
 	createNewGraphics,
 	decompressPixels,
+	loadGraphicsFromData,
 };

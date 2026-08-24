@@ -1,4 +1,5 @@
-import { SyntheticBaseEvent } from 'react';
+
+import { SyntheticEvent } from 'react';
 import {
 	Layer,
 	LvMap,
@@ -15,8 +16,8 @@ interface LayerOptionsProps {
 const LayerOptions = ( props: LayerOptionsProps ) => {
 	const { selectedLayer, updateLayer, updateMap } = props;
 
-	const generateLayerOptionUpdater = ( key: string ) => ( e: SyntheticBaseEvent ) => {
-		const target: HTMLInputElement = e.target;
+	const generateLayerOptionUpdater = ( key: string ) => ( e: SyntheticEvent ) => {
+		const target = e.target as HTMLInputElement;
 		const value = target.value;
 		updateMap( updateLayer.updateOption( key, value ) );
 	};

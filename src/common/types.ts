@@ -1,10 +1,10 @@
 interface ByteBlock {
-	type: string,
+	type: DataType,
 	value: number,
 }
 
 interface ByteBlockRef {
-	type: string,
+	type: DataType,
 	key: string,
 }
 
@@ -33,6 +33,16 @@ interface Coordinates {
 	y: number,
 }
 
+enum DataType {
+	Uint8 = `Uint8`,
+	Uint16 = `Uint16`,
+	Uint32 = `Uint32`,
+	Float32 = `Float32`,
+	Int8 = `Int8`,
+	Int16 = `Int16`,
+	Int32 = `Int32`,
+}
+
 interface DecodedLevelData {
 	level: Level,
 	remainingBytes: Uint8Array,
@@ -51,32 +61,41 @@ interface DecodedGraphicsData {
 
 interface Goal {
 	getId: () => number,
-	getOption: ( key: string ) => string,
+	getOption: ( key: string ) => GoalValue,
+	getOptionData: ( key: string ) => number,
+	getOptionText: ( key: string ) => string,
 	toJSON: () => object,
-	updateOption: ( key: string, value: string ) => Goal,
+	updateOption: ( key: string, value: GoalValue ) => Goal,
+}
+
+type GoalAtts = Record<string, GoalValue>;
+
+interface GoalOptions {
+	slug: string,
+	title: string,
+	type: string,
+	default: GoalValue,
+	atts: GoalAtts,
 }
 
 interface GoalTemplate {
 	name: string,
-	options?: {
-		slug: string,
-		title: string,
-		type: string,
-		default: string,
-		atts?: { [key: string]: string },
-	}[],
+	options?: GoalOptions[],
 	exportData?: ByteBlockRef[],
 }
 
+type GoalValue = string | number | boolean;
+
 interface Graphics {
 	blocks: GraphicsEntry,
+	overworld: GraphicsEntry,
 	sprites: GraphicsEntry,
 }
 
 interface GraphicsEntry {
 	clearTile: ( tileIndex: number ) => void,
 	createTexture: ( ctx: WebGLRenderingContext, index: number ) => WebGLTexture,
-	getData: () => { data: number[], width: number, height: number },
+	getData: () => GraphicsEntryRaw,
 	getWidthTiles: () => number,
 	getHeightTiles: () => number,
 	getWidthPixels: () => number,
@@ -86,6 +105,12 @@ interface GraphicsEntry {
 	toJSON: () => object,
 	updatePixels: ( newPixels: number[] ) => GraphicsEntry,
 	updatePixel: ( color: number, x: number, y: number ) => void,
+}
+
+interface GraphicsEntryRaw {
+	pixels: number[],
+	width: number,
+	height: number,
 }
 
 interface GraphicTile {
@@ -98,6 +123,12 @@ interface GraphicTile {
 	y: number;
 	flipx: boolean;
 	flipy: boolean;
+}
+
+enum GraphicsType {
+	blocks = `blocks`,
+	overworld = `overworld`,
+	sprites = `sprites`,
 }
 
 interface BlockLayer {
@@ -163,7 +194,7 @@ interface LvMap {
 	updateLayer: ( index: number ) => {
 		addObject: ( object: object ) => LvMap,
 		removeObject: ( objectIndex: number ) => LvMap,
-		updateObject: ( objectIndex: number, newObject: object ) => LvMap,
+		updateObject: ( objectIndex: number, newObject: MapObjectArgs ) => LvMap,
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		updateOption: ( key: string, value: any ) => LvMap,
 	},
@@ -185,6 +216,8 @@ interface MapEditorProps {
 interface MapObject {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	getProp: ( key: string ) => any,
+	id: () => number,
+	hidden: () => boolean,
 	type: () => number,
 	xBlocks: () => number,
 	xTiles: () => number,
@@ -209,6 +242,7 @@ interface MapObject {
 }
 
 interface MapObjectArgs {
+	id?: number,
 	type?: number,
 	x?: number,
 	y?: number,
@@ -231,11 +265,27 @@ interface MapObjectTypeOption {
 
 interface MapObjectType {
 	name: string,
-	create: ( x: number, y: number ) => object,
+	create: ( id: number, x: number, y: number ) => MapObjectArgs,
 	generateHighlight: ( object: MapObject ) => Rect[],
-	generateTiles: ( object: MapObject ) => GraphicTile[],
+	generateTiles: ( object: MapObject, currentTiles: GraphicTile[] ) => GraphicTile[],
 	exportData: ByteBlockRef[],
 	options: MapObjectTypeOption[],
+}
+
+interface MapRenderer {
+	changeMap: ( map: LvMap ) => void,
+	render: () => void,
+	updateAnimationFrame: ( frame: number ) => void,
+	updateDimensions: ( width: number, height: number ) => void,
+	updateLayerObjects: ( layer: number, objects: MapObject[] ) => void,
+	updatePalette: ( palette: number ) => void,
+	addLayer: ( type: LayerType, selectedPalette: number ) => void,
+	removeLayer: ( layer: number ) => void,
+	setSelectedLayer: ( selectedLayer: number ) => void,
+	setSelectedObject: ( i: number | null, objects: MapObject[], layerType: LayerType ) => void,
+	setSelectedTile: ( x: number | null, y: number | null ) => void,
+	switchLayers: ( layer1: number, layer2: number ) => void,
+	updateScrollX: ( windowScrollX: number, map: LvMap ) => void,
 }
 
 interface Mat3 {
@@ -276,6 +326,229 @@ interface ObjectRenderer {
 	updateObjects: ( objects: MapObject[] ) => void;
 	updatePalette: ( palette: number ) => void;
 	updateScrollX: ( layerScrollX: number, windowScrollX: number, mapWidth: number ) => void;
+}
+
+interface Overworld {
+	addMap: () => Overworld;
+	getEventsList: () => OverworldEventsList;
+	getMapsList: () => readonly OverworldMap[];
+	encode: () => ByteBlock[];
+	moveMapDown: ( index: number ) => Overworld;
+	moveMapUp: ( index: number ) => Overworld;
+	removeMap: ( index: number ) => Overworld;
+	toJSON: () => object;
+	updateMap: ( index: number, map: OverworldMapData ) => Overworld;
+}
+
+interface OverworldEventsList {
+	addEvent: () => Overworld,
+	encode: ( maps: readonly OverworldMap[] ) => ByteBlock[];
+	getEntry: ( index: number ) => OverworldEvent,
+	getLength: () => number,
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	map: ( callback: ( event: OverworldEvent, index: number ) => any ) => any[],
+	removeEvent: ( index: number ) => Overworld,
+	toJSON: () => object[],
+	updateEvent: ( index: number, event: OverworldEvent ) => Overworld,
+}
+
+interface OverworldEventUpdateRemove {
+	encode: () => ByteBlock[];
+	getObjectId: () => number,
+	toJSON: () => object,
+}
+
+interface OverworldEventUpdateAdd {
+	encode: ( layerType: OverworldLayerType ) => ByteBlock[];
+	getObject: () => MapObject,
+	toJSON: () => object,
+}
+
+interface OverworldEventUpdateChange {
+	encode: ( layerType: OverworldLayerType, objectType: number ) => ByteBlock[];
+	getChanges: () => MapObjectArgs,
+	getObjectId: () => number,
+	toJSON: () => object,
+}
+
+enum OverworldEventUpdateType {
+	add = `add`,
+	change = `change`,
+	remove = `remove`,
+}
+
+interface OverworldEventUpdate {
+	encode: ( maps: readonly OverworldMap[], events: readonly OverworldEvent[] ) => ByteBlock[];
+	getObjectId: () => number,
+	getLayer: () => number,
+	getMap: () => number,
+	getType: () => OverworldEventUpdateType,
+	getUpdate: () => OverworldEventUpdateAdd | OverworldEventUpdateChange | OverworldEventUpdateRemove,
+	toJSON: () => object,
+}
+
+interface OverworldEventFrame {
+	addEventAdd: ( map: number, layer: number, object: MapObject ) => OverworldEventFrame,
+	addEventChange: ( map: number, layer: number, objectId: number, changes: object ) => OverworldEventFrame,
+	addEventRemove: ( map: number, layer: number, objectId: number ) => OverworldEventFrame,
+	encode: ( maps: readonly OverworldMap[], events: readonly OverworldEvent[] ) => ByteBlock[];
+	getDuration: () => number,
+	getUpdates: () => readonly OverworldEventUpdate[],
+	getUpdateById: ( objectId: number, mapId: number, layerId: number ) => OverworldEventUpdate | null,
+	removeUpdate: ( mapId: number, layerId: number, objectId: number ) => OverworldEventFrame,
+	toJSON: () => object,
+	updateDuration: ( newDuration: number ) => OverworldEventFrame,
+	updateEvent: ( objectId: number, mapId: number, layerId: number, changes: object ) => OverworldEventFrame,
+}
+
+interface OverworldEvent {
+	addFrame: () => OverworldEvent,
+	encode: ( maps: readonly OverworldMap[], events: readonly OverworldEvent[] ) => ByteBlock[];
+	getEntry: ( index: number ) => OverworldEventFrame,
+	getFrames: () => readonly OverworldEventFrame[];
+	getLength: () => number,
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	map: ( callback: ( frame: OverworldEventFrame, index: number ) => any ) => any[],
+	removeLatestFrame: () => OverworldEvent,
+	toJSON: () => object,
+	updateFrame: ( index: number, frame: OverworldEventFrame ) => OverworldEvent,
+}
+
+interface OverworldEventControlsProps {
+	eventsList: OverworldEventsList,
+	selectedEvent: number,
+	selectedEventFrame: number,
+	setOverworld: ( overworld: Overworld ) => void,
+	setSelectedEvent: ( index: number ) => void,
+	setSelectedEventFrame: ( frame: number ) => void,
+	setSelectedObject: ( object: number | null ) => void,
+	updateEventFrame: ( frame: OverworldEventFrame, i: number ) => void,
+	updateSelectedEventFrame: ( frame: OverworldEventFrame ) => void,
+}
+
+interface OverworldGridCanvasProps {
+	graphics: GraphicsEntry,
+	map: OverworldMap,
+	palettes: PaletteList,
+	selectedEventFrames: readonly OverworldEventFrame[],
+	selectedFrame: number,
+	selectedLayer: number,
+	selectedObject: number | null,
+	selectedObjectType: number,
+	setOverworld: ( overworld: Overworld ) => void,
+	setSelectedObject: ( object: number | null ) => void,
+	updateLayerLatestId: () => void,
+	updateSelectedEventFrame: ( frame: OverworldEventFrame ) => void,
+}
+
+interface OverworldLayer {
+	addObject( object: MapObject ): Overworld;
+	getId: () => number;
+	getLatestId: () => number;
+	getObject: ( index: number ) => MapObject;
+	getObjectsList: () => readonly MapObject[];
+	getType: () => OverworldLayerType;
+	encode: () => ByteBlock[];
+	removeObject: ( index: number ) => Overworld;
+	toJSON: () => object;
+	updateLatestId: () => Overworld;
+	updateObject: ( id: number, changes: MapObjectArgs ) => Overworld;
+}
+
+interface OverworldLayerControlsProps {
+	addLayer: () => void;
+	layers: readonly OverworldLayer[];
+	moveLayerDown: () => void;
+	moveLayerUp: () => void;
+	removeLayer: () => void;
+	selectedLayer: number;
+	selectedLayerType: OverworldLayerType;
+	setSelectedLayer: ( index: number ) => void;
+	setSelectedLayerType: ( type: OverworldLayerType ) => void;
+	setSelectedObject: ( object: number | null ) => void;
+	setSelectedObjectType: ( type: number ) => void;
+}
+
+interface OverworldLayerData {
+	id: number;
+	latestId: number;
+	objects: readonly MapObject[];
+	type: OverworldLayerType;
+}
+
+enum OverworldLayerType {
+	block = `block`,
+	sprite = `sprite`,
+}
+
+interface OverworldMap {
+	addLayer: ( type: OverworldLayerType ) => Overworld;
+	getHeightBlocks: () => number;
+	getHeightPixels: () => number;
+	getHeightTiles: () => number;
+	getId: () => number;
+	getLayersList: () => readonly OverworldLayer[];
+	getWidthBlocks: () => number;
+	getWidthPixels: () => number;
+	getWidthTiles: () => number;
+	encode: () => ByteBlock[];
+	moveLayerDown: ( index: number ) => Overworld;
+	moveLayerUp: ( index: number ) => Overworld;
+	removeLayer: ( index: number ) => Overworld;
+	toJSON: () => object;
+	updateHeight: ( newHeight: number ) => Overworld;
+	updateLayer: ( index: number, layer: OverworldLayerData ) => Overworld;
+	updateWidth: ( newWidth: number ) => Overworld;
+}
+
+interface OverworldMapControlsProps {
+	addMap: () => void;
+	generateMapSelector: ( index: number ) => () => void;
+	maps: readonly OverworldMap[];
+	moveMapDown: () => void;
+	moveMapUp: () => void;
+	removeMap: () => void;
+	selectedMap: number;
+}
+
+interface OverworldMapData {
+	height: number;
+	id: number;
+	latestId: number;
+	layers: readonly OverworldLayerData[];
+	width: number;
+}
+
+interface OverworldMapOptionsProps {
+	map: OverworldMap;
+	setOverworld: ( overworld: Overworld ) => void;
+}
+
+interface OverworldModeProps {
+	exitMode: () => void,
+	graphics: GraphicsEntry,
+	overworld: Overworld,
+	palettes: PaletteList,
+	setOverworld: ( overworld: Overworld | ( ( overworld: Overworld ) => Overworld ) ) => void,
+}
+
+interface OverworldObjectControlsProps {
+	typesFactory: readonly MapObjectType[],
+	selectedObjectType: number,
+	setSelectedObjectType: ( type: number ) => void,
+}
+
+interface OverworldRenderer {
+	render: () => void,
+	setSelectedObject: ( i: number | null, objects: readonly MapObject[] ) => void,
+	updateAnimationFrame: ( frame: number ) => void,
+	updateLayers: ( map: OverworldMap, objects: Array<readonly MapObject[]>, selectedLayer: number ) => void,
+	updateLayerObjects: ( layer: number, objects: readonly MapObject[], i: number | null ) => void,
+	updateHoverTile: ( x: number, y: number ) => void,
+	updateResolution: ( width: number, height: number ) => void,
+	updateSelectedObject: ( i: number | null, objects: readonly MapObject[] ) => void,
+	updateSelectedLayer: ( selectedLayer: number ) => void,
+	updateShowGrid: ( _showGrid: boolean ) => void,
 }
 
 interface Palette {
@@ -362,14 +635,6 @@ interface TextTrie {
 	code?: number[],
 }
 
-interface TileGridProps {
-	graphics: GraphicsEntry,
-	palettes: PaletteList,
-	selectedPalette: number,
-	selectedTile: number | null,
-	setSelectedTile: ( tile: number ) => void,
-}
-
 interface TileEditorProps {
 	clearTile: () => void,
 	drawPixel: ( x: number, y: number ) => void,
@@ -379,6 +644,31 @@ interface TileEditorProps {
 	selectedPalette: number,
 	tileX: number,
 	tileY: number,
+}
+
+interface TileGridProps {
+	graphics: GraphicsEntry,
+	palettes: PaletteList,
+	selectedPalette: number,
+	selectedTile: number | null,
+	setSelectedTile: ( tile: number ) => void,
+}
+
+interface TileGridRenderer {
+	render: ( hovered: Coordinates, selected: Coordinates | null, showGridLines: boolean ) => void,
+	updateSelectedPalette: ( selectedPalette: number ) => void,
+	updateResolution: ( width: number, height: number ) => void,
+	updateGraphics: ( graphics: GraphicsEntry ) => void,
+}
+
+interface TileRenderer {
+	render: () => void,
+	updateBrush: ( x: number, y: number, brushSize: number ) => void,
+	updateResolution: ( width: number, height: number ) => void,
+	updateSelected: ( x: number, y: number ) => void,
+	updateSelectedColor: ( color: number ) => void,
+	updateSelectedPalette: ( selectedPalette: number ) => void,
+	updateGraphicsEntry: ( graphics: GraphicsEntry ) => void,
 }
 
 interface TileRendererArgs {
@@ -409,12 +699,13 @@ interface ElectronAPI {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	on: ( channel: string, listener: ( _event: any, data: any, ...args: any[] ) => void ) => void,
 	openTileImportWindow: () => void,
+	openTileExportWindow: ( graphics: GraphicsEntryRaw ) => void,
 	remove: ( channel: string ) => void,
 	save: ( data: string ) => void,
 }
 
 declare global {
-    interface Window { electronAPI: ElectronAPI; }
+	interface Window { electronAPI: ElectronAPI; }
 }
 
 export {
@@ -424,14 +715,20 @@ export {
 	Color,
 	ColorSelectorProps,
 	Coordinates,
+	DataType,
 	DecodedLevelData,
 	DecodedTextData,
 	DecodedGraphicsData,
 	Goal,
+	GoalAtts,
+	GoalOptions,
 	GoalTemplate,
+	GoalValue,
 	Graphics,
 	GraphicsEntry,
+	GraphicsEntryRaw,
 	GraphicTile,
+	GraphicsType,
 	Layer,
 	LayerType,
 	Level,
@@ -446,10 +743,33 @@ export {
 	MapObject,
 	MapObjectArgs,
 	MapObjectType,
+	MapRenderer,
 	Mat3,
 	Mode,
 	MousePosition,
 	ObjectRenderer,
+	Overworld,
+	OverworldEvent,
+	OverworldEventsList,
+	OverworldEventControlsProps,
+	OverworldEventUpdate,
+	OverworldEventUpdateAdd,
+	OverworldEventUpdateChange,
+	OverworldEventUpdateRemove,
+	OverworldEventUpdateType,
+	OverworldEventFrame,
+	OverworldGridCanvasProps,
+	OverworldLayer,
+	OverworldLayerControlsProps,
+	OverworldLayerData,
+	OverworldLayerType,
+	OverworldMap,
+	OverworldMapControlsProps,
+	OverworldMapData,
+	OverworldMapOptionsProps,
+	OverworldModeProps,
+	OverworldObjectControlsProps,
+	OverworldRenderer,
 	Palette,
 	PaletteData,
 	PaletteList,
@@ -460,8 +780,10 @@ export {
 	Shader,
 	ShaderType,
 	TextTrie,
-	TileGridProps,
 	TileEditorProps,
+	TileGridProps,
+	TileGridRenderer,
+	TileRenderer,
 	TileRendererArgs,
 	WebGL2Program,
 };

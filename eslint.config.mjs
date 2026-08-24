@@ -61,8 +61,15 @@ export default [
 			'eol-last': [ `error`, `always` ],
 			'func-call-spacing': [ `error`, `never` ],
 			'function-call-argument-newline': [ `error`, `consistent` ],
-			'function-paren-newline': [ `error`, `multiline` ],
-			indent: [ `error`, `tab` ],
+			'function-paren-newline': [ `error`, `consistent` ],
+			indent: [
+				`error`,
+				`tab`,
+				{
+					SwitchCase: 1,
+					ignoredNodes: [ `SwitchCase > BreakStatement` ],
+				},
+			],
 			'jsx-quotes': [ `error`, `prefer-double` ],
 			'key-spacing': [ `error`, { beforeColon: false, afterColon: true } ],
 			'keyword-spacing': [ `error`, { before: true, after: true } ],

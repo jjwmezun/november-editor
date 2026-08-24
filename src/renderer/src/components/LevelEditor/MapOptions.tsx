@@ -1,4 +1,4 @@
-import { SyntheticBaseEvent } from 'react';
+import { SyntheticEvent } from 'react';
 import { LvMap, PaletteList } from '../../../../common/types';
 
 interface MapOptionsProps {
@@ -11,11 +11,11 @@ const MapOptions = ( props: MapOptionsProps ) => {
 	const { selectedMap, updateMap, palettes } = props;
 	const { height, palette, width } = selectedMap.getProps();
 
-	const setWidth = width => updateMap( selectedMap.updateWidth( width ) );
-	const setHeight = height => updateMap( selectedMap.updateHeight( height ) );
+	const setWidth = ( width: number ) => updateMap( selectedMap.updateWidth( width ) );
+	const setHeight = ( height: number ) => updateMap( selectedMap.updateHeight( height ) );
 
-	const updatePalette = ( e: SyntheticBaseEvent ) => {
-		const target: HTMLSelectElement = e.target;
+	const updatePalette = ( e: SyntheticEvent ) => {
+		const target = e.target as HTMLSelectElement;
 		const paletteIndex = parseInt( target.value );
 		updateMap( selectedMap.updatePalette( paletteIndex ) );
 	};

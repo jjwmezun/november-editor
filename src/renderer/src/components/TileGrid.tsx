@@ -1,4 +1,4 @@
-import { ReactElement, useEffect, useRef, useState } from 'react';
+import { MouseEvent, ReactElement, useEffect, useRef, useState } from 'react';
 import { getMousePosition } from '../../../common/utils';
 import {
 	Coordinates,
@@ -7,6 +7,7 @@ import {
 	PaletteList,
 	ShaderType,
 	TileGridProps,
+	TileGridRenderer,
 } from '../../../common/types';
 import { createMat3 } from '../../../common/mat';
 import {
@@ -35,21 +36,18 @@ const generateHiddenMatrix = (): Mat3 => createMat3()
 	.translate( [ -1000, -1000 ] )
 	.scale( [ 0, 0 ] );
 
-// Create a tile grid renderer.
-//
-// Since this is given to useState, make it a function that returns a function,
-// as useState will call the outer function when being set.
 const createTileGridRenderer = (
 	ctx: WebGL2RenderingContext,
 	width: number,
 	height: number,
 	palettes: PaletteList,
 	graphics: GraphicsEntry,
-) => {
+): TileGridRenderer => {
 	ctx.enable( ctx.BLEND );
 	ctx.blendFunc( ctx.SRC_ALPHA, ctx.ONE_MINUS_SRC_ALPHA );
+	ctx.viewport( 0, 0, width, height );
 
-	const renderHighlight = ( () => {
+	const highlight = ( () => {
 		const program = createShaderProgram(
 			ctx,
 			[
@@ -63,18 +61,19 @@ const createTileGridRenderer = (
 						in vec3 a_modely;
 						in vec3 a_modelz;
 
+						uniform vec2 u_resolution;
+
 						out vec4 v_color;
 						out vec2 v_relative_coords;
 
 						void main() {
-							vec2 resolution = vec2( ${ width }, ${ height } );
 							mat3 model = mat3(
 								a_modelx,
 								a_modely,
 								a_modelz
 							);
 							vec2 position = ( vec3( a_position, 1.0 ) * model ).xy;
-							vec2 clipspace = ( ( position / resolution ) * 2.0 - 1.0 )
+							vec2 clipspace = ( ( position / u_resolution ) * 2.0 - 1.0 )
 								* vec2( 1, -1 );
 							gl_Position = vec4( clipspace, 1.0, 1.0 );
 							v_color = vec4( a_color, 0.9 );
@@ -139,10 +138,19 @@ const createTileGridRenderer = (
 			renderObject.addInstanceAttribute( `a_model${ name }`, 3, ctx.FLOAT, false, 48, 12 + i * 12 );
 		} );
 
-		return ( hovered: Coordinates, selected: Coordinates | null ) => {
-			updateSelectorGraphics( hovered, selected );
-			renderObject.renderInstances( 2 );
-		};
+		// Set initial resolution.
+		program.setUniform2f( `u_resolution`, width, height );
+
+		return Object.freeze( {
+			render: ( hovered: Coordinates, selected: Coordinates | null ) => {
+				updateSelectorGraphics( hovered, selected );
+				renderObject.renderInstances( 2 );
+			},
+			updateResolution: ( width: number, height: number ): void => {
+				program.use();
+				program.setUniform2f( `u_resolution`, width, height );
+			},
+		} );
 	} )();
 
 	const tilemapRenderer = ( () => {
@@ -218,7 +226,7 @@ const createTileGridRenderer = (
 		};
 	} )();
 
-	const renderGridLines = ( () => {
+	const gridLines = ( () => {
 		const program = createShaderProgram(
 			ctx,
 			[
@@ -228,13 +236,15 @@ const createTileGridRenderer = (
 
 						in vec2 a_position;
 
+						uniform vec2 u_resolution;
+
 						out vec2 v_position;
 
 						void main() {
 							gl_Position = vec4( a_position, 0.0, 1.0 );
 							v_position = ( a_position + vec2( 1.0, 1.0 ) )
 								/ vec2( 2.0, 2.0 )
-								* vec2( ${ width }.0, ${ height }.0 );
+								* u_resolution;
 						}
 					`,
 				},
@@ -261,22 +271,33 @@ const createTileGridRenderer = (
 			],
 		);
 		program.use();
-
 		const renderObject = createRenderRectObject( ctx, program );
+		program.setUniform2f( `u_resolution`, width, height );
 
-		return renderObject.render;
+		return Object.freeze( {
+			render: renderObject.render,
+			updateResolution: ( width: number, height: number ): void => {
+				program.use();
+				program.setUniform2f( `u_resolution`, width, height );
+			},
+		} );
 	} )();
 
 	return {
 		render: ( hovered: Coordinates, selected: Coordinates | null, showGridLines: boolean ): void => {
 			tilemapRenderer.render();
 			if ( showGridLines ) {
-				renderGridLines();
+				gridLines.render();
 			}
-			renderHighlight( hovered, selected );
+			highlight.render( hovered, selected );
 		},
 		updateSelectedPalette: ( selectedPalette: number ): void => {
 			tilemapRenderer.updateSelectedPalette( selectedPalette );
+		},
+		updateResolution: ( width: number, height: number ): void => {
+			ctx.viewport( 0, 0, width, height );
+			gridLines.updateResolution( width, height );
+			highlight.updateResolution( width, height );
 		},
 		updateGraphics: ( graphics: GraphicsEntry ): void => {
 			tilemapRenderer.updateGraphics( graphics );
@@ -285,11 +306,11 @@ const createTileGridRenderer = (
 };
 
 const TileGrid = ( props: TileGridProps ): ReactElement => {
-	const canvasRef = useRef();
+	const canvasRef = useRef<HTMLCanvasElement | null>( null );
 	const { graphics, palettes, selectedPalette, selectedTile, setSelectedTile } = props;
 	const [ hovered, setHovered ] = useState( { x: 0, y: 0 } );
 	const [ showGridLines, setShowGridLines ] = useState( true );
-	const [ renderer, setRenderer ] = useState( null );
+	const [ renderer, setRenderer ] = useState<TileGridRenderer | null>( null );
 	const width = graphics.getWidthPixels() * zoom;
 	const height = graphics.getHeightPixels() * zoom;
 
@@ -316,7 +337,7 @@ const TileGrid = ( props: TileGridProps ): ReactElement => {
 	};
 
 	// Update cursor visuals on mouse move.
-	const onMouseMove = e => {
+	const onMouseMove = ( e: MouseEvent ) => {
 		const { x, y } = getMousePosition( e );
 
 		const gridX = Math.floor( x / tileSize );
@@ -330,7 +351,7 @@ const TileGrid = ( props: TileGridProps ): ReactElement => {
 	};
 
 	// Update cursor visuals on mouse move.
-	const onClick = e => {
+	const onClick = ( e: MouseEvent ) => {
 		const { x, y } = getMousePosition( e );
 
 		const gridX = Math.floor( x / tileSize );
@@ -376,6 +397,15 @@ const TileGrid = ( props: TileGridProps ): ReactElement => {
 
 	// Render on canvas ref or whene’er there is a state change.
 	useEffect( render, [ canvasRef, selectedTile, hovered, renderer, showGridLines ] );
+
+	useEffect( () => {
+		if ( ! renderer ) {
+			return;
+		}
+
+		renderer.updateResolution( width, height );
+		render();
+	}, [ width, height, renderer ] );
 
 	return <div>
 		<div>

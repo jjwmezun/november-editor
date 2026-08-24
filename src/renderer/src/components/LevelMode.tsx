@@ -1,22 +1,24 @@
+// @ts-expect-error – CSS import, doesn’t follow normal JS rules.
 import '../assets/editor.scss';
+
 import { ReactElement, useEffect, useState } from 'react';
 import { testCharacters } from '../../../common/text';
 import LevelEditor from './LevelEditor';
 import LevelList from './LevelList';
-import { LevelModeProps } from '../../../common/types';
+import { Goal, LevelModeProps } from '../../../common/types';
 
 const LevelMode = ( props: LevelModeProps ): ReactElement => {
 	const { exitMode, graphics, levels, palettes, setLevels } = props;
-	const [ selectedLevel, setSelectedLevel ] = useState( null );
+	const [ selectedLevel, setSelectedLevel ] = useState<number | null>( null );
 
 	const closeLevel = () => setSelectedLevel( null );
 
 	// Set maps to maps list, but with selected level replaced by updated version.
-	const setMaps = maps => setLevels( levels.map( ( level, i ) => ( i === selectedLevel
+	const setMaps = ( maps: ArrayBuffer[] ) => setLevels( levels.map( ( level, i ) => ( i === selectedLevel
 		? level.updateMaps( maps )
 		: level ) ) );
 
-	const generateLevelNameUpdater = selectedLevel => name => {
+	const generateLevelNameUpdater = ( selectedLevel: number ) => ( name: string ) => {
 		const newName = name.toUpperCase();
 
 		// If name contains invalid characters, do not update.
@@ -30,7 +32,7 @@ const LevelMode = ( props: LevelModeProps ): ReactElement => {
 		window.electronAPI.enableSave();
 	};
 
-	const setGoal = goal => setLevels( levels.map( ( level, i ) => ( i === selectedLevel
+	const setGoal = ( goal: Goal ) => setLevels( levels.map( ( level, i ) => ( i === selectedLevel
 		? level.updateGoal( goal )
 		: level ) ) );
 

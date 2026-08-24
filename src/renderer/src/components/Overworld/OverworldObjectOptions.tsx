@@ -1,0 +1,316 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import React from "react";
+
+import {
+	MapObject,
+	MapObjectArgs,
+	MapObjectType,
+	OverworldEvent,
+	OverworldEventFrame,
+	OverworldEventUpdateChange,
+	OverworldEventUpdateAdd,
+	OverworldLayer,
+	OverworldMap,
+} from '../../../../common/types';
+
+interface OverworldObjectOptionsProps {
+	removeObject: () => void;
+	selectedEventEntry: OverworldEvent | null;
+	selectedEventFrameEntry: OverworldEventFrame | null;
+	selectedFrame: number;
+	selectedLayer: OverworldLayer;
+	selectedMap: OverworldMap;
+	selectedObjectIndex: number;
+	setSelectedObject: ( object: number | null ) => void;
+	typesFactory: readonly MapObjectType[];
+	updateEventFrame: ( frame: OverworldEventFrame, i: number ) => void;
+	updateSelectedEventFrame: ( frame: OverworldEventFrame ) => void;
+	updateObject: ( index: number, o: MapObjectArgs ) => void;
+}
+
+const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
+	const {
+		removeObject,
+		selectedEventEntry,
+		selectedEventFrameEntry,
+		selectedFrame,
+		selectedObjectIndex,
+		selectedLayer,
+		selectedMap,
+		setSelectedObject,
+		typesFactory,
+		updateEventFrame,
+		updateSelectedEventFrame,
+		updateObject,
+	} = props;
+
+	const eventFrames: readonly OverworldEventFrame[] = selectedEventEntry === null
+		? []
+		: selectedEventEntry.getFrames();
+
+	const selectedObject = ( (): MapObject | null => {
+		// Search global objects to see if any are selected.
+		const objectList = selectedLayer.getObjectsList();
+		for ( let i = 0; i < objectList.length; ++i ) {
+			const object = objectList[ i ];
+			if ( object.id() === selectedObjectIndex ) {
+				return object;
+			}
+		}
+
+		// Otherwise, search event frames to see if any added object is selected.
+		for ( let i = 0; i <= selectedFrame; ++i ) {
+			const updates = eventFrames[ i ] ? eventFrames[ i ].getUpdates() : [];
+			for ( let j = 0; j < updates.length; ++j ) {
+				const update = updates[ j ];
+				switch ( update.getType() ) {
+					case `add`: {
+						const updateValue = update.getUpdate() as OverworldEventUpdateAdd;
+						const object = updateValue.getObject();
+						if (
+							update.getMap() === selectedMap.getId()
+							&& update.getLayer() === selectedLayer.getId()
+							&& object.id() === selectedObjectIndex
+						) {
+							return object;
+						}
+					}
+				}
+			}
+		}
+
+		return null;
+	} )();
+
+	const deleteObject = (): void => {
+		if ( selectedObject === null ) {
+			return;
+		}
+
+		// If not in an event, remove as usual.
+		if ( selectedEventEntry === null ) {
+			removeObject();
+		} else if ( selectedEventFrameEntry !== null ) {
+			let removeAdd = false;
+
+			const changedUpdates : Record<number, OverworldEventFrame> = {};
+
+			// Loop thru frames in events in this frame & later frames.
+			// Since we are removing this object, we want to remove
+			// anything involving it for this frame & later,
+			// since it makes no sense to update a removed object.
+			for ( let i = selectedFrame; i < eventFrames.length; i++ ) {
+				if ( !eventFrames[ i ] ) {
+					continue;
+				}
+
+				const update = eventFrames[ i ].getUpdateById(
+					selectedObject.id(),
+					selectedMap.getId(),
+					selectedLayer.getId(),
+				);
+
+				if ( update === null ) {
+					continue;
+				}
+
+				// Remove all 3 ( hence fallthru ),
+				// but we need to leave a flag if we are removing an add in this frame.
+				switch ( update.getType() ) {
+					case `add`:
+						if ( i === selectedFrame ) {
+							removeAdd = true;
+						}
+
+					// fallthru.
+					// eslint-disable-next-line no-fallthrough
+					case `change`:
+					case `remove`: {
+						const updatedFrame = eventFrames[ i ].removeUpdate(
+							selectedMap.getId(),
+							selectedLayer.getId(),
+							selectedObject.id(),
+						);
+						changedUpdates[ i ] = updatedFrame;
+					}
+					break;
+				}
+			}
+
+			// If there was not an add, we need to also add a remove.
+			// If we made changes to the current frame already, update those changes
+			// rather than o’erriding them.
+			//
+			// Otherwise, create new changes.
+			if ( ! removeAdd ) {
+				if ( selectedFrame in changedUpdates ) {
+					changedUpdates[ selectedFrame ] = changedUpdates[ selectedFrame ].addEventRemove(
+						selectedMap.getId(),
+						selectedLayer.getId(),
+						selectedObject.id(),
+					);
+				} else {
+					changedUpdates[ selectedFrame ] = selectedEventFrameEntry.addEventRemove(
+						selectedMap.getId(),
+						selectedLayer.getId(),
+						selectedObject.id(),
+					);
+				}
+			}
+
+			for ( const i in changedUpdates ) {
+				updateEventFrame( changedUpdates[ i ], Number( i ) );
+			}
+		}
+		setSelectedObject( null );
+	};
+
+	return selectedObject === null
+		? <></>
+		: <div>
+			<h2>Object options</h2>
+			<div>ID: { selectedObject.id() } </div>
+			{
+				typesFactory[ selectedObject.type() ].options.map( ( options, i ) => {
+					const {
+						atts,
+						key,
+						title,
+						type,
+						update,
+						extraUpdate,
+					} = {
+						extraUpdate: () => ( {} ),
+						...options,
+					};
+					const extraAtts : Record<string, unknown> = {};
+					const atts_ = atts as Record<string, unknown>;
+					for ( const key in atts_ ) {
+						extraAtts[ key ] = typeof atts_[ key ] === `function`
+							? atts_[ key ]( selectedObject )
+							: atts_[ key ];
+					}
+
+					let selectedObjectFrame: number | null = null;
+
+					// Default to showing object value.
+					let value = selectedObject.getProp( key );
+					let prevValue = value;
+
+					// But if there is an event update for the selected event frames current or below,
+					// o’erride with that.
+					for ( let i = 0; i <= selectedFrame; i++ ) {
+						if ( !eventFrames[ i ] ) {
+							continue;
+						}
+
+						const update = eventFrames[ i ].getUpdateById(
+							selectedObject.id(),
+							selectedMap.getId(),
+							selectedLayer.getId(),
+						);
+
+						if ( update === null ) {
+							continue;
+						}
+
+						switch ( update.getType() ) {
+							case `add`: {
+								const updateValue = update.getUpdate() as OverworldEventUpdateAdd;
+								const object = updateValue.getObject();
+								selectedObjectFrame = i;
+								if ( key in object ) {
+									value = object.getProp( key );
+								}
+
+								// If not current frame, update prevValue.
+								if ( i < selectedFrame ) {
+									prevValue = value;
+								}
+							}
+							break;
+							case `change`: {
+								const updateValue = update.getUpdate() as OverworldEventUpdateChange;
+								selectedObjectFrame = i;
+
+								// eslint-disable-next-line max-len
+								const changes : Record<string, unknown> = updateValue.getChanges() as Record<string, unknown>;
+								if ( key in changes ) {
+									value = changes[ key ];
+								}
+
+								// If not current frame, update prevValue.
+								if ( i < selectedFrame ) {
+									prevValue = value;
+								}
+							}
+							break;
+						}
+					}
+
+					// If not editing an event, update the object itself.
+					// Otherwise, if updating in an event & the object is from a past frame, add a change event.
+					// Otherwise, change the existing event update.
+					const onUpdateObject = ( e: React.ChangeEvent<HTMLInputElement> ) => {
+						if ( selectedEventEntry === null ) {
+							updateObject(
+								selectedObject.id(),
+								{
+									[ key ]: update( e.target.value ),
+									...extraUpdate( selectedObject, e.target.value ),
+								},
+							);
+						} else if ( selectedEventFrameEntry !== null ) {
+							if ( selectedObjectFrame !== selectedFrame ) {
+								const updatedFrame = selectedEventFrameEntry.addEventChange(
+									selectedMap.getId(),
+									selectedLayer.getId(),
+									selectedObject.id(),
+									{
+										[ key ]: update( e.target.value ),
+										...extraUpdate( selectedObject, e.target.value ),
+									},
+								);
+								updateSelectedEventFrame( updatedFrame );
+							} else {
+								const value = update( e.target.value );
+								const changes : Record<string, unknown> = {
+									[ key ]: value,
+									...extraUpdate( selectedObject, e.target.value ),
+								};
+
+								// If changing to value that already existed in previous frame,
+								// just remove change.
+								if ( value === prevValue ) {
+									for ( const key in changes ) {
+										changes[ key ] = undefined;
+									}
+								}
+
+								const updatedFrame = selectedEventFrameEntry.updateEvent(
+									selectedObject.id(),
+									selectedMap.getId(),
+									selectedLayer.getId(),
+									changes,
+								);
+								updateSelectedEventFrame( updatedFrame );
+							}
+						}
+					};
+
+					return <label key={ i }>
+						<span>{ title }:</span>
+						<input
+							type={ type }
+							value={ value }
+							onChange={ onUpdateObject }
+							{ ...extraAtts }
+						/>
+					</label>;
+				} )
+			}
+			<button onClick={ deleteObject }>Delete</button>
+		</div>;
+};
+
+export default OverworldObjectOptions;

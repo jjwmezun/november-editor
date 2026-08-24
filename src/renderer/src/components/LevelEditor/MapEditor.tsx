@@ -1,4 +1,4 @@
-import { ReactElement, SyntheticBaseEvent, useEffect, useRef, useState } from 'react';
+import { MouseEvent, ReactElement, SyntheticEvent, useEffect, useRef, useState } from 'react';
 import {
 	generateDataBytes,
 	layerTypeNames,
@@ -7,8 +7,10 @@ import { getTypeFactory } from '../../../../common/objects';
 import { getMousePosition } from '../../../../common/utils';
 import {
 	LayerType,
+	LvMap,
 	MapEditorProps,
-	MapObject,
+	MapObjectArgs,
+	MapRenderer,
 } from '../../../../common/types';
 import { createMapRenderer } from '../../../../common/render-level';
 
@@ -18,12 +20,12 @@ import { MapOptions } from './MapOptions';
 import { ObjectOptions } from './ObjectOptions';
 
 const MapEditor = ( props: MapEditorProps ): ReactElement => {
-	const canvasRef = useRef();
-	const [ addLayerOption, setAddLayerOption ] = useState( `block` );
-	const [ renderer, setRenderer ] = useState( null );
-	const [ selected, setSelected ] = useState( { x: null, y: null } );
-	const [ selectedLayer, setSelectedLayer ] = useState( null );
-	const [ selectedObject, setSelectedObject ] = useState( null );
+	const canvasRef = useRef<HTMLCanvasElement | null>( null );
+	const [ addLayerOption, setAddLayerOption ] = useState<LayerType>( LayerType.block );
+	const [ renderer, setRenderer ] = useState<MapRenderer | null>( null );
+	const [ selected, setSelected ] = useState<{ x: number | null, y: number | null }>( { x: null, y: null } );
+	const [ selectedLayer, setSelectedLayer ] = useState<number | null>( null );
+	const [ selectedObject, setSelectedObject ] = useState<number | null>( null );
 	const [ selectedType, setSelectedType ] = useState( 0 );
 	const [ windowScrollX, setWindowScrollX ] = useState( 0 );
 
@@ -31,7 +33,7 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 
 	const { height, layers, palette, width } = selectedMap !== null
 		? selectedMap.getProps()
-		: { height: 0, layers: [], width: 0 };
+		: { height: 0, layers: [], palette: 0, width: 0 };
 
 	const objects = selectedLayer === null || layers.length < selectedLayer
 		? []
@@ -48,50 +50,63 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		setSelectedLayer( layers.length );
 		setSelectedObject( null );
 		updateMap( selectedMap.addLayer( addLayerOption ) );
+		if ( ! renderer ) {
+			return;
+		}
 		renderer.addLayer( addLayerOption, palette );
 	};
 
-	const addObject = o => {
-		if ( selectedMap === null ) {
+	const addObject = ( o: MapObjectArgs ) => {
+		if ( selectedMap === null || selectedLayer === null ) {
 			return;
 		}
 		updateMap( selectedMap.updateLayer( selectedLayer ).addObject( o ) );
+		if ( ! renderer ) {
+			return;
+		}
 		renderer.updateLayerObjects( selectedLayer, objects );
 	};
 
-	const changeAddLayerOption = ( e: SyntheticBaseEvent ) => {
-		const target: HTMLSelectElement = e.target;
+	const changeAddLayerOption = ( e: SyntheticEvent ) => {
+		const target: HTMLSelectElement = e.target as HTMLSelectElement;
 		const value = target.value;
 		setAddLayerOption( value as LayerType );
 		setSelectedType( 0 );
 	};
 
-	const generateLayerSelector = i => () => {
+	const generateLayerSelector = ( i: number ) => () => {
 		setSelectedLayer( i );
-		renderer.setSelectedLayer( i );
 		setSelectedObject( null );
+		if ( ! renderer ) {
+			return;
+		}
+		renderer.setSelectedLayer( i );
 	};
 
 	const moveLayerDown = () => {
-		if ( selectedMap === null ) {
+		if ( selectedMap === null || selectedLayer === null ) {
 			return;
 		}
 		updateMap( selectedMap.switchLayers( selectedLayer, selectedLayer + 1 ) );
-		renderer.switchLayers( selectedLayer, selectedLayer + 1 );
+		if ( renderer ) {
+			renderer.switchLayers( selectedLayer, selectedLayer + 1 );
+		}
 		setSelectedLayer( selectedLayer + 1 );
 	};
 
 	const moveLayerUp = () => {
-		if ( selectedMap === null ) {
+		if ( selectedMap === null || selectedLayer === null ) {
 			return;
 		}
 		updateMap( selectedMap.switchLayers( selectedLayer, selectedLayer - 1 ) );
-		renderer.switchLayers( selectedLayer, selectedLayer - 1 );
+		if ( renderer ) {
+			renderer.switchLayers( selectedLayer, selectedLayer - 1 );
+		}
 		setSelectedLayer( selectedLayer - 1 );
 	};
 
 	// Select object on left click.
-	const onClick = e => {
+	const onClick = ( e: MouseEvent ) => {
 		const { x, y } = getMousePosition( e );
 
 		const gridX = Math.floor( x / 16 );
@@ -112,12 +127,14 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 				break;
 			}
 		}
-		renderer.setSelectedObject( newSelectedObject, objects, layers[ selectedLayer ].type );
-		setSelectedObject( newSelectedObject, objects );
+		if ( renderer && selectedLayer !== null && layers.length > selectedLayer ) {
+			renderer.setSelectedObject( newSelectedObject, objects, layers[ selectedLayer ].type );
+		}
+		setSelectedObject( newSelectedObject );
 	};
 
 	// Update cursor visuals on mouse move.
-	const onMouseMove = e => {
+	const onMouseMove = ( e: MouseEvent ) => {
 		const { x, y } = getMousePosition( e );
 
 		const gridX = Math.floor( x / 16 );
@@ -143,7 +160,7 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 	};
 
 	// Create object on right click.
-	const onRightClick = e => {
+	const onRightClick = ( e: MouseEvent ) => {
 		if ( selectedLayer === null
 			|| layers.length < selectedLayer
 			|| selectedType === null
@@ -161,11 +178,12 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		const gridX = Math.floor( x / 16 );
 		const gridY = Math.floor( y / 16 );
 
-		addObject( { ...typesFactory[ selectedType ].create( gridX, gridY ), type: selectedType } );
+		addObject( { ...typesFactory[ selectedType ].create( 0, gridX, gridY ), type: selectedType } );
 	};
 
-	const onScrollWindow = e => {
-		setWindowScrollX( e.target.scrollLeft );
+	const onScrollWindow = ( e: SyntheticEvent ) => {
+		const target: HTMLDivElement = e.target as HTMLDivElement;
+		setWindowScrollX( target.scrollLeft );
 	};
 
 	const removeLayer = () => {
@@ -175,7 +193,9 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		const layersCount = layers.length - 1;
 		updateMap( selectedMap.removeLayer( selectedLayer ) );
 		setSelectedObject( null );
-		renderer.removeLayer( selectedLayer );
+		if ( renderer ) {
+			renderer.removeLayer( selectedLayer );
+		}
 		setSelectedLayer( selectedLayer === 0
 			? ( selectedLayer === layersCount
 				? null
@@ -189,6 +209,9 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		}
 		updateMap( selectedMap.updateLayer( selectedLayer ).removeObject( selectedObject ) );
 		setSelectedObject( null );
+		if ( ! renderer ) {
+			return;
+		}
 		renderer.updateLayerObjects( selectedLayer, objects );
 	};
 
@@ -205,10 +228,10 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 			return;
 		}
 
-		renderer.render( ctx );
+		renderer.render();
 	};
 
-	const updateMap = newMap => {
+	const updateMap = ( newMap: LvMap ) => {
 		setSelectedMap( newMap );
 		setMaps( maps.map( ( map, i ) => ( i === selectedMapIndex
 			? generateDataBytes( newMap )
@@ -216,36 +239,43 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		window.electronAPI.enableSave();
 	};
 
-	const updateObject = ( index: number, o: MapObject ) => {
+	const updateObject = ( index: number, o: MapObjectArgs ) => {
 		if ( selectedMap === null || selectedLayer === null ) {
 			return;
 		}
 		updateMap( selectedMap.updateLayer( selectedLayer ).updateObject( index, o ) );
+		if ( ! renderer ) {
+			return;
+		}
 		renderer.setSelectedObject( index, objects, layers[ selectedLayer ].type );
 		renderer.updateLayerObjects( selectedLayer, objects );
 	};
 
 	// On canvas load, generate renderer.
 	useEffect( () => {
-		if ( canvasRef.current ) {
-			const ctx: WebGL2RenderingContext | null = canvasRef.current.getContext( `webgl2` );
-			if ( ! ctx ) {
-				throw new Error( `Could not get webgl context for canvas` );
-			}
-
-			setRenderer( createMapRenderer(
-				ctx,
-				palettes,
-				graphics,
-				layers,
-				palette ?? 0,
-			) );
+		if ( ! canvasRef.current ) {
+			return;
 		}
+		const ctx: WebGL2RenderingContext | null = canvasRef.current.getContext( `webgl2` );
+		if ( ! ctx ) {
+			throw new Error( `Could not get webgl context for canvas` );
+		}
+
+		setRenderer( createMapRenderer(
+			ctx,
+			palettes,
+			graphics,
+			layers,
+			palette ?? 0,
+		) );
 	}, [ canvasRef.current ] );
 
 	useEffect( () => {
 		setSelectedLayer( null );
-		if ( renderer !== null && selectedMapIndex !== null && selectedMapIndex < maps.length ) {
+		if ( renderer !== null
+			&& selectedMapIndex !== null
+			&& selectedMapIndex < maps.length
+			&& selectedMap !== null ) {
 			renderer.changeMap( selectedMap );
 		}
 	}, [ renderer, selectedMapIndex ] );
@@ -264,7 +294,7 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		}
 
 		if ( selectedObject === null || objects.length === 0 ) {
-			renderer.setSelectedObject( null, [] );
+			renderer.setSelectedObject( null, [], LayerType.block );
 		}
 	}, [ renderer, selectedObject ] );
 
@@ -372,23 +402,23 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 					</button>
 				</div>
 			</div>
-			{ selectedLayer !== null && layers.length < selectedLayer && <LayerOptions
+			{ selectedLayer !== null && selectedLayer < layers.length && <LayerOptions
 				selectedLayer={ layers[ selectedLayer ] }
 				updateLayer={ selectedMap.updateLayer( selectedLayer ) }
 				updateMap={ updateMap }
 			/> }
-			{ selectedLayer !== null && layers.length < selectedLayer && <div>
+			{ selectedLayer !== null && selectedLayer < layers.length && <div>
 				<label>
 					<span>Type:</span>
-					<select value={ selectedType } onChange={ e => setSelectedType( e.target.value ) }>
+					<select value={ selectedType } onChange={ e => setSelectedType( Number( e.target.value ) ) }>
 						{ typesFactory.map( ( type, i ) => <option key={ i } value={ i }>{ type.name }</option> ) }
 					</select>
 				</label>
 			</div> }
 			{ selectedLayer !== null
-			&& layers.length < selectedLayer
+			&& layers.length > selectedLayer
 			&& selectedObject !== null
-			&& objects.length < selectedObject
+			&& objects.length > selectedObject
 			&& <ObjectOptions
 				objects={ objects }
 				removeObject={ removeObject }

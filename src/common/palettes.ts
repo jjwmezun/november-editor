@@ -1,5 +1,5 @@
 import { encodeText, decodeText } from './text';
-import { ByteBlock, Color, Palette, PaletteData, PaletteList } from './types';
+import { ByteBlock, Color, DataType, Palette, PaletteData, PaletteList } from './types';
 import { getBitsFromByte } from './bytes';
 
 // Round true color value to nearest high color value.
@@ -39,7 +39,7 @@ const createColor = ( r: number, g: number, b: number, a: number ): Color => Obj
 		// Convert list o’ 16 bits into single Uint16 #.
 		const value = parseInt( bits.join( `` ), 2 );
 		return {
-			type: `Uint16`,
+			type: DataType.Uint16,
 			value,
 		};
 	},
@@ -105,7 +105,10 @@ const createPaletteList = ( list: readonly Palette[] ): PaletteList => {
 			const width = 8;
 			const height = list.length;
 			const texture = ctx.createTexture();
+
+			// @ts-expect-error – We know WebGLRenderingContext has `TEXTURE#`.
 			ctx.activeTexture( ctx[ `TEXTURE${ index }` ] );
+
 			ctx.bindTexture( ctx.TEXTURE_2D, texture );
 			ctx.texImage2D(
 				ctx.TEXTURE_2D,
@@ -126,7 +129,7 @@ const createPaletteList = ( list: readonly Palette[] ): PaletteList => {
 		},
 		encode: (): ByteBlock[] => [
 			{
-				type: `Uint8`,
+				type: DataType.Uint8,
 				value: list.length,
 			},
 		].concat( list.map( palette => palette.encode() ).flat( 1 ) ),

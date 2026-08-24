@@ -1,0 +1,305 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import React, { MouseEvent, ReactElement, useEffect, useRef, useState } from "react";
+
+import {
+	Coordinates,
+	MapObject,
+	OverworldEventFrame,
+	OverworldEventUpdateAdd,
+	OverworldEventUpdateChange,
+	OverworldEventUpdateRemove,
+	OverworldGridCanvasProps,
+	OverworldLayer,
+	OverworldMap,
+	OverworldRenderer,
+} from '../../../../common/types';
+import { getMousePosition } from '../../../../common/utils';
+import generateRenderer from '../../../../common/render-ow';
+import { getOverworldTypeGenerator } from '../../../../common/objects';
+
+const zoom = 2;
+
+function getLayerObjects(
+	layer: OverworldLayer,
+	map: OverworldMap,
+	selectedEventFrames: readonly OverworldEventFrame[],
+	selectedFrame: number,
+): readonly MapObject[] {
+	const objects = [ ...layer.getObjectsList() ];
+
+	// Update objects shown & editable based on frames going up to current frame.
+	if ( selectedEventFrames.length !== 0 ) {
+		for ( let i = 0; i <= selectedFrame; i++ ) {
+			const updates = selectedEventFrames[ i ] ? selectedEventFrames[ i ].getUpdates() : [];
+			updates.forEach( update => {
+				if ( update.getMap() !== map.getId() || update.getLayer() !== layer.getId() ) {
+					return;
+				}
+
+				switch ( update.getType() ) {
+					case `add`: {
+						const updateValue = update.getUpdate() as OverworldEventUpdateAdd;
+						objects.push( updateValue.getObject() );
+					}
+					break;
+					case `change`: {
+						const updateValue = update.getUpdate() as OverworldEventUpdateChange;
+						objects.forEach( ( o, i ) => {
+							if ( o.id() === updateValue.getObjectId() ) {
+								objects[ i ] = objects[ i ].update( updateValue.getChanges() );
+							}
+						} );
+					}
+					break;
+					case `remove`: {
+						// eslint-disable-next-line max-len
+						const updateValue: OverworldEventUpdateRemove = update.getUpdate() as OverworldEventUpdateRemove;
+						objects.forEach( ( o, i ) => {
+							if ( o.id() === updateValue.getObjectId() ) {
+								objects[ i ] = objects[ i ].update( { hidden: true } );
+							}
+						} );
+					}
+					break;
+				}
+			} );
+		}
+	}
+
+	return objects;
+}
+
+function getObjectsForAllLayers(
+	layers: readonly OverworldLayer[],
+	map: OverworldMap,
+	selectedEventFrames: readonly OverworldEventFrame[],
+	selectedFrame: number,
+): Array<readonly MapObject[]> {
+	const layerObjects : Array<readonly MapObject[]> = [];
+
+	layers.forEach( layer => {
+		layerObjects.push( getLayerObjects( layer, map, selectedEventFrames, selectedFrame ) );
+	} );
+
+	return layerObjects;
+}
+
+function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
+	const canvasRef = useRef<HTMLCanvasElement>( null );
+	const [ hover, setHover ] = useState<Coordinates>( { x: -1, y: -1 } );
+	const [ renderer, setRenderer ] = useState<OverworldRenderer | null>( null );
+	const [ showGrid, setShowGrid ] = useState<boolean>( true );
+	const {
+		graphics,
+		map,
+		palettes,
+		selectedEventFrames,
+		selectedFrame,
+		selectedLayer,
+		selectedObject,
+		selectedObjectType,
+		setOverworld,
+		setSelectedObject,
+		updateLayerLatestId,
+		updateSelectedEventFrame,
+	} = props;
+
+	const layers = map.getLayersList();
+	const layer = layers[ selectedLayer ];
+	const width = map.getWidthBlocks();
+	const height = map.getHeightBlocks();
+	const typeGenerator = getOverworldTypeGenerator( layer.getType() );
+	const objects = getLayerObjects( layer, map, selectedEventFrames, selectedFrame );
+
+	// Select object on left click.
+	const onClick = ( e: MouseEvent ) => {
+		const { x, y } = getMousePosition( e );
+
+		const gridX = Math.floor( x / ( 16 * zoom ) );
+		const gridY = Math.floor( y / ( 16 * zoom ) );
+
+		let newSelectedObject: number | null = null;
+
+		// Go backwards so that the topmost object is selected first.
+		for ( let i = objects.length - 1; i >= 0; i-- ) {
+			const object = objects[ i ];
+
+			// Ignore hidden objects.
+			if ( object.hidden() ) {
+				continue;
+			}
+
+			if (
+				gridX >= object.xBlocks()
+				&& gridX < object.rightBlocks()
+				&& gridY >= object.yBlocks()
+				&& gridY < object.bottomBlocks()
+			) {
+				newSelectedObject = objects[ i ].id();
+				break;
+			}
+		}
+		if ( ! renderer ) {
+			return;
+		}
+		renderer.setSelectedObject( newSelectedObject, objects );
+		setSelectedObject( newSelectedObject );
+	};
+
+	// Update cursor visuals on mouse move.
+	const onMouseMove = ( e: MouseEvent ) => {
+		const { x, y } = getMousePosition( e );
+
+		const gridX = Math.floor( x / ( 16 * zoom ) );
+		const gridY = Math.floor( y / ( 16 * zoom ) );
+
+		if ( hover.x === gridX && hover.y === gridY ) {
+			return;
+		}
+
+		setHover( { x: gridX, y: gridY } );
+		if ( ! renderer ) {
+			return;
+		}
+		renderer.updateHoverTile( gridX, gridY );
+	};
+
+	// Create object on right click.
+	const onRightClick = ( e: MouseEvent ) => {
+		e.preventDefault();
+
+		const { x, y } = getMousePosition( e );
+
+		const gridX = Math.floor( x / ( 16 * zoom ) );
+		const gridY = Math.floor( y / ( 16 * zoom ) );
+
+		const object = typeGenerator( layer.getLatestId(), selectedObjectType, gridX, gridY );
+
+		// If not in an event frame, add the object globally.
+		// Otherwise, add an event addition instead.
+		if ( selectedEventFrames.length === 0 ) {
+			setOverworld( layer.addObject( object ) );
+		} else {
+			const updatedFrame = selectedEventFrames[ selectedFrame ].addEventAdd(
+				map.getId(),
+				layer.getId(),
+				object,
+			);
+			updateSelectedEventFrame( updatedFrame );
+
+			// Because we’re not updating the layer objects,
+			// we need to manually update the layer’s latest ID
+			// so event add objects don’t share IDs.
+			updateLayerLatestId();
+		}
+		setSelectedObject( null );
+	};
+
+	useEffect( () => {
+		if ( canvasRef.current ) {
+			const newRenderer = generateRenderer( canvasRef.current, map, graphics, palettes, 2, selectedLayer );
+			setRenderer( newRenderer );
+			newRenderer.render();
+		}
+	}, [ canvasRef ] );
+
+	useEffect( () => {
+		if ( ! renderer ) {
+			return;
+		}
+		renderer.updateSelectedObject(
+			selectedObject,
+			objects,
+		);
+		renderer.render();
+	}, [ objects, selectedObject, renderer ] );
+
+	useEffect( () => {
+		if ( ! renderer ) {
+			return;
+		}
+		renderer.updateLayers(
+			map,
+			getObjectsForAllLayers( layers, map, selectedEventFrames, selectedFrame ),
+			selectedLayer,
+		);
+		renderer.render();
+	}, [ layers, selectedFrame, selectedEventFrames ] );
+
+	useEffect( () => {
+		if ( ! renderer ) {
+			return;
+		}
+		renderer.updateSelectedLayer( selectedLayer );
+		renderer.updateLayerObjects( selectedLayer, objects, selectedObject );
+		renderer.render();
+	}, [ selectedLayer ] );
+
+	useEffect( () => {
+		if ( ! renderer ) {
+			return;
+		}
+		renderer.updateShowGrid( showGrid );
+		renderer.render();
+	}, [ showGrid, renderer ] );
+
+	useEffect( () => {
+		if ( ! renderer ) {
+			return;
+		}
+		renderer.updateResolution( width, height );
+		renderer.render();
+	}, [ height, renderer, width ] );
+
+	useEffect( () => {
+		if ( ! renderer ) {
+			return;
+		}
+
+		// Set up animation loop on 1st load.
+		let prevTicks: number | null = null;
+		let frame: number = 0;
+		const tick = ( ticks: number ) => {
+			if ( prevTicks === null ) {
+				prevTicks = ticks;
+			} else {
+				const delta = ticks - prevTicks;
+				if ( delta > 1000 / 8 ) {
+					renderer.updateAnimationFrame( ++frame );
+					renderer.render();
+					prevTicks = ticks;
+				}
+			}
+			window.requestAnimationFrame( tick );
+		};
+		const handle = window.requestAnimationFrame( tick );
+
+		return () => window.cancelAnimationFrame( handle );
+	}, [ renderer ] );
+
+	return <div>
+		<h2>O’erworld Canvas</h2>
+		<div>
+			<label>
+				<input
+					type="checkbox"
+					checked={ showGrid }
+					onChange={ () => setShowGrid( !showGrid ) }
+				/>
+				Show grid
+			</label>
+		</div>
+		<div className="overworld__canvas">
+			<canvas
+				ref={ canvasRef }
+				height={ map.getHeightPixels() * zoom }
+				width={ map.getWidthPixels() * zoom }
+				onClick={ onClick }
+				onContextMenu={ onRightClick }
+				onMouseMove={ onMouseMove }
+			/>
+		</div>
+	</div>;
+}
+
+export default OverworldGridCanvas;
