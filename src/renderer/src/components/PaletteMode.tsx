@@ -105,15 +105,8 @@ const PaletteMode = ( props: PaletteModeProps ): ReactElement => {
 							palettes.getLength() === 1
 								? null
 								: () => {
-									if ( selectedPalette === null ) {
-										return;
-									}
-									if ( selectedPalette === index ) {
-										setSelectedPalette( null );
-										setSelectedColor( null );
-									} else if ( selectedPalette > index ) {
-										setSelectedPalette( selectedPalette - 1 );
-									}
+									setSelectedPalette( null );
+									setSelectedColor( null );
 									setPalettes( palettes.removePalette( index ) );
 								}
 						}
