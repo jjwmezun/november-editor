@@ -23,6 +23,7 @@ interface OverworldObjectOptionsProps {
 	selectedObjectIndex: number;
 	setSelectedObject: ( object: number | null ) => void;
 	typesFactory: readonly MapObjectType[];
+	updateEventFrame: ( frame: OverworldEventFrame, i: number ) => void;
 	updateSelectedEventFrame: ( frame: OverworldEventFrame ) => void;
 	updateObject: ( index: number, o: MapObjectArgs ) => void;
 }
@@ -38,6 +39,7 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 		selectedMap,
 		setSelectedObject,
 		typesFactory,
+		updateEventFrame,
 		updateSelectedEventFrame,
 		updateObject,
 	} = props;
@@ -89,13 +91,76 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 		if ( selectedEventEntry === null ) {
 			removeObject();
 		} else if ( selectedEventFrameEntry !== null ) {
-			// If in an event, add remove event entry instead.
-			const updatedFrame = selectedEventFrameEntry.addEventRemove(
-				selectedMap.getId(),
-				selectedLayer.getId(),
-				selectedObject.id(),
-			);
-			updateSelectedEventFrame( updatedFrame );
+			let removeAdd = false;
+
+			const changedUpdates : Record<number, OverworldEventFrame> = {};
+
+			// Loop thru frames in events in this frame & later frames.
+			// Since we are removing this object, we want to remove
+			// anything involving it for this frame & later,
+			// since it makes no sense to update a removed object.
+			for ( let i = selectedFrame; i < eventFrames.length; i++ ) {
+				if ( !eventFrames[ i ] ) {
+					continue;
+				}
+
+				const update = eventFrames[ i ].getUpdateById(
+					selectedObject.id(),
+					selectedMap.getId(),
+					selectedLayer.getId(),
+				);
+
+				if ( update === null ) {
+					continue;
+				}
+
+				// Remove all 3 ( hence fallthru ),
+				// but we need to leave a flag if we are removing an add in this frame.
+				switch ( update.getType() ) {
+					case `add`:
+						if ( i === selectedFrame ) {
+							removeAdd = true;
+						}
+
+					// fallthru.
+					// eslint-disable-next-line no-fallthrough
+					case `change`:
+					case `remove`: {
+						const updatedFrame = eventFrames[ i ].removeUpdate(
+							selectedMap.getId(),
+							selectedLayer.getId(),
+							selectedObject.id(),
+						);
+						changedUpdates[ i ] = updatedFrame;
+					}
+					break;
+				}
+			}
+
+			// If there was not an add, we need to also add a remove.
+			// If we made changes to the current frame already, update those changes
+			// rather than o’erriding them.
+			//
+			// Otherwise, create new changes.
+			if ( ! removeAdd ) {
+				if ( selectedFrame in changedUpdates ) {
+					changedUpdates[ selectedFrame ] = changedUpdates[ selectedFrame ].addEventRemove(
+						selectedMap.getId(),
+						selectedLayer.getId(),
+						selectedObject.id(),
+					);
+				} else {
+					changedUpdates[ selectedFrame ] = selectedEventFrameEntry.addEventRemove(
+						selectedMap.getId(),
+						selectedLayer.getId(),
+						selectedObject.id(),
+					);
+				}
+			}
+
+			for ( const i in changedUpdates ) {
+				updateEventFrame( changedUpdates[ i ], Number( i ) );
+			}
 		}
 		setSelectedObject( null );
 	};

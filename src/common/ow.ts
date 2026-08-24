@@ -405,6 +405,14 @@ function createFrame( duration: number = 8, updates: readonly OverworldEventUpda
 			}
 			return null;
 		},
+		removeUpdate: ( mapId: number, layerId: number, objectId: number ) => {
+			const newUpdates = updates.filter( update => ! (
+				update.getObjectId() === objectId
+				&& update.getMap() === mapId
+				&& update.getLayer() === layerId
+			) );
+			return createFrame( duration, newUpdates );
+		},
 		toJSON: () => ( {
 			duration,
 			updates: updates.map( update => update.toJSON() ),

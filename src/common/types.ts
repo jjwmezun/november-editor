@@ -395,6 +395,7 @@ interface OverworldEventFrame {
 	getDuration: () => number,
 	getUpdates: () => readonly OverworldEventUpdate[],
 	getUpdateById: ( objectId: number, mapId: number, layerId: number ) => OverworldEventUpdate | null,
+	removeUpdate: ( mapId: number, layerId: number, objectId: number ) => OverworldEventFrame,
 	toJSON: () => object,
 	updateDuration: ( newDuration: number ) => OverworldEventFrame,
 	updateEvent: ( objectId: number, mapId: number, layerId: number, changes: object ) => OverworldEventFrame,

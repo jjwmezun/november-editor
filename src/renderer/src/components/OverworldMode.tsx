@@ -109,16 +109,20 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 		setOverworld( layer.updateObject( id, object ) );
 	};
 
-	const updateSelectedEventFrame = ( frame: OverworldEventFrame ): void => {
+	const updateEventFrame = ( frame: OverworldEventFrame, i: number ): void => {
 		setOverworld( ( overworld: Overworld ) => {
 			const eventsList = overworld.getEventsList();
 			const selectedEventEntry = selectedEvent > 0 ? eventsList.getEntry( selectedEvent - 1 ) : null;
 			if ( ! selectedEventEntry ) {
 				return overworld;
 			}
-			const updatedEvent = selectedEventEntry.updateFrame( selectedEventFrame, frame );
+			const updatedEvent = selectedEventEntry.updateFrame( i, frame );
 			return eventsList.updateEvent( selectedEvent - 1, updatedEvent );
 		} );
+	};
+
+	const updateSelectedEventFrame = ( frame: OverworldEventFrame ): void => {
+		updateEventFrame( frame, selectedEventFrame );
 	};
 
 	const updateLayerLatestId = (): void => {
@@ -190,6 +194,7 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 			selectedObjectIndex={ selectedObject }
 			setSelectedObject={ setSelectedObject }
 			typesFactory={ typesFactory }
+			updateEventFrame={ updateEventFrame }
 			updateSelectedEventFrame={ updateSelectedEventFrame }
 			updateObject={ updateObject }
 		/> }
