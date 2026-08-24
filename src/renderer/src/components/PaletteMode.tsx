@@ -1,7 +1,8 @@
 import { ReactElement, SyntheticEvent, useState } from 'react';
-import { Color, Palette, PaletteModeProps } from '../../../common/types';
+import { Color, Palette, PaletteModeProps, PaletteSystem } from '../../../common/types';
 import { convertHexColorToObject } from '../../../common/palettes';
 import { testCharacters } from '../../../common/text';
+import { toTitleCase } from '../../../common/utils';
 
 interface PaletteTableRowProps {
 	key: number,
@@ -76,70 +77,86 @@ const PaletteTableRow = ( props: PaletteTableRowProps ): ReactElement => {
 };
 
 const PaletteMode = ( props: PaletteModeProps ): ReactElement => {
-	const { exitMode, palettes, setPalettes } = props;
+	const { exitMode, palettes, updatePalette } = props;
+	const [ selectedPaletteType, setSelectedPaletteType ] = useState<keyof PaletteSystem | null>( null );
 	const [ selectedPalette, setSelectedPalette ] = useState<number | null>( null );
 	const [ selectedColor, setSelectedColor ] = useState<number | null>( null );
 
-	const updateSelectedColor = ( event: SyntheticEvent<HTMLInputElement> ): void => {
+	// eslint-disable-next-line max-len
+	const generateSelectedColorUpdater = ( name: keyof PaletteSystem ) => ( event: SyntheticEvent<HTMLInputElement> ): void => {
 		if ( selectedPalette === null || selectedColor === null ) {
 			return;
 		}
 
 		const target = event.target as HTMLInputElement;
 		const newColor = target.value;
-		setPalettes( palettes.updatePalette(
-			selectedPalette,
-			palettes.nth( selectedPalette ).updateColor( selectedColor, convertHexColorToObject( newColor ) ),
-		) );
+		updatePalette(
+			name,
+			palettes[ name ].updatePalette(
+				selectedPalette,
+				palettes[ name ]
+					.nth( selectedPalette )
+					.updateColor( selectedColor, convertHexColorToObject( newColor ) ),
+			),
+		);
 	};
 
 	return <div>
 		<h2>Palettes</h2>
-		<div>
+		{ Object.entries( palettes ).map( ( [ name, paletteList ] ) => <div key={ name }>
+			<h3>{ toTitleCase( name ) }</h3>
 			<table>
 				<tbody>
-					{ palettes.map( ( palette, index ) => <PaletteTableRow
+					{ paletteList.map( ( palette: Palette, index: number ) => <PaletteTableRow
 						key={ index }
 						palette={ palette }
 						removePalette={
-							palettes.getLength() === 1
+							paletteList.getLength() === 1
 								? null
 								: () => {
 									setSelectedPalette( null );
 									setSelectedColor( null );
-									setPalettes( palettes.removePalette( index ) );
+									updatePalette( name, paletteList.removePalette( index ) );
 								}
 						}
-						selectedColor={ index === selectedPalette ? selectedColor : null }
+						selectedColor={
+							name === selectedPaletteType && index === selectedPalette ? selectedColor : null
+						}
 						selectColor={ ( color:number ) => {
+							setSelectedPaletteType( name as keyof PaletteSystem );
 							setSelectedPalette( index );
 							setSelectedColor( color );
 						} }
-						setPalette={ palette => setPalettes( palettes.updatePalette( index, palette ) ) }
+						setPalette={ palette => updatePalette( name, paletteList.updatePalette( index, palette ) ) }
 					/> ) }
 				</tbody>
 			</table>
 			<div>
 				<button
-					onClick={ () => setPalettes( palettes.addBlankPalette() ) }
+					onClick={ () => updatePalette( name, paletteList.addBlankPalette() ) }
 				>
 					Add Palette
 				</button>
 			</div>
-			{ selectedPalette !== null && selectedColor !== null && <div>
-				<div
-					className="palettes__selected-color-display"
-					style={ { backgroundColor: palettes.nth( selectedPalette ).nthColor( selectedColor ).rgba() } }
+		</div> ) }
+		{ selectedPaletteType !== null && selectedPalette !== null && selectedColor !== null && <div>
+			<div
+				className="palettes__selected-color-display"
+				style={
+					{
+						backgroundColor:
+							palettes[ selectedPaletteType ].nth( selectedPalette ).nthColor( selectedColor ).rgba(),
+					}
+				}
+			/>
+			<div>
+				<input
+					type="color"
+					onChange={ generateSelectedColorUpdater( selectedPaletteType ) }
+					value={ palettes[ selectedPaletteType ].nth( selectedPalette ).nthColor( selectedColor ).hex() }
 				/>
-				<div>
-					<input
-						type="color"
-						onChange={ updateSelectedColor }
-						value={ palettes.nth( selectedPalette ).nthColor( selectedColor ).hex() }
-					/>
-				</div>
-			</div> }
-		</div>
+			</div>
+		</div> }
 		<div>
 			<button onClick={ exitMode }>Exit</button>
 		</div>

@@ -4,7 +4,7 @@ import {
 	Coordinates,
 	GraphicsEntry,
 	Mat3,
-	PaletteList,
+	PaletteSystem,
 	ShaderType,
 	TileGridProps,
 	TileGridRenderer,
@@ -15,6 +15,7 @@ import {
 	createRenderTextureObject,
 	createShaderProgram,
 } from '../../../common/render';
+import { createPaletteSystemTexture, getTotalPaletteCount } from '../../../common/palettes';
 
 const zoom: number = 4;
 const tileSize: number = 8 * zoom;
@@ -40,7 +41,7 @@ const createTileGridRenderer = (
 	ctx: WebGL2RenderingContext,
 	width: number,
 	height: number,
-	palettes: PaletteList,
+	palettes: PaletteSystem,
 	graphics: GraphicsEntry,
 ): TileGridRenderer => {
 	ctx.enable( ctx.BLEND );
@@ -187,7 +188,7 @@ const createTileGridRenderer = (
 						uniform float u_palette_index;
 	
 						void main() {
-							float u_palette_count = ${ palettes.getLength() }.0;
+							float u_palette_count = ${ getTotalPaletteCount( palettes ) }.0;
 							frag_color = texture(
 								u_palette_texture,
 								vec2(
@@ -204,7 +205,7 @@ const createTileGridRenderer = (
 		const renderObject = createRenderTextureObject( ctx, program );
 
 		// Add textures.
-		const paletteTexture = palettes.createTexture( ctx, 0 );
+		const paletteTexture = createPaletteSystemTexture( ctx, 0, palettes );
 		const tilesetTexture = graphics.createTexture( ctx, 1 );
 		renderObject.addTextureUniform( `u_palette_texture`, 0, paletteTexture );
 		renderObject.addTextureUniform( `u_tileset_texture`, 1, tilesetTexture );

@@ -4,7 +4,7 @@ import { tileSize } from '../../../common/constants';
 import {
 	Coordinates,
 	GraphicsEntry,
-	PaletteList,
+	PaletteSystem,
 	ShaderType,
 	TileEditorProps,
 	TileRenderer,
@@ -15,6 +15,7 @@ import {
 	createRenderTextureObject,
 	createShaderProgram,
 } from '../../../common/render';
+import { createPaletteSystemTexture, getTotalPaletteCount } from '../../../common/palettes';
 
 const pixelZoom: number = 16;
 const width: number = tileSize * pixelZoom;
@@ -204,7 +205,7 @@ const generateBrushLayout = (
 
 const createRenderer = (
 	ctx: WebGL2RenderingContext,
-	palettes: PaletteList,
+	palettes: PaletteSystem,
 	graphics: GraphicsEntry,
 ): TileRenderer => {
 	ctx.enable( ctx.BLEND );
@@ -251,7 +252,7 @@ const createRenderer = (
 						uniform float u_palette_index;
 
 						void main() {
-							float u_palette_count = ${ palettes.getLength() }.0;
+							float u_palette_count = ${ getTotalPaletteCount( palettes ) }.0;
 							frag_color = texture(
 								u_palette_texture,
 								vec2(
@@ -268,7 +269,7 @@ const createRenderer = (
 		const renderObject = createRenderTextureObject( ctx, program );
 
 		// Setup textures.
-		const paletteTexture = palettes.createTexture( ctx, 0 );
+		const paletteTexture = createPaletteSystemTexture( ctx, 0, palettes );
 		const tilesetTexture = graphics.createTexture( ctx, 1 );
 		renderObject.addTextureUniform( `u_palette_texture`, 0, paletteTexture );
 		renderObject.addTextureUniform( `u_tileset_texture`, 1, tilesetTexture );
@@ -351,7 +352,7 @@ const createRenderer = (
 						uniform float u_selected_color;
 
 						void main() {
-							float u_palette_count = ${ palettes.getLength() }.0;
+							float u_palette_count = ${ getTotalPaletteCount( palettes ) }.0;
 							frag_color = vec4(
 								texture(
 									u_palette_texture,
@@ -401,7 +402,7 @@ const createRenderer = (
 		} );
 
 		// Add palette.
-		const paletteTexture = palettes.createTexture( ctx, 0 );
+		const paletteTexture = createPaletteSystemTexture( ctx, 0, palettes );
 		renderObject.addTextureUniform( `u_palette_texture`, 0, paletteTexture );
 		program.setUniform1f( `u_palette_index`, 0 );
 		program.setUniform1f( `u_selected_color`, 0 );
@@ -487,7 +488,7 @@ const createRenderer = (
 						uniform sampler2D u_transparency_texture;
 
 						void main() {
-							float u_palette_count = ${ palettes.getLength() }.0;
+							float u_palette_count = ${ getTotalPaletteCount( palettes ) }.0;
 							frag_color = texture(
 								u_transparency_texture,
 								( v_texture_coords + vec2( 1.0, 1.0 ) ) / 2.0

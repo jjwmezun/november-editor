@@ -44,10 +44,11 @@ import {
 	Overworld,
 	Palette,
 	PaletteList,
+	PaletteSystem,
 } from '../../../common/types';
 import { createGoal } from '../../../common/goals';
 import {
-	createBlankPaletteList,
+	createBlankPaletteSystem,
 	createColor,
 	createPalette,
 	createPaletteList,
@@ -57,11 +58,11 @@ import { createBlankOverworld, createOverworldFromJSON, loadOverworldFromData } 
 
 const generateExportData = async (
 	levels: Level[],
-	palettes: PaletteList,
+	palettes: PaletteSystem,
 	graphics: Graphics,
 	overworld: Overworld,
 ): Promise<DataView> => {
-	let saveData: ByteBlock[] = palettes.encode();
+	let saveData: ByteBlock[] = palettes.main.encode().concat( palettes.overworld.encode() );
 
 	const blockGFX = Array.from( await compressPixels( graphics.blocks.getPixels(), `blocks` ) );
 	const spriteGFX = Array.from( await compressPixels( graphics.sprites.getPixels(), `sprites` ) );
@@ -104,13 +105,22 @@ const generateExportData = async (
 const Editor = (): ReactElement => {
 	const [ graphics, setGraphics ] = useState<Graphics | null>( null );
 	const [ levels, setLevels ] = useState<Level[] | null>( null );
-	const [ palettes, setPalettes ] = useState<PaletteList | null>( null );
+	const [ palettes, setPalettes ] = useState<PaletteSystem | null>( null );
 	const [ overworld, setOverworld ] = useState<Overworld | null>( null );
 	const [ mode, setMode ] = useState( modeKeys.select );
 
 	// @ts-expect-error – TypeScript is too dumb to realize that a function that only returns an Overworld
 	// should be compatible with a function that returns an Overworld or null.
 	const updateOverworld = ( o: Overworld | ( ( o: Overworld ) => Overworld ) ) => setOverworld( o );
+
+	const updatePalette = ( type: string, palettes: PaletteList ) => {
+		setPalettes( ( prev: PaletteSystem | null ) => {
+			if ( prev === null ) {
+				throw new Error( `updatePalette: Palettes are null` );
+			}
+			return { ...prev, [ type ]: palettes };
+		} );
+	};
 
 	const onImport = ( _event: SyntheticEvent, data: Uint8Array ) => {
 		const paletteData = decodePaletteData( data );
@@ -160,52 +170,66 @@ const Editor = (): ReactElement => {
 		}
 
 		// Import palettes.
-		if ( ! Array.isArray( data[ `palettes` ] ) ) {
+		if (
+			! data[ `palettes` ]
+			|| typeof data[ `palettes` ] !== `object`
+			|| ! ( `main` in data.palettes )
+			|| ! ( `overworld` in data.palettes )
+		) {
 			throw new Error( `Invalid palettes data` );
 		}
 
 		// Load palettes.
-		const palettes: Palette[] = data[ `palettes` ].map(
-			( palette: Record<string, unknown>, i: number ): Palette => {
-				if ( ! palette || typeof palette !== `object` ) {
-					throw new Error( `Invalid palette data for palette #${ i }` );
-				}
-				if ( typeof palette[ `name` ] !== `string` ) {
-					throw new Error( `Invalid palette name for palette #${ i }` );
-				}
-				if ( ! Array.isArray( palette[ `colors` ] ) ) {
-					throw new Error( `Invalid palette colors for palette #${ i }` );
-				}
-				if ( palette[ `colors` ].length !== 8 ) {
-					throw new Error( `Invalid palette color count for palette #${ i }` );
+		const palettes: PaletteSystem = createBlankPaletteSystem();
+		Object.entries( data[ `palettes` ] ).forEach(
+			( [ name, paletteList ] : [ string, unknown ] ) => {
+				if ( ! paletteList || ! Array.isArray( paletteList ) ) {
+					throw new Error( `Invalid palette list for ${ name }` );
 				}
 
-				const colors: Color[] = palette[ `colors` ].map(
-					( color: Record<string, unknown>, j: number ): Color => {
-						if ( ! color || typeof color !== `object` ) {
-							throw new Error( `Invalid color data for color #${ j } o’ palette #${ i }` );
+				palettes[ name as keyof PaletteSystem ] = createPaletteList( paletteList.map(
+					( palette: Record<string, unknown>, i: number ): Palette => {
+						if ( ! palette || typeof palette !== `object` ) {
+							throw new Error( `Invalid palette data for palette #${ i }` );
 						}
-						if ( typeof color[ `r` ] !== `number` ) {
-							throw new Error( `Invalid color red for color #${ j } o’ palette #${ i }` );
+						if ( typeof palette[ `name` ] !== `string` ) {
+							throw new Error( `Invalid palette name for palette #${ i }` );
 						}
-						if ( typeof color[ `g` ] !== `number` ) {
-							throw new Error( `Invalid color green for color #${ j } o’ palette #${ i }` );
+						if ( ! Array.isArray( palette[ `colors` ] ) ) {
+							throw new Error( `Invalid palette colors for palette #${ i }` );
 						}
-						if ( typeof color[ `b` ] !== `number` ) {
-							throw new Error( `Invalid color blue for color #${ j } o’ palette #${ i }` );
+						if ( palette[ `colors` ].length !== 8 ) {
+							throw new Error( `Invalid palette color count for palette #${ i }` );
 						}
-						if ( typeof color[ `a` ] !== `number` ) {
-							throw new Error( `Invalid color alpha for color #${ j } o’ palette #${ i }` );
-						}
-						return createColor( color[ `r` ], color[ `g` ], color[ `b` ], color[ `a` ] );
+
+						const colors: Color[] = palette[ `colors` ].map(
+							( color: Record<string, unknown>, j: number ): Color => {
+								if ( ! color || typeof color !== `object` ) {
+									throw new Error( `Invalid color data for color #${ j } o’ palette #${ i }` );
+								}
+								if ( typeof color[ `r` ] !== `number` ) {
+									throw new Error( `Invalid color red for color #${ j } o’ palette #${ i }` );
+								}
+								if ( typeof color[ `g` ] !== `number` ) {
+									throw new Error( `Invalid color green for color #${ j } o’ palette #${ i }` );
+								}
+								if ( typeof color[ `b` ] !== `number` ) {
+									throw new Error( `Invalid color blue for color #${ j } o’ palette #${ i }` );
+								}
+								if ( typeof color[ `a` ] !== `number` ) {
+									throw new Error( `Invalid color alpha for color #${ j } o’ palette #${ i }` );
+								}
+								return createColor( color[ `r` ], color[ `g` ], color[ `b` ], color[ `a` ] );
+							},
+						);
+
+						return createPalette( palette[ `name` ], colors );
 					},
-				);
-
-				return createPalette( palette[ `name` ], colors );
+				) );
 			},
 		);
 
-		setPalettes( createPaletteList( palettes ) );
+		setPalettes( palettes );
 
 		// Import graphics if present.
 		if ( `graphics` in data ) {
@@ -406,7 +430,7 @@ const Editor = (): ReactElement => {
 	const onNew = () => {
 		setLevels( Array.from( { length: levelCount } ).map( () => createLevel() ) );
 		setGraphics( createNewGraphics() );
-		setPalettes( createBlankPaletteList );
+		setPalettes( createBlankPaletteSystem() );
 		setOverworld( createBlankOverworld() );
 		resetMode();
 	};
@@ -446,7 +470,10 @@ const Editor = (): ReactElement => {
 							sprites: spriteGraphics,
 							overworld: overworldGraphics,
 						},
-						palettes: palettes.map( ( palette: Palette ) => palette.toJSON() ),
+						palettes: {
+							main: palettes.main.map( ( palette: Palette ) => palette.toJSON() ),
+							overworld: palettes.overworld.map( ( palette: Palette ) => palette.toJSON() ),
+						},
 						levels: levels.map( ( level: Level ) => level.toJSON() ),
 						overworld: overworld.toJSON(),
 					}, null, 4 ) );
@@ -476,7 +503,7 @@ const Editor = (): ReactElement => {
 				exitMode={ resetMode }
 				graphics={ graphics }
 				levels={ levels }
-				palettes={ palettes }
+				palettes={ palettes.main }
 				setLevels={ setLevels }
 			/> }
 			{ mode === modeKeys.graphics && <GraphicsMode
@@ -488,13 +515,13 @@ const Editor = (): ReactElement => {
 			{ mode === modeKeys.palettes && <PaletteMode
 				exitMode={ resetMode }
 				palettes={ palettes }
-				setPalettes={ setPalettes }
+				updatePalette={ updatePalette }
 			/> }
 			{ mode === modeKeys.overworld && <OverworldMode
 				exitMode={ resetMode }
 				graphics={ graphics.overworld }
 				overworld={ overworld }
-				palettes={ palettes }
+				palettes={ palettes.overworld }
 				setOverworld={ updateOverworld }
 			/> }
 		</div> }

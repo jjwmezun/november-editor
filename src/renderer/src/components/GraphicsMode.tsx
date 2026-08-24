@@ -3,12 +3,12 @@ import TileGrid from './TileGrid';
 import TileEditor from './TileEditor';
 import ColorSelector from './ColorSelector';
 import { tileSize } from '../../../common/constants';
-import { Graphics, GraphicsEntryRaw, GraphicsType, PaletteList } from '../../../common/types';
+import { Graphics, GraphicsEntryRaw, GraphicsType, PaletteSystem } from '../../../common/types';
 
 type GraphicsProps = {
 	exitMode: () => void,
 	graphics: Graphics,
-	palettes: PaletteList,
+	palettes: PaletteSystem,
 	setGraphics: ( graphics: Graphics ) => void,
 };
 
@@ -18,9 +18,11 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 	const [ selectedGraphicType, setSelectedGraphicType ] = useState( GraphicsType.blocks );
 	const [ selectedTile, setSelectedTile ] = useState( 0 );
 	const [ selectedColor, setSelectedColor ] = useState( 0 );
+	const [ selectedPaletteType, setSelectedPaletteType ] = useState( `main` );
 	const [ selectedPalette, setSelectedPalette ] = useState( 0 );
 
 	const selectedGraphicsEntry = graphics[ selectedGraphicType ];
+	const selectedPaletteList = palettes[ selectedPaletteType as keyof PaletteSystem ];
 
 	const drawPixel = ( x: number, y: number ) => {
 		const tileY = Math.floor( selectedTile / selectedGraphicsEntry.getWidthTiles() );
@@ -50,6 +52,13 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 		setSelectedPalette( paletteIndex );
 	};
 
+	const updatePaletteType = ( e: SyntheticEvent ) => {
+		const target = e.target as HTMLSelectElement;
+		const paletteType = target.value;
+		setSelectedPaletteType( paletteType );
+		setSelectedPalette( 0 );
+	};
+
 	const changeGraphicEntry = ( e: SyntheticEvent ) => {
 		const target = e.target as HTMLSelectElement;
 		const graphicType = target.value as GraphicsType;
@@ -76,8 +85,18 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 	return <div>
 		<h1>Graphics Editor</h1>
 		<div>
-			<select onChange={ updatePalette }>
-				{ palettes.map( ( palette, index ) => {
+			<select onChange={ updatePaletteType } value={ selectedPaletteType }>
+				{ Object.keys( palettes ).map( ( key: string, index: number ) => {
+					return <option
+						key={ index }
+						value={ key }
+					>
+						{ key }
+					</option>;
+				} ) }
+			</select>
+			<select onChange={ updatePalette } value={ selectedPalette }>
+				{ selectedPaletteList.map( ( palette, index ) => {
 					return <option
 						key={ index }
 						value={ index }
@@ -94,7 +113,9 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 			<TileGrid
 				graphics={ selectedGraphicsEntry }
 				palettes={ palettes }
-				selectedPalette={ selectedPalette }
+				selectedPalette={
+					selectedPaletteType === `overworld` ? selectedPalette + palettes.main.getLength() : selectedPalette
+				}
 				selectedTile={ selectedTile }
 				setSelectedTile={ setSelectedTile }
 			/>
@@ -104,12 +125,14 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 				graphics={ selectedGraphicsEntry }
 				palettes={ palettes }
 				selectedColor={ selectedColor }
-				selectedPalette={ selectedPalette }
+				selectedPalette={
+					selectedPaletteType === `overworld` ? selectedPalette + palettes.main.getLength() : selectedPalette
+				}
 				tileX={ selectedTile % selectedGraphicsEntry.getWidthTiles() }
 				tileY={ Math.floor( selectedTile / selectedGraphicsEntry.getWidthTiles() ) }
 			/>
 			<ColorSelector
-				palettes={ palettes }
+				palettes={ selectedPaletteList }
 				selectedColor={ selectedColor }
 				selectedPalette={ selectedPalette }
 				setSelectedColor={ setSelectedColor }

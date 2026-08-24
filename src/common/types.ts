@@ -563,7 +563,7 @@ interface Palette {
 }
 
 interface PaletteData {
-	palettes: PaletteList,
+	palettes: PaletteSystem,
 	remainingBytes: Uint8Array,
 }
 
@@ -579,9 +579,14 @@ interface PaletteList {
 }
 
 interface PaletteModeProps {
-	palettes: PaletteList,
+	palettes: PaletteSystem,
 	exitMode: () => void,
-	setPalettes: ( palettes: PaletteList ) => void,
+	updatePalette: ( type: string, palettes: PaletteList ) => void,
+}
+
+interface PaletteSystem {
+	main: PaletteList,
+	overworld: PaletteList,
 }
 
 interface Rect {
@@ -639,7 +644,7 @@ interface TileEditorProps {
 	clearTile: () => void,
 	drawPixel: ( x: number, y: number ) => void,
 	graphics: GraphicsEntry,
-	palettes: PaletteList,
+	palettes: PaletteSystem,
 	selectedColor: number,
 	selectedPalette: number,
 	tileX: number,
@@ -648,7 +653,7 @@ interface TileEditorProps {
 
 interface TileGridProps {
 	graphics: GraphicsEntry,
-	palettes: PaletteList,
+	palettes: PaletteSystem,
 	selectedPalette: number,
 	selectedTile: number | null,
 	setSelectedTile: ( tile: number ) => void,
@@ -774,6 +779,7 @@ export {
 	PaletteData,
 	PaletteList,
 	PaletteModeProps,
+	PaletteSystem,
 	Rect,
 	RenderObject,
 	SelectModeProps,
