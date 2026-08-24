@@ -422,6 +422,8 @@ interface OverworldEventControlsProps {
 	setSelectedEvent: ( index: number ) => void,
 	setSelectedEventFrame: ( frame: number ) => void,
 	setSelectedObject: ( object: number | null ) => void,
+	updateEventFrame: ( frame: OverworldEventFrame, i: number ) => void,
+	updateSelectedEventFrame: ( frame: OverworldEventFrame ) => void,
 }
 
 interface OverworldGridCanvasProps {

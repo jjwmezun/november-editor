@@ -206,6 +206,8 @@ function OverworldMode( props: OverworldModeProps ): ReactElement {
 			setSelectedEvent={ setSelectedEvent }
 			setSelectedEventFrame={ setSelectedEventFrame }
 			setSelectedObject={ setSelectedObject }
+			updateEventFrame={ updateEventFrame }
+			updateSelectedEventFrame={ updateSelectedEventFrame }
 		/>
 		<div><button onClick={ exitMode }>← Back</button></div>
 	</div>;

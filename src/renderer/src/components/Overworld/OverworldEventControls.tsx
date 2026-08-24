@@ -37,9 +37,9 @@ function UpdateInfo( props: UpdateInfoProps ): ReactElement {
 		break;
 	}
 
-	return <li>
+	return <span>
 		{ `M ${ update.getMap() }, L ${ update.getLayer() }: ${ update.getType() } – ${ JSON.stringify( data ) }` }
-	</li>;
+	</span>;
 }
 
 function OverworldEventControls( props: OverworldEventControlsProps ): ReactElement {
@@ -51,6 +51,8 @@ function OverworldEventControls( props: OverworldEventControlsProps ): ReactElem
 		setSelectedEvent,
 		setSelectedEventFrame,
 		setSelectedObject,
+		updateEventFrame,
+		updateSelectedEventFrame,
 	} = props;
 
 	const selectedEventEntry = selectedEvent > 0 ? eventsList.getEntry( selectedEvent - 1 ) : null;
@@ -124,6 +126,31 @@ function OverworldEventControls( props: OverworldEventControlsProps ): ReactElem
 		setOverworld( eventsList.updateEvent( selectedEvent - 1, updatedEvent ) );
 	};
 
+	const generateFrameUpdateRemover = ( update: OverworldEventUpdate ) => (): void => {
+		if ( selectedEventFrameEntry === null ) {
+			return;
+		}
+		const updatedFrame = selectedEventFrameEntry.removeUpdate(
+			update.getMap(),
+			update.getLayer(),
+			update.getObjectId(),
+		);
+		updateSelectedEventFrame( updatedFrame );
+
+		// If update is an add, remove all future updates for this object, since it no longer exists.
+		if ( update.getType() === `add` ) {
+			const frames = selectedEventEntry?.getFrames().slice( selectedEventFrame + 1 ) ?? [];
+			frames.forEach( ( frame, index ) => {
+				frame = frame.removeUpdate(
+					update.getMap(),
+					update.getLayer(),
+					update.getObjectId(),
+				);
+				updateEventFrame( frame, selectedEventFrame + 1 + index );
+			} );
+		}
+	};
+
 	return <div>
 		<div>
 			<ul>
@@ -169,7 +196,10 @@ function OverworldEventControls( props: OverworldEventControlsProps ): ReactElem
 				/>
 			</label>
 			{ updatesList.length > 0 && <ul>
-				{ updatesList.map( ( update, index ) => <UpdateInfo key={ index } update={ update } /> ) }
+				{ updatesList.map( ( update, index ) => <li key={ index }>
+					<UpdateInfo update={ update } />
+					<button onClick={ generateFrameUpdateRemover( update ) }>X</button>
+				</li> ) }
 			</ul> }
 		</div> }
 	</div>;
