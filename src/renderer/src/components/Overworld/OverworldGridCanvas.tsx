@@ -1,12 +1,16 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import React, { ReactElement, SyntheticEvent, useEffect, useRef, useState } from "react";
+import React, { MouseEvent, ReactElement, useEffect, useRef, useState } from "react";
 
 import {
 	Coordinates,
+	MapObject,
+	OverworldEventFrame,
 	OverworldEventUpdateAdd,
 	OverworldEventUpdateChange,
 	OverworldEventUpdateRemove,
 	OverworldGridCanvasProps,
+	OverworldLayer,
+	OverworldMap,
 	OverworldRenderer,
 } from '../../../../common/types';
 import { getMousePosition } from '../../../../common/utils';
@@ -15,32 +19,13 @@ import { getOverworldTypeGenerator } from '../../../../common/objects';
 
 const zoom = 2;
 
-function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
-	const canvasRef = useRef<HTMLCanvasElement>( null );
-	const [ hover, setHover ] = useState<Coordinates>( { x: -1, y: -1 } );
-	const [ renderer, setRenderer ] = useState<OverworldRenderer | null>( null );
-	const [ showGrid, setShowGrid ] = useState<boolean>( true );
-	const {
-		graphics,
-		map,
-		palettes,
-		selectedEventFrames,
-		selectedFrame,
-		selectedLayer,
-		selectedObject,
-		selectedObjectType,
-		setOverworld,
-		setSelectedObject,
-		updateLayerLatestId,
-		updateSelectedEventFrame,
-	} = props;
-
-	const layers = map.getLayersList();
-	const layer = layers[ selectedLayer ];
+function getLayerObjects(
+	layer: OverworldLayer,
+	map: OverworldMap,
+	selectedEventFrames: readonly OverworldEventFrame[],
+	selectedFrame: number,
+): readonly MapObject[] {
 	const objects = [ ...layer.getObjectsList() ];
-	const width = map.getWidthBlocks();
-	const height = map.getHeightBlocks();
-	const typeGenerator = getOverworldTypeGenerator( layer.getType() );
 
 	// Update objects shown & editable based on frames going up to current frame.
 	if ( selectedEventFrames.length !== 0 ) {
@@ -81,8 +66,53 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 		}
 	}
 
+	return objects;
+}
+
+function getObjectsForAllLayers(
+	layers: readonly OverworldLayer[],
+	map: OverworldMap,
+	selectedEventFrames: readonly OverworldEventFrame[],
+	selectedFrame: number,
+): Array<readonly MapObject[]> {
+	const layerObjects : Array<readonly MapObject[]> = [];
+
+	layers.forEach( layer => {
+		layerObjects.push( getLayerObjects( layer, map, selectedEventFrames, selectedFrame ) );
+	} );
+
+	return layerObjects;
+}
+
+function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
+	const canvasRef = useRef<HTMLCanvasElement>( null );
+	const [ hover, setHover ] = useState<Coordinates>( { x: -1, y: -1 } );
+	const [ renderer, setRenderer ] = useState<OverworldRenderer | null>( null );
+	const [ showGrid, setShowGrid ] = useState<boolean>( true );
+	const {
+		graphics,
+		map,
+		palettes,
+		selectedEventFrames,
+		selectedFrame,
+		selectedLayer,
+		selectedObject,
+		selectedObjectType,
+		setOverworld,
+		setSelectedObject,
+		updateLayerLatestId,
+		updateSelectedEventFrame,
+	} = props;
+
+	const layers = map.getLayersList();
+	const layer = layers[ selectedLayer ];
+	const width = map.getWidthBlocks();
+	const height = map.getHeightBlocks();
+	const typeGenerator = getOverworldTypeGenerator( layer.getType() );
+	const objects = getLayerObjects( layer, map, selectedEventFrames, selectedFrame );
+
 	// Select object on left click.
-	const onClick = ( e: SyntheticEvent ) => {
+	const onClick = ( e: MouseEvent ) => {
 		const { x, y } = getMousePosition( e );
 
 		const gridX = Math.floor( x / ( 16 * zoom ) );
@@ -117,7 +147,7 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 	};
 
 	// Update cursor visuals on mouse move.
-	const onMouseMove = ( e: SyntheticEvent ) => {
+	const onMouseMove = ( e: MouseEvent ) => {
 		const { x, y } = getMousePosition( e );
 
 		const gridX = Math.floor( x / ( 16 * zoom ) );
@@ -135,7 +165,7 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 	};
 
 	// Create object on right click.
-	const onRightClick = ( e: SyntheticEvent ) => {
+	const onRightClick = ( e: MouseEvent ) => {
 		e.preventDefault();
 
 		const { x, y } = getMousePosition( e );
@@ -188,22 +218,20 @@ function OverworldGridCanvas( props: OverworldGridCanvasProps ): ReactElement {
 		if ( ! renderer ) {
 			return;
 		}
-		renderer.updateLayers( map, selectedLayer );
+		renderer.updateLayers(
+			map,
+			getObjectsForAllLayers( layers, map, selectedEventFrames, selectedFrame ),
+			selectedLayer,
+		);
 		renderer.render();
-	}, [ layers ] );
-
-	useEffect( () => {
-		if ( ! renderer ) {
-			return;
-		}
-		renderer.updateLayerObjects( selectedLayer, objects, selectedObject );
-	}, [ selectedFrame, selectedEventFrames ] );
+	}, [ layers, selectedFrame, selectedEventFrames ] );
 
 	useEffect( () => {
 		if ( ! renderer ) {
 			return;
 		}
 		renderer.updateSelectedLayer( selectedLayer );
+		renderer.updateLayerObjects( selectedLayer, objects, selectedObject );
 		renderer.render();
 	}, [ selectedLayer ] );
 

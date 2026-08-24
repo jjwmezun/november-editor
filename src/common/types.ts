@@ -394,10 +394,10 @@ interface OverworldEventFrame {
 	encode: ( maps: readonly OverworldMap[], events: readonly OverworldEvent[] ) => ByteBlock[];
 	getDuration: () => number,
 	getUpdates: () => readonly OverworldEventUpdate[],
-	getUpdateById: ( objectId: number ) => OverworldEventUpdate | null,
+	getUpdateById: ( objectId: number, mapId: number, layerId: number ) => OverworldEventUpdate | null,
 	toJSON: () => object,
 	updateDuration: ( newDuration: number ) => OverworldEventFrame,
-	updateEvent: ( objectId: number, changes: object ) => OverworldEventFrame,
+	updateEvent: ( objectId: number, mapId: number, layerId: number, changes: object ) => OverworldEventFrame,
 }
 
 interface OverworldEvent {
@@ -539,7 +539,7 @@ interface OverworldRenderer {
 	render: () => void,
 	setSelectedObject: ( i: number | null, objects: readonly MapObject[] ) => void,
 	updateAnimationFrame: ( frame: number ) => void,
-	updateLayers: ( map: OverworldMap, selectedLayer: number ) => void,
+	updateLayers: ( map: OverworldMap, objects: Array<readonly MapObject[]>, selectedLayer: number ) => void,
 	updateLayerObjects: ( layer: number, objects: readonly MapObject[], i: number | null ) => void,
 	updateHoverTile: ( x: number, y: number ) => void,
 	updateResolution: ( width: number, height: number ) => void,

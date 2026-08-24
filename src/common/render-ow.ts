@@ -493,7 +493,7 @@ function generateRenderer(
 				objectRenderer.updateAnimationFrame( frame );
 			} );
 		},
-		updateLayers: ( map: OverworldMap, selectedLayer: number ): void => {
+		updateLayers: ( map: OverworldMap, objects: Array<readonly MapObject[]>, selectedLayer: number ): void => {
 			const layers = map.getLayersList();
 			objectRenderers = layers.map( ( layer: OverworldLayer, i: number ) => {
 				const objectRenderer = createObjectRenderer(
@@ -504,7 +504,7 @@ function generateRenderer(
 					selectedPalette,
 					selectedLayer === i,
 				);
-				objectRenderer.updateObjects( layer.getObjectsList() );
+				objectRenderer.updateObjects( objects[ i ] );
 				objectRenderer.updatePalette( selectedPalette );
 				objectRenderer.updateDimensions(
 					map.getWidthTiles(),

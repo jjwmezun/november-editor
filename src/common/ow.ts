@@ -393,9 +393,13 @@ function createFrame( duration: number = 8, updates: readonly OverworldEventUpda
 		},
 		getDuration: () => duration,
 		getUpdates: () => updates,
-		getUpdateById: ( objectId: number ) => {
+		getUpdateById: ( objectId: number, mapId: number, layerId: number ) => {
 			for ( const update of updates ) {
-				if ( update.getObjectId() === objectId ) {
+				if (
+					update.getObjectId() === objectId
+					&& update.getMap() === mapId
+					&& update.getLayer() === layerId
+				) {
 					return update;
 				}
 			}
@@ -406,12 +410,16 @@ function createFrame( duration: number = 8, updates: readonly OverworldEventUpda
 			updates: updates.map( update => update.toJSON() ),
 		} ),
 		updateDuration: ( newDuration: number ) => createFrame( newDuration, updates ),
-		updateEvent: function( objectId: number, changes: object ) {
+		updateEvent: function( objectId: number, mapId: number, layerId: number, changes: object ) {
 			for ( let i = 0; i < updates.length; i++ ) {
 				const update = updates[ i ];
 
 				// Skip if not the update we seek.
-				if ( update.getObjectId() !== objectId ) {
+				if (
+					update.getObjectId() !== objectId
+					|| update.getMap() !== mapId
+					|| update.getLayer() !== layerId
+				) {
 					continue;
 				}
 

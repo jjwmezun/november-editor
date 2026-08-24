@@ -139,13 +139,13 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 							continue;
 						}
 
-						const update = eventFrames[ i ].getUpdateById( selectedObject.id() );
+						const update = eventFrames[ i ].getUpdateById(
+							selectedObject.id(),
+							selectedMap.getId(),
+							selectedLayer.getId(),
+						);
 
-						if (
-							update === null
-							|| update.getLayer() !== selectedLayer.getId()
-							|| update.getMap() !== selectedMap.getId()
-						) {
+						if ( update === null ) {
 							continue;
 						}
 
@@ -224,6 +224,8 @@ const OverworldObjectOptions = ( props: OverworldObjectOptionsProps ) => {
 
 								const updatedFrame = selectedEventFrameEntry.updateEvent(
 									selectedObject.id(),
+									selectedMap.getId(),
+									selectedLayer.getId(),
 									changes,
 								);
 								updateSelectedEventFrame( updatedFrame );
