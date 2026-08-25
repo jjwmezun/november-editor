@@ -200,18 +200,33 @@ const generateExportData = async (
 	saveData = tableOfContents.concat( saveData );
 
 	// Calculate total size o’ save data.
-	const size = getTotalBytes( saveData );
+	const size = getTotalBytes( saveData ) + 4; // +4 for checksum at end of file.
 
 	// Generate buffer to save data.
 	const buffer = new ArrayBuffer( size );
 	const view = new DataView( buffer );
 	let i = 0;
 
+	// Just to be sure the checksum is precise
+	// make sure we start with 0s in the first 4 bytes of the file.
+	view.setUint8( size - 1, 0 );
+	view.setUint8( size - 2, 0 );
+	view.setUint8( size - 3, 0 );
+	view.setUint8( size - 4, 0 );
+
 	// Add all bytes to buffer.
 	saveData.forEach( ( { type, value } ) => {
 		view[ `set${ type }` ]( i, value );
 		i += getDataTypeSize( type );
 	} );
+
+	// Add checksum @ the end.
+	let checksum = 0;
+	for ( let j = 0; j < size; j++ ) {
+		checksum += view.getUint8( j );
+	}
+	view.setUint32( size - 4, checksum & 0xFFFFFFFF );
+
 	return view;
 };
 
