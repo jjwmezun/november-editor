@@ -59,6 +59,7 @@ import {
 	createPalette,
 	createPaletteList,
 	decodePaletteData,
+	decodePaletteNames,
 } from '../../../common/palettes';
 import { createBlankOverworld, createOverworldFromJSON, loadOverworldFromData } from '../../../common/ow';
 
@@ -69,18 +70,45 @@ const generateExportData = async (
 	overworld: Overworld,
 ): Promise<DataView> => {
 	const tableOfContents : ByteBlock[] = [];
+	let saveData: ByteBlock[] = [];
 
-	// Init main palette pointer.
-	tableOfContents.push( { type: DataType.Uint32, value: 0 } );
+	// Store main palette count.
+	tableOfContents.push( { type: DataType.Uint8, value: palettes.main.getLength() } );
+
+	// Store o’erworld palette count.
+	tableOfContents.push( { type: DataType.Uint8, value: palettes.overworld.getLength() } );
+
+	// Encode main palette name data.
+	const mainPaletteNames = palettes.main.encodeNames();
+	mainPaletteNames.forEach( ( paletteName: ByteBlock[] ) => {
+		// Calculate pointer to palette name.
+		tableOfContents.push( { type: DataType.Uint32, value: getTotalBytes( saveData ) } );
+
+		// Encode palette name.
+		saveData = saveData.concat( paletteName );
+	} );
+
+	// Calculate o’erworld palette name pointer.
+	const overworldPaletteNames = palettes.overworld.encodeNames();
+	overworldPaletteNames.forEach( ( paletteName: ByteBlock[] ) => {
+		// Calculate pointer to palette name.
+		tableOfContents.push( { type: DataType.Uint32, value: getTotalBytes( saveData ) } );
+
+		// Encode palette name.
+		saveData = saveData.concat( paletteName );
+	} );
+
+	// Calculate main palette data pointer.
+	tableOfContents.push( { type: DataType.Uint32, value: getTotalBytes( saveData ) } );
 
 	// Encode main palette data.
-	let saveData: ByteBlock[] = palettes.main.encode();
+	saveData = saveData.concat( palettes.main.encodeColors() );
 
-	// Calculate o’erworld palette pointer.
+	// Calculate o’erworld palette data pointer.
 	tableOfContents.push( { type: DataType.Uint32, value: getTotalBytes( saveData ) } );
 
 	// Encode o’erworld palette data.
-	saveData = saveData.concat( palettes.overworld.encode() );
+	saveData = saveData.concat( palettes.overworld.encodeColors() );
 
 	// Calculate block graphics pointer.
 	tableOfContents.push( { type: DataType.Uint32, value: getTotalBytes( saveData ) } );
@@ -159,7 +187,8 @@ const generateExportData = async (
 	} );
 
 	// Shift TOC pointers to account for the TOC itself, which is stored at the start o’ the file.
-	for ( let i = 0; i < tableOfContents.length; i++ ) {
+	// We skip the 1st 2 entries, because they are palette name counts, not pointers.
+	for ( let i = 2; i < tableOfContents.length; i++ ) {
 		tableOfContents[ i ].value += getTotalBytes( tableOfContents );
 	}
 
@@ -213,31 +242,74 @@ const Editor = (): ReactElement => {
 		for ( let i = 0; i < data.length; i++ ) {
 			bufferView.setUint8( i, data[ i ] );
 		}
+		const mainPaletteCount = bufferView.getUint8( 0 );
+		const mainPaletteNamePointers : number[] = [];
+		for ( let i = 0; i < mainPaletteCount; i++ ) {
+			mainPaletteNamePointers.push( bufferView.getUint32( 2 + ( i * 4 ) ) );
+		}
+		const overworldPaletteCount = bufferView.getUint8( 1 );
+		const overworldPaletteNamePointers : number[] = [];
+		for ( let i = 0; i < overworldPaletteCount; i++ ) {
+			overworldPaletteNamePointers.push( bufferView.getUint32( 2 + ( mainPaletteCount * 4 ) + ( i * 4 ) ) );
+		}
+		const afterPaletteNamePointers = 2 + ( mainPaletteCount * 4 ) + ( overworldPaletteCount * 4 );
+		const levelPointerStart = afterPaletteNamePointers + 20;
 		const levelHeaders : number[] = [];
 		for ( let i = 0; i < levelCount; i++ ) {
-			levelHeaders.push( bufferView.getUint32( 20 + ( i * 4 ) ) );
+			levelHeaders.push( bufferView.getUint32( levelPointerStart + ( i * 4 ) ) );
 		}
 		const levelData : number[] = [];
 		for ( let i = 0; i < levelCount; i++ ) {
-			levelData.push( bufferView.getUint32( 20 + ( levelCount * 4 ) + ( i * 4 ) ) );
+			levelData.push( bufferView.getUint32( levelPointerStart + ( levelCount * 4 ) + ( i * 4 ) ) );
 		}
 		const tableOfContents = {
 			palettes: {
-				main: bufferView.getUint32( 0 ),
-				overworld: bufferView.getUint32( 4 ),
+				main: {
+					count: mainPaletteCount,
+					data: bufferView.getUint32( afterPaletteNamePointers ),
+					names: mainPaletteNamePointers,
+				},
+				overworld: {
+					count: overworldPaletteCount,
+					data: bufferView.getUint32( afterPaletteNamePointers + 4 ),
+					names: overworldPaletteNamePointers,
+				},
 			},
 			graphics: {
-				blocks: bufferView.getUint32( 8 ),
-				sprites: bufferView.getUint32( 12 ),
-				overworld: bufferView.getUint32( 16 ),
+				blocks: bufferView.getUint32( afterPaletteNamePointers + 8 ),
+				sprites: bufferView.getUint32( afterPaletteNamePointers + 12 ),
+				overworld: bufferView.getUint32( afterPaletteNamePointers + 16 ),
 			},
 			levelHeaders,
 			levelData,
-			overworld: bufferView.getUint32( 20 + ( levelCount * 8 ) + 4 ),
+			overworld: bufferView.getUint32( levelPointerStart + ( levelCount * 8 ) + 4 ),
 		};
 
-		// Start decoding from the main palette data, which is the first pointer in the table of contents.
-		const paletteData = decodePaletteData( data.slice( tableOfContents.palettes.main ) );
+		// Decode palette names & color data & combine into palette lists.
+		const mainPaletteNames = decodePaletteNames(
+			tableOfContents.palettes.main.count,
+			data.slice( tableOfContents.palettes.main.names[ 0 ] ),
+		);
+		const mainPaletteData = decodePaletteData(
+			tableOfContents.palettes.main.count,
+			data.slice( tableOfContents.palettes.main.data ),
+		);
+		const overworldPaletteNames = decodePaletteNames(
+			tableOfContents.palettes.overworld.count,
+			data.slice( tableOfContents.palettes.overworld.names[ 0 ] ),
+		);
+		const overworldPaletteData = decodePaletteData(
+			tableOfContents.palettes.overworld.count,
+			data.slice( tableOfContents.palettes.overworld.data ),
+		);
+		const palettes = {
+			main: createPaletteList( mainPaletteNames.map( ( name: string, i: number ): Palette => {
+				return createPalette( name, mainPaletteData[ i ] );
+			} ) ),
+			overworld: createPaletteList( overworldPaletteNames.map( ( name: string, i: number ): Palette => {
+				return createPalette( name, overworldPaletteData[ i ] );
+			} ) ),
+		};
 
 		// Load graphics data.
 		loadGraphicsFromData( data.slice( tableOfContents.graphics.blocks ) ).then( graphicsData => {
@@ -280,7 +352,7 @@ const Editor = (): ReactElement => {
 			setOverworld( loadOverworldFromData( data.slice( tableOfContents.overworld - 1 ) ) );
 
 			resetMode();
-			setPalettes( paletteData.palettes );
+			setPalettes( palettes );
 			setGraphics( graphicsData.graphics );
 			setLevels( levels );
 		} );

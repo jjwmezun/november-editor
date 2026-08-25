@@ -1,5 +1,5 @@
 import { encodeText, decodeText } from './text';
-import { ByteBlock, Color, DataType, Palette, PaletteData, PaletteList, PaletteSystem } from './types';
+import { ByteBlock, Color, DataType, Palette, PaletteList, PaletteSystem } from './types';
 import { getBitsFromByte } from './bytes';
 
 // Round true color value to nearest high color value.
@@ -63,8 +63,8 @@ const createPalette = ( name: string, colors: readonly Color[] ): Palette => {
 	return Object.freeze( {
 		getList: (): number[] => colors.map( color => color.encode().value ).flat( 1 ),
 		getName: () => name,
-		encode: (): ByteBlock[] => encodeText( name )
-			.concat( colors.slice( 1 ).map( color => color.encode() ) ),
+		encodeColors: (): ByteBlock[] => colors.slice( 1 ).map( color => color.encode() ),
+		encodeName: (): ByteBlock[] => encodeText( name ),
 		mapColors: <Type>( action: ( color: Color, index: number ) => Type, ignoreFirst: boolean = false ): Type[] => {
 			return ignoreFirst
 				? colors.slice( 1 ).map( action )
@@ -127,12 +127,8 @@ const createPaletteList = ( list: readonly Palette[] ): PaletteList => {
 			ctx.texParameteri( ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_T, ctx.CLAMP_TO_EDGE );
 			return texture;
 		},
-		encode: (): ByteBlock[] => [
-			{
-				type: DataType.Uint8,
-				value: list.length,
-			},
-		].concat( list.map( palette => palette.encode() ).flat( 1 ) ),
+		encodeColors: (): ByteBlock[] => list.map( palette => palette.encodeColors() ).flat( 1 ),
+		encodeNames: (): ByteBlock[][] => list.map( palette => palette.encodeName() ),
 		getLength: (): number => list.length,
 		map: <Type>( action: ( palette: Palette, index: number ) => Type ): Type[] => list.map( action ),
 		nth: ( index: number ): Palette => list[ index ],
@@ -192,52 +188,38 @@ const createBlankPaletteSystem = (): PaletteSystem => ( {
 	overworld: createPaletteList( [ createBlankPalette() ] ),
 } );
 
-const decodePaletteData = ( data: Uint8Array ): PaletteData => {
-	const palettes : Palette[][] = Array.from( { length: 2 } ).map( (): Palette[] => {
-		const numOfPalettes = data[ 0 ];
-		data = data.slice( 1 );
+const decodePaletteData = ( paletteCount: number, data: Uint8Array ): Color[][] => {
+	return Array.from( { length: paletteCount } ).map( (): Color[] => {
+		// 1st color is always transparent;
+		// following 7 colors come from the next 2 pairs o’ bytes.
+		return [ createColor( 0, 0, 0, 0 ) ]
+			.concat( Array.from( { length: 7 } ).map( (): Color => {
+				// Color is pair o’ bytes.
+				const color: Uint8Array = data.slice( 0, 2 );
 
-		return Array.from( { length: numOfPalettes } ).map( (): Palette => {
-			// Pull name from data.
-			const nameData = decodeText( data );
-			const name = nameData.text;
+				// Convert pair o’ bytes into list o’ 16 bits.
+				const bits: number[] = getBitsFromByte( color[ 0 ] )
+					.concat( getBitsFromByte( color[ 1 ] ) );
 
-			// Move data forward past name bytes.
-			data = nameData.remainingBytes;
+				// As per high color, 5 bits each for red, green, & blue, 1 bit for alpha.
+				const red = decodeColorChannel( bits.slice( 0, 5 ) );
+				const green = decodeColorChannel( bits.slice( 5, 10 ) );
+				const blue = decodeColorChannel( bits.slice( 10, 15 ) );
+				const alpha = bits[ 15 ];
 
-			// 1st color is always transparent;
-			// following 7 colors come from the next 2 pairs o’ bytes.
-			const colors: Color[] = [ createColor( 0, 0, 0, 0 ) ]
-				.concat( Array.from( { length: 7 } ).map( (): Color => {
-					// Color is pair o’ bytes.
-					const color: Uint8Array = data.slice( 0, 2 );
-
-					// Convert pair o’ bytes into list o’ 16 bits.
-					const bits: number[] = getBitsFromByte( color[ 0 ] )
-						.concat( getBitsFromByte( color[ 1 ] ) );
-
-					// As per high color, 5 bits each for red, green, & blue, 1 bit for alpha.
-					const red = decodeColorChannel( bits.slice( 0, 5 ) );
-					const green = decodeColorChannel( bits.slice( 5, 10 ) );
-					const blue = decodeColorChannel( bits.slice( 10, 15 ) );
-					const alpha = bits[ 15 ];
-
-					// Move on to next pair o’ bytes.
-					data = data.slice( 2 );
-					return createColor( red, green, blue, alpha );
-				} ) );
-
-			return createPalette( name, colors );
-		} );
+				// Move on to next pair o’ bytes.
+				data = data.slice( 2 );
+				return createColor( red, green, blue, alpha );
+			} ) );
 	} );
+};
 
-	return {
-		palettes: {
-			main: createPaletteList( palettes[ 0 ] ),
-			overworld: createPaletteList( palettes[ 1 ] ),
-		},
-		remainingBytes: data,
-	};
+const decodePaletteNames = ( paletteCount: number, data: Uint8Array ): string[] => {
+	return Array.from( { length: paletteCount } ).map( (): string => {
+		// Pull name from data.
+		const nameData = decodeText( data );
+		return nameData.text;
+	} );
 };
 
 export {
@@ -248,5 +230,6 @@ export {
 	createPalette,
 	createPaletteList,
 	decodePaletteData,
+	decodePaletteNames,
 	getTotalPaletteCount,
 };

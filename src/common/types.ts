@@ -576,7 +576,8 @@ interface OverworldRenderer {
 interface Palette {
 	getList: () => number[],
 	getName: () => string,
-	encode: () => ByteBlock[],
+	encodeColors: () => ByteBlock[],
+	encodeName: () => ByteBlock[],
 	mapColors: <Type>( action: ( color: Color, index: number ) => Type, ignoreFirst: boolean ) => Type[],
 	nthColor: ( index: number ) => Color,
 	toJSON: () => object,
@@ -592,7 +593,8 @@ interface PaletteData {
 interface PaletteList {
 	addBlankPalette: () => PaletteList,
 	createTexture: ( ctx: WebGLRenderingContext, index: number ) => WebGLTexture,
-	encode: () => ByteBlock[],
+	encodeColors: () => ByteBlock[],
+	encodeNames: () => ByteBlock[][],
 	getLength: () => number,
 	map: <Type>( action: ( palette: Palette, index: number ) => Type ) => Type[],
 	nth: ( index: number ) => Palette,
