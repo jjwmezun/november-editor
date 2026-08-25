@@ -87,20 +87,74 @@ const createLevel = (
 	name: string = `Unnamed Level`,
 	goal: Goal = createGoal( 0 ),
 	maps: ArrayBuffer[] = [],
+	ptsScore: number = 0,
+	timeScoreMinutes: number = 0,
+	timeScoreSeconds: number = 0,
 ): Level => {
 	return Object.freeze( {
 		getGoal: () => goal,
+		getPtsScore: () => ptsScore,
+		getTimeScoreMinutes: () => timeScoreMinutes,
+		getTimeScoreSeconds: () => timeScoreSeconds,
 		getMaps: () => maps,
 		getName: () => name,
-		getProps: () => ( { name, goal, maps } ),
+		getProps: () => ( { name, goal, maps, ptsScore, timeScoreMinutes, timeScoreSeconds } ),
 		toJSON: () => ( {
 			name,
 			goal: goal.toJSON(),
 			maps: maps.map( map => transformMapDataToObject( map ).toJSON() ),
+			ptsScore,
+			timeScore: {
+				minutes: timeScoreMinutes,
+				seconds: timeScoreSeconds,
+			},
 		} ),
-		updateGoal: ( newGoal: Goal ) => createLevel( name, newGoal, maps ),
-		updateMaps: ( newMaps: ArrayBuffer[] ) => createLevel( name, goal, newMaps ),
-		updateName: ( newName: string ) => createLevel( newName, goal, maps ),
+		updateGoal: ( newGoal: Goal ) => createLevel(
+			name,
+			newGoal,
+			maps,
+			ptsScore,
+			timeScoreMinutes,
+			timeScoreSeconds,
+		),
+		updateMaps: ( newMaps: ArrayBuffer[] ) => createLevel(
+			name,
+			goal,
+			newMaps,
+			ptsScore,
+			timeScoreMinutes,
+			timeScoreSeconds,
+		),
+		updateName: ( newName: string ) => createLevel( newName,
+			goal,
+			maps,
+			ptsScore,
+			timeScoreMinutes,
+			timeScoreSeconds ),
+		updatePtsScore: ( newPtsScore: number ) => createLevel(
+			name,
+			goal,
+			maps,
+			newPtsScore,
+			timeScoreMinutes,
+			timeScoreSeconds,
+		),
+		updateTimeScoreMinutes: ( newTimeScoreMinutes: number ) => createLevel(
+			name,
+			goal,
+			maps,
+			ptsScore,
+			newTimeScoreMinutes,
+			timeScoreSeconds,
+		),
+		updateTimeScoreSeconds: ( newTimeScoreSeconds: number ) => createLevel(
+			name,
+			goal,
+			maps,
+			ptsScore,
+			timeScoreMinutes,
+			newTimeScoreSeconds,
+		),
 	} );
 };
 
@@ -334,19 +388,37 @@ const loadLevelFromData = ( data: Uint8Array ): DecodedLevelData => {
 	// Gather name.
 	const nameData = decodeText( data );
 	const name = nameData.text;
+	const remainingBytes = nameData.remainingBytes;
+
+	// Gather ₧ score.
+	const ptsBuffer = new ArrayBuffer( 4 );
+	const ptsView = new DataView( ptsBuffer );
+	ptsView.setUint8( 0, remainingBytes[ 0 ] );
+	ptsView.setUint8( 1, remainingBytes[ 1 ] );
+	ptsView.setUint8( 2, remainingBytes[ 2 ] );
+	ptsView.setUint8( 3, remainingBytes[ 3 ] );
+	const ptsScore = ptsView.getUint32( 0 );
+
+	// Gather time score.
+	const timeBuffer = new ArrayBuffer( 2 );
+	const timeView = new DataView( timeBuffer );
+	timeView.setUint8( 0, remainingBytes[ 4 ] );
+	timeView.setUint8( 1, remainingBytes[ 5 ] );
+	const totalSeconds = timeView.getUint16( 0 );
+	const timeScoreMinutes = getMinutesFromTotalSeconds( totalSeconds );
+	const timeScoreSeconds = getSecondsFromTotalSeconds( totalSeconds );
 
 	// Gather goal.
-	const remainingBytes = nameData.remainingBytes;
-	const buffer = new ArrayBuffer( 1 );
-	const view = new DataView( buffer );
-	view.setUint8( 0, remainingBytes[ 0 ] );
-	const goalId = view.getUint8( 0 );
+	const goalIdBuffer = new ArrayBuffer( 1 );
+	const goalIdView = new DataView( goalIdBuffer );
+	goalIdView.setUint8( 0, remainingBytes[ 6 ] );
+	const goalId = goalIdView.getUint8( 0 );
 	const goalData = goals[ goalId ].exportData ?? [];
 	const goalDataSize = goalData.reduce( ( acc, { type } ) => acc + getDataTypeSize( type ), 0 );
 	const goalBuffer = new ArrayBuffer( goalDataSize );
 	const goalView = new DataView( goalBuffer );
 	for ( let i = 0; i < goalDataSize; i++ ) {
-		goalView.setUint8( i, remainingBytes[ i + 1 ] );
+		goalView.setUint8( i, remainingBytes[ i + 1 + 6 ] );
 	}
 	let i = 0;
 	const goalOptions: { [key: string]: string } = {};
@@ -357,17 +429,17 @@ const loadLevelFromData = ( data: Uint8Array ): DecodedLevelData => {
 	const goal = createGoal( goalId, goalOptions );
 
 	// Gather maps.
-	const mapCount = remainingBytes[ goalDataSize + 1 ];
-	const mapsBuffer = new ArrayBuffer( remainingBytes.length - goalDataSize - 2 );
+	const mapCount = remainingBytes[ goalDataSize + 1 + 6 ];
+	const mapsBuffer = new ArrayBuffer( remainingBytes.length - goalDataSize - 2 - 6 );
 	const mapsView = new DataView( mapsBuffer );
 	for ( let i = 0; i < mapsBuffer.byteLength; i++ ) {
-		mapsView.setUint8( i, remainingBytes[ i + goalDataSize + 2 ] );
+		mapsView.setUint8( i, remainingBytes[ i + goalDataSize + 2 + 6 ] );
 	}
 	const mapData = splitMapBytes( mapsBuffer, mapCount );
 	const maps = mapData.maps;
 
 	return {
-		level: createLevel( name, goal, maps ),
+		level: createLevel( name, goal, maps, ptsScore, timeScoreMinutes, timeScoreSeconds ),
 		remainingBytes: mapData.remainingBytes,
 	};
 };
@@ -376,6 +448,11 @@ const encodeLevels = ( levels: Level[] ): ByteBlock[] => {
 	return levels.map( ( level: Level ): ByteBlock[] => {
 		const { goal, maps, name } = level.getProps();
 		const data: ByteBlock[] = encodeText( name );
+		data.push( { type: DataType.Uint32, value: level.getPtsScore() } );
+		data.push( {
+			type: DataType.Uint16,
+			value: getTotalSecondsFromMinutesAndSeconds( level.getTimeScoreMinutes(), level.getTimeScoreSeconds() ),
+		} );
 		data.push( { type: DataType.Uint8, value: goal.getId() } );
 		const goalExportData = goals[ goal.getId() ].exportData ?? [];
 		goalExportData.forEach( ( { key, type } ) => {
@@ -387,6 +464,18 @@ const encodeLevels = ( levels: Level[] ): ByteBlock[] => {
 		} );
 		return data;
 	} ).flat( 1 );
+};
+
+const getMinutesFromTotalSeconds = ( totalSeconds: number ): number => {
+	return Math.floor( totalSeconds / 60 );
+};
+
+const getSecondsFromTotalSeconds = ( totalSeconds: number ): number => {
+	return totalSeconds % 60;
+};
+
+const getTotalSecondsFromMinutesAndSeconds = ( minutes: number, seconds: number ): number => {
+	return ( minutes * 60 ) + seconds;
 };
 
 export {

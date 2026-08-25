@@ -5,18 +5,13 @@ import { ReactElement, useEffect, useState } from 'react';
 import { testCharacters } from '../../../common/text';
 import LevelEditor from './LevelEditor';
 import LevelList from './LevelList';
-import { Goal, LevelModeProps } from '../../../common/types';
+import { Level, LevelModeProps } from '../../../common/types';
 
 const LevelMode = ( props: LevelModeProps ): ReactElement => {
 	const { exitMode, graphics, levels, palettes, setLevels } = props;
 	const [ selectedLevel, setSelectedLevel ] = useState<number | null>( null );
 
 	const closeLevel = () => setSelectedLevel( null );
-
-	// Set maps to maps list, but with selected level replaced by updated version.
-	const setMaps = ( maps: ArrayBuffer[] ) => setLevels( levels.map( ( level, i ) => ( i === selectedLevel
-		? level.updateMaps( maps )
-		: level ) ) );
 
 	const generateLevelNameUpdater = ( selectedLevel: number ) => ( name: string ) => {
 		const newName = name.toUpperCase();
@@ -32,10 +27,6 @@ const LevelMode = ( props: LevelModeProps ): ReactElement => {
 		window.electronAPI.enableSave();
 	};
 
-	const setGoal = ( goal: Goal ) => setLevels( levels.map( ( level, i ) => ( i === selectedLevel
-		? level.updateGoal( goal )
-		: level ) ) );
-
 	const onNew = () => {
 		setSelectedLevel( null );
 	};
@@ -47,6 +38,10 @@ const LevelMode = ( props: LevelModeProps ): ReactElement => {
 	const onOpen = () => {
 		setSelectedLevel( null );
 	};
+
+	const setLevel = ( level: Level ) => setLevels( levels.map( ( l, i ) => ( i === selectedLevel
+		? level
+		: l ) ) );
 
 	useEffect( () => {
 		window.electronAPI.on( `new__level-mode`, onNew );
@@ -70,14 +65,11 @@ const LevelMode = ( props: LevelModeProps ): ReactElement => {
 		/> }
 		{ selectedLevel !== null && <LevelEditor
 			closeLevel={ closeLevel }
-			goal={ levels[ selectedLevel ].getGoal() }
 			graphics={ graphics }
-			maps={ levels[ selectedLevel ].getMaps() }
-			name={ levels[ selectedLevel ].getName() }
+			level={ levels[ selectedLevel ] }
 			palettes={ palettes }
-			setGoal={ setGoal }
-			setName={ generateLevelNameUpdater( selectedLevel ) }
-			setMaps={ setMaps }
+			setLevel={ setLevel }
+			updateLevelName={ generateLevelNameUpdater( selectedLevel ) }
 		/> }
 	</div>;
 };

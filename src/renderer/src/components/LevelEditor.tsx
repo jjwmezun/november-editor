@@ -17,7 +17,18 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 	const [ selectedMap, setSelectedMap ] = useState<LvMap | null>( null );
 	const [ selectedMapIndex, setSelectedMapIndex ] = useState<number | null>( null );
 
-	const { closeLevel, goal, graphics, maps, name, palettes, setGoal, setMaps, setName } = props;
+	const {
+		closeLevel,
+		graphics,
+		level,
+		palettes,
+		setLevel,
+		updateLevelName,
+	} = props;
+
+	const maps = level.getMaps();
+
+	const setMaps = ( newMaps: ArrayBuffer[] ) => setLevel( level.updateMaps( newMaps ) );
 
 	const addMap = () => {
 		setSelectedMapIndex( maps.length );
@@ -122,10 +133,9 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 	return <div>
 		<h1>Level editor</h1>
 		<LevelOptions
-			goal={ goal }
-			name={ name }
-			setGoal={ setGoal }
-			setName={ setName }
+			level={ level }
+			setLevel={ setLevel }
+			updateLevelName={ updateLevelName }
 		/>
 		{ maps.length > 0 && <MapSelectorList
 			generateMapSelector={ generateMapSelector }

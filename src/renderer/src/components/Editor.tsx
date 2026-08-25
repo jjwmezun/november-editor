@@ -310,6 +310,18 @@ const Editor = (): ReactElement => {
 			if ( ! ( `name` in level ) || typeof level.name !== `string` ) {
 				throw new Error( `Invalid level name for level #${ i }` );
 			}
+			if ( ! ( `ptsScore` in level ) || typeof level.ptsScore !== `number` ) {
+				throw new Error( `Invalid level ptsScore for level #${ i }` );
+			}
+			if ( ! ( `timeScore` in level ) || typeof level.timeScore !== `object` || level.timeScore === null ) {
+				throw new Error( `Invalid level timeScore for level #${ i }` );
+			}
+			if ( ! ( `minutes` in level.timeScore ) || typeof level.timeScore.minutes !== `number` ) {
+				throw new Error( `Invalid level timeScore minutes for level #${ i }` );
+			}
+			if ( ! ( `seconds` in level.timeScore ) || typeof level.timeScore.seconds !== `number` ) {
+				throw new Error( `Invalid level timeScore seconds for level #${ i }` );
+			}
 			if ( ! ( `goal` in level ) || typeof level.goal !== `object` ) {
 				throw new Error( `Invalid level goal for level #${ i }` );
 			}
@@ -415,6 +427,9 @@ const Editor = (): ReactElement => {
 				level.name,
 				createGoal( goal.id, goal.options as GoalAtts ),
 				maps,
+				level.ptsScore,
+				level.timeScore.minutes,
+				level.timeScore.seconds,
 			);
 		} ) );
 

@@ -149,22 +149,25 @@ interface Level {
 	getMaps: () => ArrayBuffer[],
 	getName: () => string,
 	getProps: () => LevelProps,
+	getPtsScore: () => number,
+	getTimeScoreMinutes: () => number,
+	getTimeScoreSeconds: () => number,
 	toJSON: () => object,
 	updateGoal: ( newGoal: Goal ) => Level,
 	updateMaps: ( newMaps: ArrayBuffer[] ) => Level,
+	updatePtsScore: ( newPtsScore: number ) => Level,
+	updateTimeScoreMinutes: ( newTimeScoreMinutes: number ) => Level,
+	updateTimeScoreSeconds: ( newTimeScoreSeconds: number ) => Level,
 	updateName: ( newName: string ) => Level,
 }
 
 interface LevelEditorProps {
 	closeLevel: () => void;
 	graphics: Graphics;
-	maps: ArrayBuffer[];
-	name: string;
-	setName: ( name: string ) => void;
-	goal: Goal;
+	level: Level;
 	palettes: PaletteList;
-	setMaps: ( maps: ArrayBuffer[] ) => void;
-	setGoal: ( goal: Goal ) => void;
+	setLevel: ( level: Level ) => void;
+	updateLevelName: ( name: string ) => void;
 }
 
 interface LevelListProps {

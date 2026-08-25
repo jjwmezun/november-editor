@@ -1,21 +1,50 @@
 import { SyntheticEvent } from 'react';
 import { createGoal, goals } from '../../../../common/goals';
-import { Goal } from '../../../../common/types';
+import { Level } from '../../../../common/types';
 
 interface LevelOptionsProps {
-	goal: Goal;
-	name: string;
-	setGoal: ( goal: Goal ) => void;
-	setName: ( name: string ) => void;
+	level: Level;
+	setLevel: ( level: Level ) => void;
+	updateLevelName: ( name: string ) => void;
 }
 
 const LevelOptions = ( props: LevelOptionsProps ) => {
-	const { goal, name, setGoal, setName } = props;
+	const {
+		level,
+		setLevel,
+		updateLevelName,
+	} = props;
+
+	const name = level.getName();
+	const goal = level.getGoal();
 
 	const onChangeGoal = ( e: SyntheticEvent ) => {
 		const index = ( e.target as HTMLSelectElement ).value;
-		console.log( index );
-		setGoal( createGoal( parseInt( index ) ) );
+		setLevel( level.updateGoal( createGoal( parseInt( index ) ) ) );
+		window.electronAPI.enableSave();
+	};
+
+	const onChangePtsScore = ( e: SyntheticEvent ) => {
+		const newPtsScore = parseInt( ( e.target as HTMLInputElement ).value );
+		setLevel( level.updatePtsScore( newPtsScore ) );
+		window.electronAPI.enableSave();
+	};
+
+	const onChangeTimeScoreMinutes = ( e: SyntheticEvent ) => {
+		const minutes = parseInt( ( e.target as HTMLInputElement ).value );
+		setLevel( level.updateTimeScoreMinutes( minutes ) );
+		window.electronAPI.enableSave();
+	};
+
+	const onChangeTimeScoreSeconds = ( e: SyntheticEvent ) => {
+		const seconds = parseInt( ( e.target as HTMLInputElement ).value );
+		setLevel( level.updateTimeScoreSeconds( seconds ) );
+		window.electronAPI.enableSave();
+	};
+
+	const onChangeName = ( e: SyntheticEvent ) => {
+		const newName = ( e.target as HTMLInputElement ).value.toUpperCase();
+		updateLevelName( newName );
 		window.electronAPI.enableSave();
 	};
 
@@ -24,7 +53,35 @@ const LevelOptions = ( props: LevelOptionsProps ) => {
 		<div>
 			<label>
 				<span>Name:</span>
-				<input type="text" value={ name } onChange={ e => setName( e.target.value ) } />
+				<input type="text" value={ name } onChange={ onChangeName } />
+			</label>
+		</div>
+		<div>
+			<label>
+				<span>₧ score:</span>
+				<input type="number" value={ level.getPtsScore() } onChange={ onChangePtsScore } />
+			</label>
+		</div>
+		<div>
+			<label>
+				<span>Time score:</span>
+				<span>
+					<input
+						max="9"
+						min="0"
+						type="number"
+						value={ level.getTimeScoreMinutes() }
+						onChange={ onChangeTimeScoreMinutes }
+					/>
+					:
+					<input
+						max="59"
+						min="0"
+						type="number"
+						value={ level.getTimeScoreSeconds() }
+						onChange={ onChangeTimeScoreSeconds }
+					/>
+				</span>
 			</label>
 		</div>
 		<div>
@@ -48,7 +105,7 @@ const LevelOptions = ( props: LevelOptionsProps ) => {
 				<span>{ title }:</span>
 				<input
 					type={ type }
-					onChange={ e => setGoal( goal.updateOption( slug, e.target.value ) ) }
+					onChange={ e => setLevel( level.updateGoal( goal.updateOption( slug, e.target.value ) ) ) }
 					value={ goal.getOptionText( slug ) }
 					{ ...atts }
 				/>
