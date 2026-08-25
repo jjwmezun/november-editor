@@ -44,7 +44,12 @@ enum DataType {
 }
 
 interface DecodedLevelData {
-	level: Level,
+	data: LevelData,
+	remainingBytes: Uint8Array,
+}
+
+interface DecodedLevelHeader {
+	header: LevelHeader,
 	remainingBytes: Uint8Array,
 }
 
@@ -161,6 +166,11 @@ interface Level {
 	updateName: ( newName: string ) => Level,
 }
 
+interface LevelData {
+	goal: Goal,
+	maps: ArrayBuffer[],
+}
+
 interface LevelEditorProps {
 	closeLevel: () => void;
 	graphics: Graphics;
@@ -168,6 +178,13 @@ interface LevelEditorProps {
 	palettes: PaletteList;
 	setLevel: ( level: Level ) => void;
 	updateLevelName: ( name: string ) => void;
+}
+
+interface LevelHeader {
+	name: string,
+	ptsScore: number,
+	timeScoreMinutes: number,
+	timeScoreSeconds: number,
 }
 
 interface LevelListProps {
@@ -725,6 +742,7 @@ export {
 	Coordinates,
 	DataType,
 	DecodedLevelData,
+	DecodedLevelHeader,
 	DecodedTextData,
 	DecodedGraphicsData,
 	Goal,
@@ -740,7 +758,9 @@ export {
 	Layer,
 	LayerType,
 	Level,
+	LevelData,
 	LevelEditorProps,
+	LevelHeader,
 	LevelListProps,
 	LevelModeProps,
 	LevelProps,

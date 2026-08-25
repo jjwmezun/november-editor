@@ -24,9 +24,11 @@ import {
 	createLayer,
 	createLevel,
 	createMap,
-	encodeLevels,
+	decodeLevelData,
+	decodeLevelHeaders,
+	encodeLevelData,
+	encodeLevelHeaders,
 	generateDataBytes,
-	loadLevelFromData,
 }	from '../../../common/levels';
 import { createObject }	from '../../../common/objects';
 import {
@@ -39,6 +41,8 @@ import {
 	Layer,
 	LayerType,
 	Level,
+	LevelData,
+	LevelHeader,
 	LvMap,
 	MapObject,
 	Overworld,
@@ -80,8 +84,13 @@ const generateExportData = async (
 		overworldGFX.map( ( byte: number ): ByteBlock => ( { type: DataType.Uint8, value: byte } ) ),
 	);
 
-	// For each level, generate bytes for name, goal, and maps.
-	saveData = saveData.concat( encodeLevels( levels ) );
+	// For each level, generate header bytes for name, ₧ score, & time scores,
+	// to be used on the o’erworld.
+	saveData = saveData.concat( encodeLevelHeaders( levels ) );
+
+	// For each level, generate data bytes for goal, maps, & map objects
+	// to be used in level mode.
+	saveData = saveData.concat( encodeLevelData( levels ) );
 
 	// Encode overworld data.
 	saveData = saveData.concat( overworld.encode() );
@@ -130,10 +139,33 @@ const Editor = (): ReactElement => {
 			// Load level data.
 			const levels: Level[] = [];
 			let remainingBytes = graphicsData.remainingBytes;
-			while ( levels.length < levelCount ) {
-				const levelData = loadLevelFromData( remainingBytes );
-				levels.push( levelData.level );
+
+			// Load headers for all levels.
+			const levelHeaders : LevelHeader[] = [];
+			while ( levelHeaders.length < levelCount ) {
+				const levelHeader = decodeLevelHeaders( remainingBytes );
+				levelHeaders.push( levelHeader.header );
+				remainingBytes = levelHeader.remainingBytes;
+			}
+
+			// Load data for all levels.
+			const levelsData : LevelData[] = [];
+			while ( levelsData.length < levelCount ) {
+				const levelData = decodeLevelData( remainingBytes );
+				levelsData.push( levelData.data );
 				remainingBytes = levelData.remainingBytes;
+			}
+
+			// Combine all level headers & data into Level objects.
+			while ( levels.length < levelCount ) {
+				levels.push( createLevel(
+					levelHeaders[ levels.length ].name,
+					levelsData[ levels.length ].goal,
+					levelsData[ levels.length ].maps,
+					levelHeaders[ levels.length ].ptsScore,
+					levelHeaders[ levels.length ].timeScoreMinutes,
+					levelHeaders[ levels.length ].timeScoreSeconds,
+				) );
 			}
 
 			// Load overworld data.

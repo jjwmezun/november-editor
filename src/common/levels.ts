@@ -6,6 +6,7 @@ import {
 	ByteBlock,
 	DataType,
 	DecodedLevelData,
+	DecodedLevelHeader,
 	Goal,
 	Layer,
 	LayerType,
@@ -384,7 +385,47 @@ const splitMapBytes = ( data: ArrayBuffer, count: number ) => {
 	};
 };
 
-const loadLevelFromData = ( data: Uint8Array ): DecodedLevelData => {
+const decodeLevelData = ( data: Uint8Array ): DecodedLevelData => {
+	// Gather goal.
+	const goalIdBuffer = new ArrayBuffer( 1 );
+	const goalIdView = new DataView( goalIdBuffer );
+	goalIdView.setUint8( 0, data[ 0 ] );
+	const goalId = goalIdView.getUint8( 0 );
+	const goalData = goals[ goalId ].exportData ?? [];
+	const goalDataSize = goalData.reduce( ( acc, { type } ) => acc + getDataTypeSize( type ), 0 );
+	const goalBuffer = new ArrayBuffer( goalDataSize );
+	const goalView = new DataView( goalBuffer );
+	for ( let i = 0; i < goalDataSize; i++ ) {
+		goalView.setUint8( i, data[ i + 1 ] );
+	}
+	let i = 0;
+	const goalOptions: { [key: string]: string } = {};
+	goalData.forEach( ( { key, type } ) => {
+		goalOptions[ key ] = goalView[ `get${ type }` ]( i ).toString();
+		i += getDataTypeSize( type );
+	} );
+	const goal = createGoal( goalId, goalOptions );
+
+	// Gather maps.
+	const mapCount = data[ goalDataSize + 1 ];
+	const mapsBuffer = new ArrayBuffer( data.length - goalDataSize - 2 );
+	const mapsView = new DataView( mapsBuffer );
+	for ( let i = 0; i < mapsBuffer.byteLength; i++ ) {
+		mapsView.setUint8( i, data[ i + goalDataSize + 2 ] );
+	}
+	const mapData = splitMapBytes( mapsBuffer, mapCount );
+	const maps = mapData.maps;
+
+	return {
+		data: {
+			goal,
+			maps,
+		},
+		remainingBytes: mapData.remainingBytes,
+	};
+};
+
+const decodeLevelHeaders = ( data: Uint8Array ): DecodedLevelHeader => {
 	// Gather name.
 	const nameData = decodeText( data );
 	const name = nameData.text;
@@ -408,52 +449,33 @@ const loadLevelFromData = ( data: Uint8Array ): DecodedLevelData => {
 	const timeScoreMinutes = getMinutesFromTotalSeconds( totalSeconds );
 	const timeScoreSeconds = getSecondsFromTotalSeconds( totalSeconds );
 
-	// Gather goal.
-	const goalIdBuffer = new ArrayBuffer( 1 );
-	const goalIdView = new DataView( goalIdBuffer );
-	goalIdView.setUint8( 0, remainingBytes[ 6 ] );
-	const goalId = goalIdView.getUint8( 0 );
-	const goalData = goals[ goalId ].exportData ?? [];
-	const goalDataSize = goalData.reduce( ( acc, { type } ) => acc + getDataTypeSize( type ), 0 );
-	const goalBuffer = new ArrayBuffer( goalDataSize );
-	const goalView = new DataView( goalBuffer );
-	for ( let i = 0; i < goalDataSize; i++ ) {
-		goalView.setUint8( i, remainingBytes[ i + 1 + 6 ] );
-	}
-	let i = 0;
-	const goalOptions: { [key: string]: string } = {};
-	goalData.forEach( ( { key, type } ) => {
-		goalOptions[ key ] = goalView[ `get${ type }` ]( i ).toString();
-		i += getDataTypeSize( type );
-	} );
-	const goal = createGoal( goalId, goalOptions );
-
-	// Gather maps.
-	const mapCount = remainingBytes[ goalDataSize + 1 + 6 ];
-	const mapsBuffer = new ArrayBuffer( remainingBytes.length - goalDataSize - 2 - 6 );
-	const mapsView = new DataView( mapsBuffer );
-	for ( let i = 0; i < mapsBuffer.byteLength; i++ ) {
-		mapsView.setUint8( i, remainingBytes[ i + goalDataSize + 2 + 6 ] );
-	}
-	const mapData = splitMapBytes( mapsBuffer, mapCount );
-	const maps = mapData.maps;
-
 	return {
-		level: createLevel( name, goal, maps, ptsScore, timeScoreMinutes, timeScoreSeconds ),
-		remainingBytes: mapData.remainingBytes,
+		header: {
+			name,
+			ptsScore,
+			timeScoreMinutes,
+			timeScoreSeconds,
+		},
+		remainingBytes: remainingBytes.slice( 6 ),
 	};
 };
 
-const encodeLevels = ( levels: Level[] ): ByteBlock[] => {
+const encodeLevelHeaders = ( levels: Level[] ): ByteBlock[] => {
 	return levels.map( ( level: Level ): ByteBlock[] => {
-		const { goal, maps, name } = level.getProps();
-		const data: ByteBlock[] = encodeText( name );
+		const data: ByteBlock[] = encodeText( level.getName() );
 		data.push( { type: DataType.Uint32, value: level.getPtsScore() } );
 		data.push( {
 			type: DataType.Uint16,
 			value: getTotalSecondsFromMinutesAndSeconds( level.getTimeScoreMinutes(), level.getTimeScoreSeconds() ),
 		} );
-		data.push( { type: DataType.Uint8, value: goal.getId() } );
+		return data;
+	} ).flat( 1 );
+};
+
+const encodeLevelData = ( levels: Level[] ): ByteBlock[] => {
+	return levels.map( ( level: Level ): ByteBlock[] => {
+		const { goal, maps } = level.getProps();
+		const data: ByteBlock[] = [ { type: DataType.Uint8, value: goal.getId() } ];
 		const goalExportData = goals[ goal.getId() ].exportData ?? [];
 		goalExportData.forEach( ( { key, type } ) => {
 			data.push( { type, value: goal.getOptionData( key ) } );
@@ -482,9 +504,11 @@ export {
 	createLayer,
 	createLevel,
 	createMap,
-	encodeLevels,
+	decodeLevelData,
+	decodeLevelHeaders,
+	encodeLevelData,
+	encodeLevelHeaders,
 	generateDataBytes,
 	layerTypeNames,
-	loadLevelFromData,
 	transformMapDataToObject,
 };
