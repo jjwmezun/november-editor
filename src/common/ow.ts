@@ -185,12 +185,16 @@ function createOverworldEventsList(
 
 			return data;
 		},
+		forEach: ( callback: ( event: OverworldEvent, index: number ) => void ) => {
+			events.forEach( callback );
+		},
 		getEntry: ( index: number ): OverworldEvent => {
 			if ( index < 0 || index >= events.length ) {
 				throw new Error( `Event index out o’ bounds: ${ index }` );
 			}
 			return events[ index ];
 		},
+		getEvents: () => events,
 		getLength: () => events.length,
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		map: ( callback: ( event: OverworldEvent, index: number ) => any ) => {

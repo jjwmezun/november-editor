@@ -460,32 +460,28 @@ const decodeLevelHeaders = ( data: Uint8Array ): DecodedLevelHeader => {
 	};
 };
 
-const encodeLevelHeaders = ( levels: Level[] ): ByteBlock[] => {
-	return levels.map( ( level: Level ): ByteBlock[] => {
-		const data: ByteBlock[] = encodeText( level.getName() );
-		data.push( { type: DataType.Uint32, value: level.getPtsScore() } );
-		data.push( {
-			type: DataType.Uint16,
-			value: getTotalSecondsFromMinutesAndSeconds( level.getTimeScoreMinutes(), level.getTimeScoreSeconds() ),
-		} );
-		return data;
-	} ).flat( 1 );
+const encodeLevelHeader = ( level: Level ): ByteBlock[] => {
+	const data: ByteBlock[] = encodeText( level.getName() );
+	data.push( { type: DataType.Uint32, value: level.getPtsScore() } );
+	data.push( {
+		type: DataType.Uint16,
+		value: getTotalSecondsFromMinutesAndSeconds( level.getTimeScoreMinutes(), level.getTimeScoreSeconds() ),
+	} );
+	return data;
 };
 
-const encodeLevelData = ( levels: Level[] ): ByteBlock[] => {
-	return levels.map( ( level: Level ): ByteBlock[] => {
-		const { goal, maps } = level.getProps();
-		const data: ByteBlock[] = [ { type: DataType.Uint8, value: goal.getId() } ];
-		const goalExportData = goals[ goal.getId() ].exportData ?? [];
-		goalExportData.forEach( ( { key, type } ) => {
-			data.push( { type, value: goal.getOptionData( key ) } );
-		} );
-		data.push( { type: DataType.Uint8, value: maps.length } );
-		maps.forEach( map => {
-			new Uint8Array( map ).forEach( byte => data.push( { type: DataType.Uint8, value: byte } ) );
-		} );
-		return data;
-	} ).flat( 1 );
+const encodeLevelData = ( level: Level ): ByteBlock[] => {
+	const { goal, maps } = level.getProps();
+	const data: ByteBlock[] = [ { type: DataType.Uint8, value: goal.getId() } ];
+	const goalExportData = goals[ goal.getId() ].exportData ?? [];
+	goalExportData.forEach( ( { key, type } ) => {
+		data.push( { type, value: goal.getOptionData( key ) } );
+	} );
+	data.push( { type: DataType.Uint8, value: maps.length } );
+	maps.forEach( map => {
+		new Uint8Array( map ).forEach( byte => data.push( { type: DataType.Uint8, value: byte } ) );
+	} );
+	return data;
 };
 
 const getMinutesFromTotalSeconds = ( totalSeconds: number ): number => {
@@ -507,7 +503,7 @@ export {
 	decodeLevelData,
 	decodeLevelHeaders,
 	encodeLevelData,
-	encodeLevelHeaders,
+	encodeLevelHeader,
 	generateDataBytes,
 	layerTypeNames,
 	transformMapDataToObject,

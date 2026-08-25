@@ -362,8 +362,10 @@ interface Overworld {
 
 interface OverworldEventsList {
 	addEvent: () => Overworld,
-	encode: ( maps: readonly OverworldMap[] ) => ByteBlock[];
+	encode: ( maps: readonly OverworldMap[] ) => ByteBlock[],
+	forEach: ( callback: ( event: OverworldEvent, index: number ) => void ) => void,
 	getEntry: ( index: number ) => OverworldEvent,
+	getEvents: () => readonly OverworldEvent[],
 	getLength: () => number,
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	map: ( callback: ( event: OverworldEvent, index: number ) => any ) => any[],

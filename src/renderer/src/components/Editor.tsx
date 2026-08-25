@@ -4,7 +4,7 @@ import React, { ReactElement, SyntheticEvent, useEffect, useState } from 'react'
 // @ts-expect-error – CSS import, doesn’t follow normal JS rules, obviously.
 import '../assets/editor.scss';
 
-import { getDataTypeSize } from '../../../common/bytes';
+import { getDataTypeSize, getTotalBytes } from '../../../common/bytes';
 import { levelCount } from '../../../common/constants';
 import { modeKeys } from '../../../common/modes';
 import LevelMode from './LevelMode';
@@ -27,7 +27,7 @@ import {
 	decodeLevelData,
 	decodeLevelHeaders,
 	encodeLevelData,
-	encodeLevelHeaders,
+	encodeLevelHeader,
 	generateDataBytes,
 }	from '../../../common/levels';
 import { createObject }	from '../../../common/objects';
@@ -46,6 +46,8 @@ import {
 	LvMap,
 	MapObject,
 	Overworld,
+	OverworldEvent,
+	OverworldMap,
 	Palette,
 	PaletteList,
 	PaletteSystem,
@@ -66,19 +68,45 @@ const generateExportData = async (
 	graphics: Graphics,
 	overworld: Overworld,
 ): Promise<DataView> => {
-	let saveData: ByteBlock[] = palettes.main.encode().concat( palettes.overworld.encode() );
+	const tableOfContents : ByteBlock[] = [];
 
+	// Init main palette pointer.
+	tableOfContents.push( { type: DataType.Uint32, value: 0 } );
+
+	// Encode main palette data.
+	let saveData: ByteBlock[] = palettes.main.encode();
+
+	// Calculate o’erworld palette pointer.
+	tableOfContents.push( { type: DataType.Uint32, value: getTotalBytes( saveData ) } );
+
+	// Encode o’erworld palette data.
+	saveData = saveData.concat( palettes.overworld.encode() );
+
+	// Calculate block graphics pointer.
+	tableOfContents.push( { type: DataType.Uint32, value: getTotalBytes( saveData ) } );
+
+	// Encode graphics data.
 	const blockGFX = Array.from( await compressPixels( graphics.blocks.getPixels(), `blocks` ) );
-	const spriteGFX = Array.from( await compressPixels( graphics.sprites.getPixels(), `sprites` ) );
-	const overworldGFX = Array.from( await compressPixels( graphics.overworld.getPixels(), `overworld` ) );
 	saveData.push( { type: DataType.Uint32, value: blockGFX.length } );
 	saveData = saveData.concat(
 		blockGFX.map( ( byte: number ): ByteBlock => ( { type: DataType.Uint8, value: byte } ) ),
 	);
+
+	// Calculate sprite graphics pointer.
+	tableOfContents.push( { type: DataType.Uint32, value: getTotalBytes( saveData ) } );
+
+	// Encode sprite graphics data.
+	const spriteGFX = Array.from( await compressPixels( graphics.sprites.getPixels(), `sprites` ) );
 	saveData.push( { type: DataType.Uint32, value: spriteGFX.length } );
 	saveData = saveData.concat(
 		spriteGFX.map( ( byte: number ): ByteBlock => ( { type: DataType.Uint8, value: byte } ) ),
 	);
+
+	// Calculate o’erworld graphics pointer.
+	tableOfContents.push( { type: DataType.Uint32, value: getTotalBytes( saveData ) } );
+
+	// Encode o’erworld graphics data.
+	const overworldGFX = Array.from( await compressPixels( graphics.overworld.getPixels(), `overworld` ) );
 	saveData.push( { type: DataType.Uint32, value: overworldGFX.length } );
 	saveData = saveData.concat(
 		overworldGFX.map( ( byte: number ): ByteBlock => ( { type: DataType.Uint8, value: byte } ) ),
@@ -86,17 +114,64 @@ const generateExportData = async (
 
 	// For each level, generate header bytes for name, ₧ score, & time scores,
 	// to be used on the o’erworld.
-	saveData = saveData.concat( encodeLevelHeaders( levels ) );
+	levels.forEach( ( level: Level ) => {
+		// Calculate level header pointer.
+		tableOfContents.push( { type: DataType.Uint32, value: getTotalBytes( saveData ) } );
+
+		// Encode level header data.
+		saveData = saveData.concat( encodeLevelHeader( level ) );
+	} );
 
 	// For each level, generate data bytes for goal, maps, & map objects
 	// to be used in level mode.
-	saveData = saveData.concat( encodeLevelData( levels ) );
+	levels.forEach( ( level: Level ) => {
+		// Calculate level header pointer.
+		tableOfContents.push( { type: DataType.Uint32, value: getTotalBytes( saveData ) } );
 
-	// Encode overworld data.
-	saveData = saveData.concat( overworld.encode() );
+		// Encode level data.
+		saveData = saveData.concat( encodeLevelData( level ) );
+	} );
+
+	// Store o’erworld events pointer for later.
+	tableOfContents.push( { type: DataType.Uint32, value: 0 } );
+	const overworldEventsPointerIndex = tableOfContents.length - 1;
+
+	saveData.push( { type: DataType.Uint8, value: overworld.getMapsList().length } );
+
+	// Encode overworld maps data.
+	overworld.getMapsList().forEach( ( map: OverworldMap ) => {
+		// Calculate overworld map pointer.
+		tableOfContents.push( { type: DataType.Uint32, value: getTotalBytes( saveData ) } );
+
+		// Encode overworld map data.
+		saveData = saveData.concat( map.encode() );
+	} );
+	const overworldEventsPointer = getTotalBytes( saveData );
+
+	saveData.push( { type: DataType.Uint8, value: overworld.getEventsList().getLength() } );
+
+	overworld.getEventsList().forEach( ( event: OverworldEvent ) => {
+		// Calculate overworld event pointer.
+		tableOfContents.push( { type: DataType.Uint32, value: getTotalBytes( saveData ) } );
+
+		// Encode overworld event data.
+		saveData = saveData.concat( event.encode( overworld.getMapsList(), overworld.getEventsList().getEvents() ) );
+	} );
+
+	// Shift TOC pointers to account for the TOC itself, which is stored at the start o’ the file.
+	for ( let i = 0; i < tableOfContents.length; i++ ) {
+		tableOfContents[ i ].value += getTotalBytes( tableOfContents );
+	}
+
+	// Now update the o’erworld events pointer to point to the correct location.
+	// Note that since this points inside the TOC, we do NOT want to shift it by the TOC size.
+	tableOfContents[ overworldEventsPointerIndex ].value = overworldEventsPointer;
+
+	// Combine TOC & save data into one array.
+	saveData = tableOfContents.concat( saveData );
 
 	// Calculate total size o’ save data.
-	const size = saveData.reduce( ( acc, { type } ) => acc + getDataTypeSize( type ), 0 );
+	const size = getTotalBytes( saveData );
 
 	// Generate buffer to save data.
 	const buffer = new ArrayBuffer( size );
@@ -132,28 +207,59 @@ const Editor = (): ReactElement => {
 	};
 
 	const onImport = ( _event: SyntheticEvent, data: Uint8Array ) => {
-		const paletteData = decodePaletteData( data );
+		// Create buffer from data & pull out the table of contents for the file.
+		const buffer = new ArrayBuffer( data.length );
+		const bufferView = new DataView( buffer );
+		for ( let i = 0; i < data.length; i++ ) {
+			bufferView.setUint8( i, data[ i ] );
+		}
+		const levelHeaders : number[] = [];
+		for ( let i = 0; i < levelCount; i++ ) {
+			levelHeaders.push( bufferView.getUint32( 20 + ( i * 4 ) ) );
+		}
+		const levelData : number[] = [];
+		for ( let i = 0; i < levelCount; i++ ) {
+			levelData.push( bufferView.getUint32( 20 + ( levelCount * 4 ) + ( i * 4 ) ) );
+		}
+		const tableOfContents = {
+			palettes: {
+				main: bufferView.getUint32( 0 ),
+				overworld: bufferView.getUint32( 4 ),
+			},
+			graphics: {
+				blocks: bufferView.getUint32( 8 ),
+				sprites: bufferView.getUint32( 12 ),
+				overworld: bufferView.getUint32( 16 ),
+			},
+			levelHeaders,
+			levelData,
+			overworld: bufferView.getUint32( 20 + ( levelCount * 8 ) + 4 ),
+		};
+
+		// Start decoding from the main palette data, which is the first pointer in the table of contents.
+		const paletteData = decodePaletteData( data.slice( tableOfContents.palettes.main ) );
 
 		// Load graphics data.
-		loadGraphicsFromData( paletteData.remainingBytes ).then( graphicsData => {
+		loadGraphicsFromData( data.slice( tableOfContents.graphics.blocks ) ).then( graphicsData => {
 			// Load level data.
 			const levels: Level[] = [];
-			let remainingBytes = graphicsData.remainingBytes;
 
 			// Load headers for all levels.
 			const levelHeaders : LevelHeader[] = [];
 			while ( levelHeaders.length < levelCount ) {
-				const levelHeader = decodeLevelHeaders( remainingBytes );
+				const levelHeader = decodeLevelHeaders(
+					data.slice( tableOfContents.levelHeaders[ levelHeaders.length ] ),
+				);
 				levelHeaders.push( levelHeader.header );
-				remainingBytes = levelHeader.remainingBytes;
 			}
 
 			// Load data for all levels.
 			const levelsData : LevelData[] = [];
 			while ( levelsData.length < levelCount ) {
-				const levelData = decodeLevelData( remainingBytes );
+				const levelData = decodeLevelData(
+					data.slice( tableOfContents.levelData[ levelsData.length ] ),
+				);
 				levelsData.push( levelData.data );
-				remainingBytes = levelData.remainingBytes;
 			}
 
 			// Combine all level headers & data into Level objects.
@@ -169,7 +275,9 @@ const Editor = (): ReactElement => {
 			}
 
 			// Load overworld data.
-			setOverworld( loadOverworldFromData( remainingBytes ) );
+			// Note that we need the o’erworld map count,
+			// which is 1 byte before the 1st o’erworld map pointer in the table of contents.
+			setOverworld( loadOverworldFromData( data.slice( tableOfContents.overworld - 1 ) ) );
 
 			resetMode();
 			setPalettes( paletteData.palettes );

@@ -1,3 +1,5 @@
+import { ByteBlock } from "./types";
+
 function combineUint8ArrayIntoUint32( list: number[] ): number {
 	return list.reduce( ( acc, n, index ) => {
 		return acc + ( n << ( 8 * ( list.length - index - 1 ) ) );
@@ -22,9 +24,14 @@ const getDataTypeSize = ( type: string ): number => {
 	return parseInt( m[ 1 ] ) / 8;
 };
 
+const getTotalBytes = ( list: ByteBlock[] ): number => {
+	return list.reduce( ( acc, { type } ) => acc + getDataTypeSize( type ), 0 );
+};
+
 export {
 	combineUint8ArrayIntoUint32,
 	getBitsFromByte,
 	getBitFromNumber,
 	getDataTypeSize,
+	getTotalBytes,
 };
