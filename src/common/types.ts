@@ -98,6 +98,7 @@ interface Graphics {
 }
 
 interface GraphicsEntry {
+	clearAllTiles: () => void,
 	clearTile: ( tileIndex: number ) => void,
 	createTexture: ( ctx: WebGLRenderingContext, index: number ) => WebGLTexture,
 	getData: () => GraphicsEntryRaw,
@@ -665,6 +666,7 @@ interface TextTrie {
 }
 
 interface TileEditorProps {
+	clearAllTiles: () => void,
 	clearTile: () => void,
 	drawPixel: ( x: number, y: number ) => void,
 	graphics: GraphicsEntry,

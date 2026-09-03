@@ -46,6 +46,13 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 		} );
 	};
 
+	const clearAllTiles = () => {
+		setGraphics( {
+			...graphics,
+			[ selectedGraphicType ]: selectedGraphicsEntry.clearAllTiles(),
+		} );
+	};
+
 	const updatePalette = ( e: SyntheticEvent ) => {
 		const target = e.target as HTMLSelectElement;
 		const paletteIndex = parseInt( target.value );
@@ -120,6 +127,7 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 				setSelectedTile={ setSelectedTile }
 			/>
 			<TileEditor
+				clearAllTiles={ clearAllTiles }
 				clearTile={ clearTile }
 				drawPixel={ drawPixel }
 				graphics={ selectedGraphicsEntry }

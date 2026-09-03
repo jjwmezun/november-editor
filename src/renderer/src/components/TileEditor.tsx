@@ -655,7 +655,17 @@ const createRenderer = (
 
 const TileEditor = ( props: TileEditorProps ): ReactElement => {
 	const canvasRef = useRef<HTMLCanvasElement | null>( null );
-	const { clearTile, drawPixel, graphics, palettes, selectedColor, selectedPalette, tileX, tileY } = props;
+	const {
+		clearAllTiles,
+		clearTile,
+		drawPixel,
+		graphics,
+		palettes,
+		selectedColor,
+		selectedPalette,
+		tileX,
+		tileY,
+	} = props;
 	const [ selected, setSelected ] = useState( { x: 0, y: 0 } );
 	const [ mouseDown, setMouseDown ] = useState( false );
 	const [ brushSize, setBrushSize ] = useState( 1 );
@@ -809,6 +819,7 @@ const TileEditor = ( props: TileEditorProps ): ReactElement => {
 			</label>
 		</div>
 		<button onClick={ clearTile }>Clear Tile</button>
+		<button onClick={ clearAllTiles }>Clear All Tiles</button>
 	</div>;
 };
 

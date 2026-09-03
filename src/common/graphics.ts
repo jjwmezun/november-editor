@@ -92,6 +92,10 @@ const createGraphicsEntry = (
 	const getHeightPixels = () => heightTiles * tileSize;
 
 	return {
+		clearAllTiles: () => {
+			pixels.fill( 0 );
+			return createGraphicsEntry( name, widthTiles, heightTiles, pixels );
+		},
 		clearTile: tileIndex => {
 			const tileX = tileIndex % widthTiles;
 			const tileY = Math.floor( tileIndex / widthTiles );
