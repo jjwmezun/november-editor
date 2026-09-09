@@ -1,5 +1,16 @@
 import { pixelsPerBlock, tilesPerBlock } from "./constants";
-import { DataType, GraphicTile, LayerType, MapObject, MapObjectArgs, MapObjectType, OverworldLayerType } from "./types";
+import {
+	DataType,
+	GraphicTile,
+	LayerTileSetOption,
+	LayerType,
+	MapObject,
+	MapObjectArgs,
+	MapObjectType,
+	MapObjectTypeGenerator,
+	OverworldLayerType,
+	TileSetType,
+} from "./types";
 
 const createTile = ( options: object ) => {
 	return {
@@ -16,7 +27,252 @@ const createTile = ( options: object ) => {
 	};
 };
 
-const objectTypes: readonly MapObjectType[] = Object.freeze( [
+const dummyType : MapObjectType = Object.freeze( {
+	name: `Dummy`,
+	create: ( id: number, x: number, y: number ) => ( {
+		id: id,
+		x: x,
+		y: y,
+		width: 1,
+		height: 1,
+	} ),
+	generateHighlight: ( object: MapObject ) => {
+		return [
+			{
+				x: object.xBlocks(),
+				y: object.yBlocks(),
+				width: object.widthBlocks(),
+				height: object.heightBlocks(),
+			},
+		];
+	},
+	generateTiles: () => [],
+	exportData: [
+		{ type: DataType.Uint16, key: `id` },
+		{ type: DataType.Uint16, key: `x` },
+		{ type: DataType.Uint16, key: `y` },
+	],
+	options: [
+		{
+			title: `X`,
+			key: `x`,
+			type: `number`,
+			update: ( v: string ) => parseInt( v ),
+			atts: {
+				min: 0,
+				max: Math.pow( 2, 16 ) - 1,
+			},
+		},
+		{
+			title: `Y`,
+			key: `y`,
+			type: `number`,
+			update: ( v: string ) => parseInt( v ),
+			atts: {
+				min: 0,
+				max: Math.pow( 2, 16 ) - 1,
+			},
+		},
+	],
+} );
+
+const universalBlockTypes: readonly MapObjectType[] = Object.freeze( [
+	{
+		name: `Gem`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+
+			for ( let y = object.yTiles(); y < object.bottomTiles(); y += tilesPerBlock ) {
+				for ( let x = object.xTiles(); x < object.rightTiles(); x += tilesPerBlock ) {
+					tiles.push( createTile( {
+						animation: 4,
+						srcx: 0,
+						srcy: 1,
+						x,
+						y,
+					} ) );
+					tiles.push( createTile( {
+						animation: 4,
+						srcx: 5,
+						srcy: 1,
+						x: x + 1,
+						y,
+					} ) );
+					tiles.push( createTile( {
+						animation: 4,
+						srcx: 10,
+						srcy: 1,
+						x,
+						y: y + 1,
+					} ) );
+					tiles.push( createTile( {
+						animation: 4,
+						srcx: 15,
+						srcy: 1,
+						x: x + 1,
+						y: y + 1,
+					} ) );
+				}
+			}
+
+			return tiles;
+		},
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `width` },
+			{ type: DataType.Uint8, key: `height` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Width`,
+				key: `width`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+			{
+				title: `Height`,
+				key: `height`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
+] );
+
+const atticBlockTypes: readonly MapObjectType[] = Object.freeze( [
+	{
+		name: `Pipe ( Horizontal )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 1,
+			height: 2,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+
+			for ( let x = object.xTiles(); x < object.rightTiles(); x += tilesPerBlock ) {
+				tiles.push( createTile( {
+					srcx: 0,
+					srcy: 0,
+					x,
+					y: object.yTiles(),
+					srcWidth: 1,
+					srcHeight: 4,
+				} ) );
+				tiles.push( createTile( {
+					srcx: 0,
+					srcy: 0,
+					x: x + 1,
+					y: object.yTiles(),
+					srcWidth: 1,
+					srcHeight: 4,
+				} ) );
+			}
+
+			return tiles;
+		},
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `width` },
+			{ type: DataType.Uint8, key: `height` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Width`,
+				key: `width`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
+] );
+
+const urbanBlockTypes: readonly MapObjectType[] = Object.freeze( [
 	{
 		name: `Ground`,
 		create: ( id, x, y ) => ( {
@@ -45,16 +301,19 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 					x,
 					y: object.yTiles(),
 					srcWidth: tilesPerBlock,
+					srcy: 0,
 				} ) );
 				list.push( createTile( {
 					x,
 					y: object.yTiles() + 1,
 					srcx: 2,
+					srcy: 0,
 				} ) );
 				list.push( createTile( {
 					x: x + 1,
 					y: object.yTiles() + 1,
 					srcx: 2,
+					srcy: 0,
 				} ) );
 			}
 
@@ -65,6 +324,7 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 						x,
 						y,
 						srcx: 3,
+						srcy: 0,
 					} ) );
 				}
 			}
@@ -178,101 +438,6 @@ const objectTypes: readonly MapObjectType[] = Object.freeze( [
 				atts: {
 					min: 0,
 					max: Math.pow( 2, 16 ) - 1,
-				},
-			},
-		],
-	},
-	{
-		name: `Gem`,
-		create: ( id, x, y ) => ( {
-			id: id,
-			x: x,
-			y: y,
-			width: 1,
-			height: 1,
-		} ),
-		generateHighlight: ( object: MapObject ) => {
-			return [
-				{
-					x: object.xBlocks(),
-					y: object.yBlocks(),
-					width: object.widthBlocks(),
-					height: object.heightBlocks(),
-				},
-			];
-		},
-		generateTiles: ( object: MapObject ) => {
-			const tiles: GraphicTile[] = [];
-
-			for ( let y = object.yTiles(); y < object.bottomTiles(); y += tilesPerBlock ) {
-				for ( let x = object.xTiles(); x < object.rightTiles(); x += tilesPerBlock ) {
-					tiles.push( createTile( {
-						animation: 6,
-						srcx: 5,
-						srcy: 1,
-						x,
-						y,
-						srcWidth: tilesPerBlock,
-					} ) );
-					tiles.push( createTile( {
-						animation: 6,
-						srcx: 17,
-						srcy: 1,
-						x,
-						y: y + 1,
-						srcWidth: tilesPerBlock,
-					} ) );
-				}
-			}
-
-			return tiles;
-		},
-		exportData: [
-			{ type: DataType.Uint16, key: `id` },
-			{ type: DataType.Uint16, key: `x` },
-			{ type: DataType.Uint16, key: `y` },
-			{ type: DataType.Uint8, key: `width` },
-			{ type: DataType.Uint8, key: `height` },
-		],
-		options: [
-			{
-				title: `X`,
-				key: `x`,
-				type: `number`,
-				update: v => parseInt( v ),
-				atts: {
-					min: 0,
-					max: Math.pow( 2, 16 ) - 1,
-				},
-			},
-			{
-				title: `Y`,
-				key: `y`,
-				type: `number`,
-				update: v => parseInt( v ),
-				atts: {
-					min: 0,
-					max: Math.pow( 2, 16 ) - 1,
-				},
-			},
-			{
-				title: `Width`,
-				key: `width`,
-				type: `number`,
-				update: v => parseInt( v ),
-				atts: {
-					min: 1,
-					max: Math.pow( 2, 8 ) - 1,
-				},
-			},
-			{
-				title: `Height`,
-				key: `height`,
-				type: `number`,
-				update: v => parseInt( v ),
-				atts: {
-					min: 1,
-					max: Math.pow( 2, 8 ) - 1,
 				},
 			},
 		],
@@ -1291,6 +1456,23 @@ const owSpriteTypes: readonly MapObjectType[] = Object.freeze( [
 	},
 ] );
 
+const generateBlockTypes = ( tilesetType : TileSetType ) => {
+	const types = [ ...universalBlockTypes ];
+	while ( types.length < 256 ) {
+		types.push( dummyType );
+	}
+	let tilesetObjects : MapObjectType[] = [];
+	switch ( tilesetType ) {
+		case TileSetType.urban:
+			tilesetObjects = [ ...urbanBlockTypes ];
+			break;
+		case TileSetType.attic:
+			tilesetObjects = [ ...atticBlockTypes ];
+			break;
+	}
+	return types.concat( tilesetObjects );
+};
+
 const createObject = ( object: MapObjectArgs ): MapObject => {
 	const {
 		type = 0,
@@ -1334,8 +1516,46 @@ const createObject = ( object: MapObjectArgs ): MapObject => {
 	} );
 };
 
-const getTypeFactory = ( type: LayerType ): readonly MapObjectType[] => (
-	type === LayerType.sprite ? spriteTypes : objectTypes );
+const createTypeGenerator = (
+	types: readonly MapObjectType[],
+	indexStart: number,
+): readonly MapObjectTypeGenerator[] => Object.freeze( types.map( ( type, i ) => ( {
+	name: type.name,
+	create: type.create,
+	type: indexStart + i,
+} ) ) );
+
+const getBlockTypeFactory = ( layerType: LayerType, tilesetType: TileSetType ): readonly MapObjectType[] => {
+	if ( layerType === LayerType.sprite ) {
+		return spriteTypes;
+	}
+	return generateBlockTypes( tilesetType );
+};
+
+const getBlockTypeFactoryOfType = (
+	layerType: LayerType,
+	tileType: LayerTileSetOption,
+	tilesetType: TileSetType,
+): readonly MapObjectTypeGenerator[] => {
+	let objects : readonly MapObjectType[] = [];
+	let startIndex = 0;
+	if ( layerType === LayerType.sprite ) {
+		objects = spriteTypes;
+	} else if ( tileType === LayerTileSetOption.universal ) {
+		objects = universalBlockTypes;
+	} else if ( tileType === LayerTileSetOption.tilesetSpecific ) {
+		switch ( tilesetType ) {
+			case ( TileSetType.urban ):
+				objects = urbanBlockTypes;
+			break;
+			case ( TileSetType.attic ):
+				objects = atticBlockTypes;
+			break;
+		}
+		startIndex = 256;
+	}
+	return Object.freeze( createTypeGenerator( objects, startIndex ) );
+};
 
 const getOverworldTypeFactory = ( type: OverworldLayerType ): readonly MapObjectType[] => {
 	return type === OverworldLayerType.sprite
@@ -1361,4 +1581,10 @@ const getOverworldTypeGenerator = ( layerType: OverworldLayerType ): (
 	};
 };
 
-export { createObject, getOverworldTypeFactory, getOverworldTypeGenerator, getTypeFactory };
+export {
+	createObject,
+	getBlockTypeFactory,
+	getBlockTypeFactoryOfType,
+	getOverworldTypeFactory,
+	getOverworldTypeGenerator,
+};

@@ -419,7 +419,7 @@ const TileGrid = ( props: TileGridProps ): ReactElement => {
 				/>
 			</label>
 		</div>
-		<div className="graphics__canvas" style={ { width, height } }>
+		<div className="graphics__canvas" style={ { width: width + 16, height: height + 16, overflow: `scroll` } }>
 			<canvas
 				ref={ canvasRef }
 				width={ width }

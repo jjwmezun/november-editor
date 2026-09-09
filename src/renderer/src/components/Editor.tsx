@@ -14,7 +14,6 @@ import PaletteMode from './PaletteMode';
 import OverworldMode from './OverworldMode';
 import {
 	compressPixels,
-	createBlankGraphicsEntry,
 	createGraphicsEntry,
 	createNewGraphics,
 	decompressPixels,
@@ -110,14 +109,48 @@ const generateExportData = async (
 	// Encode o’erworld palette data.
 	saveData = saveData.concat( palettes.overworld.encodeColors() );
 
-	// Calculate block graphics pointer.
+	// Calculate charset graphics pointer.
 	tableOfContents.push( { type: DataType.Uint32, value: getTotalBytes( saveData ) } );
 
-	// Encode graphics data.
-	const blockGFX = Array.from( await compressPixels( graphics.blocks.getPixels(), `blocks` ) );
-	saveData.push( { type: DataType.Uint32, value: blockGFX.length } );
+	// Encode charset graphics data.
+	const charsetGFX = Array.from(
+		await compressPixels( graphics.charset.getPixels(), `charset` ),
+	);
+	saveData.push( { type: DataType.Uint32, value: charsetGFX.length } );
 	saveData = saveData.concat(
-		blockGFX.map( ( byte: number ): ByteBlock => ( { type: DataType.Uint8, value: byte } ) ),
+		charsetGFX.map( ( byte: number ): ByteBlock => ( { type: DataType.Uint8, value: byte } ) ),
+	);
+
+	// Calculate universal block graphics pointer.
+	tableOfContents.push( { type: DataType.Uint32, value: getTotalBytes( saveData ) } );
+
+	// Encode universal block graphics data.
+	const universalBlockGFX = Array.from(
+		await compressPixels( graphics.universalBlocks.getPixels(), `universalBlocks` ),
+	);
+	saveData.push( { type: DataType.Uint32, value: universalBlockGFX.length } );
+	saveData = saveData.concat(
+		universalBlockGFX.map( ( byte: number ): ByteBlock => ( { type: DataType.Uint8, value: byte } ) ),
+	);
+
+	// Calculate urban block graphics pointer.
+	tableOfContents.push( { type: DataType.Uint32, value: getTotalBytes( saveData ) } );
+
+	// Encode urban block graphics data.
+	const urbanGFX = Array.from( await compressPixels( graphics.urbanBlocks.getPixels(), `urbanBlocks` ) );
+	saveData.push( { type: DataType.Uint32, value: urbanGFX.length } );
+	saveData = saveData.concat(
+		urbanGFX.map( ( byte: number ): ByteBlock => ( { type: DataType.Uint8, value: byte } ) ),
+	);
+
+	// Calculate attic block graphics pointer.
+	tableOfContents.push( { type: DataType.Uint32, value: getTotalBytes( saveData ) } );
+
+	// Encode attic block graphics data.
+	const atticBlockGFX = Array.from( await compressPixels( graphics.atticBlocks.getPixels(), `atticBlocks` ) );
+	saveData.push( { type: DataType.Uint32, value: atticBlockGFX.length } );
+	saveData = saveData.concat(
+		atticBlockGFX.map( ( byte: number ): ByteBlock => ( { type: DataType.Uint8, value: byte } ) ),
 	);
 
 	// Calculate sprite graphics pointer.
@@ -268,7 +301,7 @@ const Editor = (): ReactElement => {
 			overworldPaletteNamePointers.push( bufferView.getUint32( 2 + ( mainPaletteCount * 4 ) + ( i * 4 ) ) );
 		}
 		const afterPaletteNamePointers = 2 + ( mainPaletteCount * 4 ) + ( overworldPaletteCount * 4 );
-		const levelPointerStart = afterPaletteNamePointers + 20;
+		const levelPointerStart = afterPaletteNamePointers + 32;
 		const levelHeaders : number[] = [];
 		for ( let i = 0; i < levelCount; i++ ) {
 			levelHeaders.push( bufferView.getUint32( levelPointerStart + ( i * 4 ) ) );
@@ -291,9 +324,12 @@ const Editor = (): ReactElement => {
 				},
 			},
 			graphics: {
-				blocks: bufferView.getUint32( afterPaletteNamePointers + 8 ),
-				sprites: bufferView.getUint32( afterPaletteNamePointers + 12 ),
-				overworld: bufferView.getUint32( afterPaletteNamePointers + 16 ),
+				charset: bufferView.getUint32( afterPaletteNamePointers + 8 ),
+				universalBlocks: bufferView.getUint32( afterPaletteNamePointers + 12 ),
+				urbanBlocks: bufferView.getUint32( afterPaletteNamePointers + 16 ),
+				atticBlocks: bufferView.getUint32( afterPaletteNamePointers + 20 ),
+				sprites: bufferView.getUint32( afterPaletteNamePointers + 24 ),
+				overworld: bufferView.getUint32( afterPaletteNamePointers + 28 ),
 			},
 			levelHeaders,
 			levelData,
@@ -327,7 +363,7 @@ const Editor = (): ReactElement => {
 		};
 
 		// Load graphics data.
-		loadGraphicsFromData( data.slice( tableOfContents.graphics.blocks ) ).then( graphicsData => {
+		loadGraphicsFromData( data.slice( tableOfContents.graphics.charset ) ).then( graphicsData => {
 			// Load level data.
 			const levels: Level[] = [];
 
@@ -465,13 +501,9 @@ const Editor = (): ReactElement => {
 				throw new Error( `Invalid graphics data` );
 			}
 
-			const graphics = {
-				blocks: createBlankGraphicsEntry( `blocks`, 64, 64 ),
-				sprites: createBlankGraphicsEntry( `sprites`, 64, 64 ),
-				overworld: createBlankGraphicsEntry( `overworld`, 128, 128 ),
-			};
+			const graphics = createNewGraphics();
 
-			const graphicsTypes = [ GraphicsType.blocks, GraphicsType.sprites, GraphicsType.overworld ];
+			const graphicsTypes = Object.values( GraphicsType );
 
 			Promise.all( graphicsTypes.map( ( type: GraphicsType ) => {
 				if ( ! data[ `graphics` ] || typeof data.graphics !== `object` ) {
@@ -505,8 +537,6 @@ const Editor = (): ReactElement => {
 					decompressPixels( pixelList, type ).then( pixelData => {
 						graphics[ type ] = createGraphicsEntry(
 							type,
-							dataItem.widthTiles as number,
-							dataItem.heightTiles as number,
 							pixelData,
 						);
 						resolve( null );
@@ -704,13 +734,30 @@ const Editor = (): ReactElement => {
 			if ( graphics === null || levels === null || palettes === null || overworld === null ) {
 				return;
 			}
-			Promise.all( [ graphics.blocks.toJSON(), graphics.sprites.toJSON(), graphics.overworld.toJSON() ] )
-				.then( ( [ blockGraphics, spriteGraphics, overworldGraphics ] ) => {
+			Promise.all( [
+				graphics.atticBlocks.toJSON(),
+				graphics.charset.toJSON(),
+				graphics.sprites.toJSON(),
+				graphics.overworld.toJSON(),
+				graphics.universalBlocks.toJSON(),
+				graphics.urbanBlocks.toJSON(),
+			] )
+				.then( ( [
+					atticBlocksGraphics,
+					charsetGraphics,
+					spriteGraphics,
+					overworldGraphics,
+					universalBlocksGraphics,
+					urbanBlocksGraphics,
+				] ) => {
 					window.electronAPI.save( JSON.stringify( {
 						graphics: {
-							blocks: blockGraphics,
+							atticBlocks: atticBlocksGraphics,
+							charset: charsetGraphics,
 							sprites: spriteGraphics,
 							overworld: overworldGraphics,
+							universalBlocks: universalBlocksGraphics,
+							urbanBlocks: urbanBlocksGraphics,
 						},
 						palettes: {
 							main: palettes.main.map( ( palette: Palette ) => palette.toJSON() ),

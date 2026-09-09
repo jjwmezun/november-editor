@@ -1,5 +1,5 @@
 import { SyntheticEvent } from 'react';
-import { LvMap, PaletteList } from '../../../../common/types';
+import { LvMap, PaletteList, TileSetType } from '../../../../common/types';
 
 interface MapOptionsProps {
 	selectedMap: LvMap;
@@ -18,6 +18,21 @@ const MapOptions = ( props: MapOptionsProps ) => {
 		const target = e.target as HTMLSelectElement;
 		const paletteIndex = parseInt( target.value );
 		updateMap( selectedMap.updatePalette( paletteIndex ) );
+	};
+
+	const updateTilesetType = ( e: SyntheticEvent ) => {
+		const target = e.target as HTMLSelectElement;
+		const tilesetType = target.value;
+		if ( ! ( tilesetType in TileSetType ) ) {
+			throw new Error( `Invalid tileset type: ${ tilesetType }` );
+		}
+		if ( tilesetType === selectedMap.getTilesetType() ) {
+			return;
+		}
+		if ( ! confirm( `Changing the tileset type will clear block layers. ¿Continue?` ) ) {
+			return;
+		}
+		updateMap( selectedMap.updateTilesetType( tilesetType as TileSetType ) );
 	};
 
 	return <div>
@@ -40,6 +55,19 @@ const MapOptions = ( props: MapOptionsProps ) => {
 							value={ index }
 						>
 							{ palette.getName() }
+						</option>;
+					} ) }
+				</select>
+			</label>
+			<label>
+				<span>Tileset Type:</span>
+				<select onChange={ updateTilesetType } value={ selectedMap.getTilesetType() }>
+					{ Object.keys( TileSetType ).map( ( key, index ) => {
+						return <option
+							key={ index }
+							value={ TileSetType[ key as keyof typeof TileSetType ] }
+						>
+							{ key }
 						</option>;
 					} ) }
 				</select>

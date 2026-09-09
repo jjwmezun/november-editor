@@ -1,4 +1,4 @@
-import { createObject, getTypeFactory } from './objects';
+import { createObject, getBlockTypeFactory } from './objects';
 import { getDataTypeSize } from './bytes';
 import { createGoal, goals } from './goals';
 import { encodeText, decodeText } from './text';
@@ -16,18 +16,39 @@ import {
 	LvMapProps,
 	MapObject,
 	MapObjectArgs,
+	TileSetType,
 } from './types';
+
+const convertTileSetTypeToNumber = ( tileSetType: TileSetType ) : number => {
+	switch ( tileSetType ) {
+		case ( TileSetType.attic ):
+			return 1;
+		break;
+	}
+	return 0;
+};
+
+const convertNumberToTileSetType = ( n: number ) : TileSetType => {
+	switch ( n ) {
+		case ( 1 ):
+			return TileSetType.attic;
+		break;
+	}
+	return TileSetType.urban;
+};
 
 const generateDataList = (
 	width: number = 0,
 	height: number = 0,
 	layerCount: number = 0,
 	palette: number = 0,
+	tileSetType: TileSetType = TileSetType.urban,
 ): ByteBlock[] => {
 	return [
 		{ type: DataType.Uint16, value: width },
 		{ type: DataType.Uint16, value: height },
 		{ type: DataType.Uint8, value: palette },
+		{ type: DataType.Uint8, value: convertTileSetTypeToNumber( tileSetType ) },
 		{ type: DataType.Uint8, value: layerCount },
 	];
 };
@@ -36,11 +57,13 @@ const getDataFromMapHeader = ( view: DataView ): LvMapByteProps => {
 	const width = view.getUint16( 0 );
 	const height = view.getUint16( 2 );
 	const palette = view.getUint8( 4 );
-	const layerCount = view.getUint8( 5 );
+	const tileSetType = view.getUint8( 5 );
+	const layerCount = view.getUint8( 6 );
 	return {
 		width,
 		height,
 		palette,
+		tileSetType,
 		layerCount,
 	};
 };
@@ -164,26 +187,35 @@ const createMap = (
 	height: number = 20,
 	layers: Layer[] = [],
 	palette: number = 0,
+	tileSetType: TileSetType = TileSetType.urban,
 ): LvMap => {
 	return Object.freeze( {
-		addLayer: ( type: LayerType ): LvMap => createMap( width, height, [ ...layers, createLayer( type ) ], palette ),
+		addLayer: ( type: LayerType ): LvMap => createMap(
+			width,
+			height,
+			[ ...layers, createLayer( type ) ],
+			palette,
+			tileSetType,
+		),
 		getProps: (): LvMapProps => ( {
 			width,
 			height,
 			layers,
 			palette,
+			tileSetType,
 		} ),
+		getTilesetType: () => tileSetType,
 		removeLayer: ( index: number ) => {
 			const newLayers = [ ...layers ];
 			newLayers.splice( index, 1 );
-			return createMap( width, height, newLayers, palette );
+			return createMap( width, height, newLayers, palette, tileSetType );
 		},
 		switchLayers: ( a: number, b: number ): LvMap => {
 			const newLayers = [ ...layers ];
 			const temp = newLayers[ a ];
 			newLayers[ a ] = newLayers[ b ];
 			newLayers[ b ] = temp;
-			return createMap( width, height, newLayers, palette );
+			return createMap( width, height, newLayers, palette, tileSetType );
 		},
 		toJSON: () => ( {
 			width,
@@ -194,40 +226,55 @@ const createMap = (
 				scrollX: layer.scrollX,
 			} ) ),
 			palette,
+			tileSetType,
 		} ),
 		updateLayer: ( index: number ) => {
 			return {
 				addObject: ( object: MapObjectArgs ) => {
 					const newLayers = [ ...layers ];
 					newLayers[ index ].objects.push( createObject( object ) );
-					return createMap( width, height, newLayers, palette );
+					return createMap( width, height, newLayers, palette, tileSetType );
 				},
 				removeObject: ( objectIndex: number ) => {
 					const newLayers = [ ...layers ];
 					newLayers[ index ].objects.splice( objectIndex, 1 );
-					return createMap( width, height, newLayers, palette );
+					return createMap( width, height, newLayers, palette, tileSetType );
 				},
 				updateObject: ( objectIndex: number, newObject: MapObjectArgs ) => {
 					const newLayers = [ ...layers ];
 					newLayers[ index ].objects[ objectIndex ] =
 						newLayers[ index ].objects[ objectIndex ].update( newObject );
-					return createMap( width, height, newLayers, palette );
+					return createMap( width, height, newLayers, palette, tileSetType );
 				},
 				updateOption: ( key: string, value: unknown ) => {
 					const newLayers = [ ...layers ];
 					newLayers[ index ] = { ...newLayers[ index ], [ key ]: value };
-					return createMap( width, height, newLayers, palette );
+					return createMap( width, height, newLayers, palette, tileSetType );
 				},
 			};
 		},
 		updateHeight: ( newHeight: number ) => {
-			return createMap( width, newHeight, layers, palette );
-		},
-		updateWidth: ( newWidth: number ) => {
-			return createMap( newWidth, height, layers, palette );
+			return createMap( width, newHeight, layers, palette, tileSetType );
 		},
 		updatePalette: ( newPalette: number ) => {
-			return createMap( width, height, layers, newPalette );
+			return createMap( width, height, layers, newPalette, tileSetType );
+		},
+		updateTilesetType: ( newTileSetType: TileSetType ) => {
+			const newLayers = [ ...layers ];
+
+			// Clear block layers.
+			for ( let i = 0; i < newLayers.length; ++i ) {
+				if ( newLayers[ i ].type === LayerType.block ) {
+					while ( newLayers[ i ].objects.length ) {
+						newLayers[ i ].objects.pop();
+					}
+				}
+			}
+
+			return createMap( width, height, newLayers, palette, newTileSetType );
+		},
+		updateWidth: ( newWidth: number ) => {
+			return createMap( newWidth, height, layers, palette, tileSetType );
 		},
 	} );
 };
@@ -236,7 +283,8 @@ const transformMapDataToObject = ( data: ArrayBuffer ): LvMap => {
 	const view = new DataView( data );
 
 	// Read width and height from buffer.
-	const { height, layerCount, palette, width } = getDataFromMapHeader( view );
+	const { height, layerCount, palette, tileSetType, width } = getDataFromMapHeader( view );
+	const tileSetTypeValue = convertNumberToTileSetType( tileSetType );
 
 	// Read layer data from buffer.
 	const layers: Layer[] = [];
@@ -269,7 +317,7 @@ const transformMapDataToObject = ( data: ArrayBuffer ): LvMap => {
 			}
 		} else {
 			// Initialize object with type’s default.
-			const typeFactory = getTypeFactory( convertByteToLayerType( layerType ) );
+			const typeFactory = getBlockTypeFactory( convertByteToLayerType( layerType ), tileSetTypeValue );
 			const object = typeFactory[ objectType ].create( 0, 0, 0 );
 
 			// Go thru each object data type, read from buffer, then move forward bytes read.
@@ -284,17 +332,17 @@ const transformMapDataToObject = ( data: ArrayBuffer ): LvMap => {
 			state = `readingType`;
 		}
 	}
-	return createMap( width, height, layers, palette );
+	return createMap( width, height, layers, palette, tileSetTypeValue );
 };
 
 const generateDataBytes = ( map: LvMap ): ArrayBuffer => {
-	const { height, layers, palette, width } = map.getProps();
+	const { height, layers, palette, tileSetType, width } = map.getProps();
 
 	// Initialize data list with width, height, palette, & layers count.
-	const dataList = generateDataList( width, height, layers.length, palette );
+	const dataList = generateDataList( width, height, layers.length, palette, tileSetType );
 
 	layers.forEach( layer => {
-		const typeFactory = getTypeFactory( layer.type );
+		const typeFactory = getBlockTypeFactory( layer.type, map.getTilesetType() );
 
 		// Add layer options.
 		dataList.push( { type: DataType.Uint8, value: convertLayerTypeToByte( layer.type ) } );
@@ -335,12 +383,13 @@ const splitMapBytes = ( data: ArrayBuffer, count: number ) => {
 	let start = i;
 	let currentMap = 0;
 	while ( currentMap < count ) {
-		const layerCount = view.getUint8( i + 5 );
+		const tileSetType = convertNumberToTileSetType( view.getUint8( i + 5 ) );
+		const layerCount = view.getUint8( i + 6 );
 		let currentLayer = 0;
 		let currentLayerType = 0;
 		let state = `readingLayerOptions`;
 		let type = 0;
-		i += getMapHeaderSize(); // Move to bytes after width, height, palette, & layer count.
+		i += getMapHeaderSize(); // Move to bytes after width, height, palette, tileset type, & layer count.
 		while ( currentLayer < layerCount ) {
 			if ( state === `readingLayerOptions` ) {
 				currentLayerType = view.getUint8( i );
@@ -360,7 +409,9 @@ const splitMapBytes = ( data: ArrayBuffer, count: number ) => {
 				}
 			} else {
 				// Go thru each object data type, read from buffer, then move forward bytes read.
-				const typeFactory = getTypeFactory( convertByteToLayerType( currentLayerType ) );
+				const typeFactory = getBlockTypeFactory(
+					convertByteToLayerType( currentLayerType ), tileSetType,
+				);
 				const data = typeFactory[ type ].exportData;
 				data.forEach( ( { type } ) => {
 					i += getDataTypeSize( type );

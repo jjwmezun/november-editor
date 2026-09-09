@@ -1,4 +1,4 @@
-import { getTypeFactory } from './objects';
+import { getBlockTypeFactory } from './objects';
 import {
 	Graphics,
 	GraphicsType,
@@ -11,6 +11,7 @@ import {
 	PaletteList,
 	Rect,
 	ShaderType,
+	TileSetType,
 } from './types';
 import { createMat3 } from './mat';
 import {
@@ -19,12 +20,44 @@ import {
 	createShaderProgram,
 } from './render';
 
+const createTexture = (
+	ctx: WebGLRenderingContext,
+	index: number,
+	pixels: number[],
+	width: number,
+	height: number,
+): WebGLTexture => {
+	const texture = ctx.createTexture();
+
+	// @ts-expect-error – We know that WebGLRenderingContext has `TEXTURE#` properties for each index.
+	ctx.activeTexture( ctx[ `TEXTURE${ index }` ] );
+
+	ctx.bindTexture( ctx.TEXTURE_2D, texture );
+	ctx.texImage2D(
+		ctx.TEXTURE_2D,
+		0,
+		ctx.LUMINANCE,
+		width,
+		height,
+		0,
+		ctx.LUMINANCE,
+		ctx.UNSIGNED_BYTE,
+		new Uint8Array( pixels.map( pixel => pixel * 32 ) ), // Stretch pixel to span 0 – 255.
+	);
+	ctx.texParameteri( ctx.TEXTURE_2D, ctx.TEXTURE_MIN_FILTER, ctx.NEAREST );
+	ctx.texParameteri( ctx.TEXTURE_2D, ctx.TEXTURE_MAG_FILTER, ctx.NEAREST );
+	ctx.texParameteri( ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_S, ctx.REPEAT );
+	ctx.texParameteri( ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_T, ctx.REPEAT );
+	return texture;
+};
+
 const createObjectRenderer = (
 	ctx: WebGL2RenderingContext,
 	palettes: PaletteList,
 	graphics: Graphics,
 	layerType: LayerType,
 	selectedPalette: number,
+	tilesetType: TileSetType,
 ): ObjectRenderer => {
 	const program = createShaderProgram(
 		ctx,
@@ -104,9 +137,21 @@ const createObjectRenderer = (
 
 	// Setup textures.
 	const paletteTexture = palettes.createTexture( ctx, 0 );
-	const graphicsType: GraphicsType = layerType === LayerType.block ? GraphicsType.blocks : GraphicsType.sprites;
+
 	const textureIndex = layerType === LayerType.block ? 1 : 2;
-	const tilesetTexture = graphics[ graphicsType ].createTexture( ctx, textureIndex );
+	const pixels = ( () => {
+		if ( layerType === LayerType.sprite ) {
+			return graphics[ GraphicsType.sprites ].getPixels();
+		}
+		const tilesetGfx = tilesetType === TileSetType.attic
+			? GraphicsType.atticBlocks
+			: GraphicsType.urbanBlocks;
+		return graphics[ GraphicsType.universalBlocks ].getPixels()
+			.concat( graphics[ tilesetGfx ].getPixels() );
+	} )();
+	const tilesetTexture = createTexture( ctx, textureIndex, pixels, 64 * 8, 40 * 8 );
+	const textureHeight = layerType === LayerType.block ? 40 : 64;
+
 	renderObject.addTextureUniform( `u_palette_texture`, 0, paletteTexture );
 	renderObject.addTextureUniform( `u_tileset_texture`, textureIndex, tilesetTexture );
 
@@ -149,11 +194,11 @@ const createObjectRenderer = (
 				const texmodel = createMat3()
 					.translate( [
 						srcx / 64,
-						srcy / 64,
+						srcy / textureHeight,
 					] )
 					.scale( [
 						1 / ( 64 / srcWidth ),
-						1 / ( 64 / srcHeight ),
+						1 / ( textureHeight / srcHeight ),
 					] );
 				return acc.concat( model.getList().concat( texmodel.getList() ) ).concat( animation );
 			},
@@ -198,12 +243,20 @@ const createObjectRenderer = (
 			canvasHeight = height * 16;
 			updateModels();
 		},
-		updateObjects: ( objects: MapObject[] ) => {
+		updateObjects: ( objects: MapObject[], tilesetType: TileSetType ) => {
 			program.use();
-			const typeFactory = getTypeFactory( layerType );
+			const typeFactory = getBlockTypeFactory( layerType, tilesetType );
 			tiles = objects.reduce(
 				( acc: GraphicTile[], object: MapObject ) => {
-					return acc.concat( typeFactory[ object.type() ].generateTiles( object, acc ) );
+					return acc.concat(
+						typeFactory[ object.type() ].generateTiles( object, acc )
+							.map( ( tile: GraphicTile ) => {
+								if ( object.type() > 255 ) {
+									tile.srcy += 8;
+								}
+								return tile;
+							} ),
+					);
 				},
 				[],
 			);
@@ -218,6 +271,22 @@ const createObjectRenderer = (
 			const scrollX = layerScrollX * windowScrollX;
 			program.setUniform2f( `u_scroll`, scrollX * ( 1 / ( mapWidth * 8 ) ), 0 );
 		},
+		updateTexture: ( tilesetType: TileSetType ) => {
+			if ( layerType === LayerType.sprite ) {
+				return;
+			}
+
+			const pixels = ( () => {
+				const tilesetGfx = tilesetType === TileSetType.attic
+					? GraphicsType.atticBlocks
+					: GraphicsType.urbanBlocks;
+				return graphics[ GraphicsType.universalBlocks ].getPixels()
+					.concat( graphics[ tilesetGfx ].getPixels() );
+			} )();
+			const tilesetTexture = createTexture( ctx, textureIndex, pixels, 64 * 8, 40 * 8 );
+
+			renderObject.addTextureUniform( `u_tileset_texture`, textureIndex, tilesetTexture );
+		},
 	} );
 };
 
@@ -227,16 +296,24 @@ const createMapRenderer = (
 	graphics: Graphics,
 	layers: Layer[],
 	selectedPalette: number,
+	tilesetType: TileSetType,
 ) => {
 	ctx.enable( ctx.BLEND );
 	ctx.blendFunc( ctx.SRC_ALPHA, ctx.ONE_MINUS_SRC_ALPHA );
 	ctx.viewport( 0, 0, ctx.canvas.width, ctx.canvas.height );
 
 	let objectRenderers = layers
-		.map( ( layer: Layer ) => createObjectRenderer( ctx, palettes, graphics, layer.type, selectedPalette ) );
+		.map( ( layer: Layer ) => createObjectRenderer(
+			ctx,
+			palettes,
+			graphics,
+			layer.type,
+			selectedPalette,
+			tilesetType,
+		) );
 
 	objectRenderers.forEach( ( objectRenderer: ObjectRenderer, i: number ) => {
-		objectRenderer.updateObjects( layers[ i ].objects );
+		objectRenderer.updateObjects( layers[ i ].objects, tilesetType );
 		objectRenderer.updatePalette( selectedPalette );
 	} );
 
@@ -393,7 +470,7 @@ const createMapRenderer = (
 			},
 			setSelected: ( i: number | null, objects: MapObject[], layerType: LayerType ) => {
 				program.use();
-				const typeFactory = getTypeFactory( layerType );
+				const typeFactory = getBlockTypeFactory( layerType, tilesetType );
 				rects = i === null
 					? []
 					: typeFactory[ objects[ i ].type() ].generateHighlight( objects[ i ] );
@@ -485,10 +562,17 @@ const createMapRenderer = (
 			gridLines.updateDimensions( width, height );
 
 			objectRenderers = layers
-				.map( ( layer: Layer ) => createObjectRenderer( ctx, palettes, graphics, layer.type, palette ) );
+				.map( ( layer: Layer ) => createObjectRenderer(
+					ctx,
+					palettes,
+					graphics,
+					layer.type,
+					palette,
+					map.getTilesetType(),
+				) );
 
 			objectRenderers.forEach( ( objectRenderer: ObjectRenderer, i: number ) => {
-				objectRenderer.updateObjects( layers[ i ].objects );
+				objectRenderer.updateObjects( layers[ i ].objects, map.getTilesetType() );
 				objectRenderer.updatePalette( palette );
 				objectRenderer.updateDimensions( width, height );
 			} );
@@ -521,16 +605,16 @@ const createMapRenderer = (
 			selectedObject.updateCanvas( width, height );
 			selectedTile.updateDimensions( width, height );
 		},
-		updateLayerObjects: ( layer: number, objects: MapObject[] ) => {
-			objectRenderers[ layer ].updateObjects( objects );
+		updateLayerObjects: ( layer: number, objects: MapObject[], tilesetType : TileSetType ) => {
+			objectRenderers[ layer ].updateObjects( objects, tilesetType );
 		},
 		updatePalette: ( palette: number ) => {
 			objectRenderers.forEach( ( objectRenderer: ObjectRenderer ) => {
 				objectRenderer.updatePalette( palette );
 			} );
 		},
-		addLayer: ( type: LayerType, selectedPalette: number ) => {
-			objectRenderers.push( createObjectRenderer( ctx, palettes, graphics, type, selectedPalette ) );
+		addLayer: ( type: LayerType, selectedPalette: number, tilesetType : TileSetType ) => {
+			objectRenderers.push( createObjectRenderer( ctx, palettes, graphics, type, selectedPalette, tilesetType ) );
 		},
 		removeLayer: ( layer: number ) => {
 			objectRenderers.splice( layer, 1 );
@@ -561,6 +645,11 @@ const createMapRenderer = (
 			const { layers, width } = map.getProps();
 			objectRenderers.forEach( ( objectRenderer: ObjectRenderer, i: number ) => {
 				objectRenderer.updateScrollX( layers[ i ].scrollX, windowScrollX, width );
+			} );
+		},
+		updateTexture: ( tilesetType : TileSetType ) => {
+			objectRenderers.forEach( ( objectRenderer: ObjectRenderer ) => {
+				objectRenderer.updateTexture( tilesetType );
 			} );
 		},
 	} );

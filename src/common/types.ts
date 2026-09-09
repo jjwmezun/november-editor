@@ -92,9 +92,12 @@ interface GoalTemplate {
 type GoalValue = string | number | boolean;
 
 interface Graphics {
-	blocks: GraphicsEntry,
+	atticBlocks: GraphicsEntry,
+	charset: GraphicsEntry,
 	overworld: GraphicsEntry,
 	sprites: GraphicsEntry,
+	universalBlocks: GraphicsEntry,
+	urbanBlocks: GraphicsEntry,
 }
 
 interface GraphicsEntry {
@@ -132,9 +135,18 @@ interface GraphicTile {
 }
 
 enum GraphicsType {
-	blocks = `blocks`,
+	atticBlocks = `atticBlocks`,
+	charset = `charset`,
 	overworld = `overworld`,
 	sprites = `sprites`,
+	universalBlocks = `universalBlocks`,
+	urbanBlocks = `urbanBlocks`,
+}
+
+interface GraphicsTypeInfo {
+	name: string,
+	widthTiles: number,
+	heightTiles: number,
 }
 
 interface BlockLayer {
@@ -144,6 +156,11 @@ interface BlockLayer {
 }
 
 type Layer = BlockLayer;
+
+enum LayerTileSetOption {
+	universal = `universal`,
+	tilesetSpecific = `tilesetSpecific`,
+}
 
 enum LayerType {
 	block = `block`,
@@ -209,6 +226,7 @@ interface LevelProps { name: string, goal: Goal, maps: ArrayBuffer[] }
 interface LvMap {
 	addLayer: ( type: LayerType ) => LvMap,
 	getProps: () => LvMapProps,
+	getTilesetType: () => TileSetType,
 	removeLayer: ( index: number ) => LvMap,
 	switchLayers: ( a: number, b: number ) => LvMap,
 	toJSON: () => object,
@@ -220,8 +238,9 @@ interface LvMap {
 		updateOption: ( key: string, value: any ) => LvMap,
 	},
 	updateHeight: ( newHeight: number ) => LvMap,
-	updateWidth: ( newWidth: number ) => LvMap,
 	updatePalette: ( newPalette: number ) => LvMap,
+	updateTilesetType: ( newTileSetType: TileSetType ) => LvMap,
+	updateWidth: ( newWidth: number ) => LvMap,
 }
 
 interface MapEditorProps {
@@ -293,20 +312,27 @@ interface MapObjectType {
 	options: MapObjectTypeOption[],
 }
 
+interface MapObjectTypeGenerator {
+	name: string,
+	create: ( id: number, x: number, y: number ) => MapObjectArgs,
+	type: number,
+}
+
 interface MapRenderer {
 	changeMap: ( map: LvMap ) => void,
 	render: () => void,
 	updateAnimationFrame: ( frame: number ) => void,
 	updateDimensions: ( width: number, height: number ) => void,
-	updateLayerObjects: ( layer: number, objects: MapObject[] ) => void,
+	updateLayerObjects: ( layer: number, objects: MapObject[], tilesetType : TileSetType ) => void,
 	updatePalette: ( palette: number ) => void,
-	addLayer: ( type: LayerType, selectedPalette: number ) => void,
+	addLayer: ( type: LayerType, selectedPalette: number, tilesetType : TileSetType ) => void,
 	removeLayer: ( layer: number ) => void,
 	setSelectedLayer: ( selectedLayer: number ) => void,
 	setSelectedObject: ( i: number | null, objects: MapObject[], layerType: LayerType ) => void,
 	setSelectedTile: ( x: number | null, y: number | null ) => void,
 	switchLayers: ( layer1: number, layer2: number ) => void,
 	updateScrollX: ( windowScrollX: number, map: LvMap ) => void,
+	updateTexture: ( tilesetType : TileSetType ) => void,
 }
 
 interface Mat3 {
@@ -325,6 +351,7 @@ interface LvMapByteProps {
 	height: number,
 	layerCount: number,
 	palette: number,
+	tileSetType: number,
 }
 
 interface LvMapProps {
@@ -332,6 +359,7 @@ interface LvMapProps {
 	height: number,
 	layers: Layer[],
 	palette: number,
+	tileSetType: TileSetType,
 }
 
 interface MousePosition {
@@ -344,9 +372,10 @@ interface ObjectRenderer {
 	setSelectedLayer: ( isSelected: boolean ) => void;
 	updateAnimationFrame: ( frame: number ) => void;
 	updateDimensions: ( width: number, height: number ) => void;
-	updateObjects: ( objects: MapObject[] ) => void;
+	updateObjects: ( objects: MapObject[], tilesetType: TileSetType ) => void;
 	updatePalette: ( palette: number ) => void;
 	updateScrollX: ( layerScrollX: number, windowScrollX: number, mapWidth: number ) => void;
+	updateTexture: ( tilesetType : TileSetType ) => void;
 }
 
 interface Overworld {
@@ -711,6 +740,11 @@ interface TileRendererArgs {
 	h?: number,
 }
 
+enum TileSetType {
+	attic = `attic`,
+	urban = `urban`
+}
+
 interface WebGL2Program {
 	getAttribLocation: ( name: string ) => number;
 	setUniform1f: ( name: string, value: number ) => void;
@@ -761,7 +795,9 @@ export {
 	GraphicsEntryRaw,
 	GraphicTile,
 	GraphicsType,
+	GraphicsTypeInfo,
 	Layer,
+	LayerTileSetOption,
 	LayerType,
 	Level,
 	LevelData,
@@ -777,6 +813,7 @@ export {
 	MapObject,
 	MapObjectArgs,
 	MapObjectType,
+	MapObjectTypeGenerator,
 	MapRenderer,
 	Mat3,
 	Mode,
@@ -820,5 +857,6 @@ export {
 	TileGridRenderer,
 	TileRenderer,
 	TileRendererArgs,
+	TileSetType,
 	WebGL2Program,
 };

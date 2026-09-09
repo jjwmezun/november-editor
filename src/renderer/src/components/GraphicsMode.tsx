@@ -4,6 +4,7 @@ import TileEditor from './TileEditor';
 import ColorSelector from './ColorSelector';
 import { tileSize } from '../../../common/constants';
 import { Graphics, GraphicsEntryRaw, GraphicsType, PaletteSystem } from '../../../common/types';
+import { getGraphicsTypeInfo } from '../../../common/graphics';
 
 type GraphicsProps = {
 	exitMode: () => void,
@@ -15,7 +16,7 @@ type GraphicsProps = {
 const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 	const { exitMode, graphics, palettes, setGraphics } = props;
 
-	const [ selectedGraphicType, setSelectedGraphicType ] = useState( GraphicsType.blocks );
+	const [ selectedGraphicType, setSelectedGraphicType ] = useState( GraphicsType.urbanBlocks );
 	const [ selectedTile, setSelectedTile ] = useState( 0 );
 	const [ selectedColor, setSelectedColor ] = useState( 0 );
 	const [ selectedPaletteType, setSelectedPaletteType ] = useState( `main` );
@@ -112,10 +113,15 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 					</option>;
 				} ) }
 			</select>
-			<select onChange={ changeGraphicEntry }>
-				<option value="blocks">Blocks</option>
-				<option value="sprites">Sprites</option>
-				<option value="overworld">O’erworld</option>
+			<select onChange={ changeGraphicEntry } value={ selectedGraphicType }>
+				{ Object.values( GraphicsType ).map( ( graphicType, index ) => {
+					return <option
+						key={ index }
+						value={ graphicType }
+					>
+						{ getGraphicsTypeInfo( graphicType ).name }
+					</option>;
+				} ) }
 			</select>
 			<TileGrid
 				graphics={ selectedGraphicsEntry }

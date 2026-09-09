@@ -3,14 +3,16 @@ import {
 	generateDataBytes,
 	layerTypeNames,
 } from '../../../../common/levels';
-import { getTypeFactory } from '../../../../common/objects';
+import { getBlockTypeFactory, getBlockTypeFactoryOfType } from '../../../../common/objects';
 import { getMousePosition } from '../../../../common/utils';
 import {
+	LayerTileSetOption,
 	LayerType,
 	LvMap,
 	MapEditorProps,
 	MapObjectArgs,
 	MapRenderer,
+	TileSetType,
 } from '../../../../common/types';
 import { createMapRenderer } from '../../../../common/render-level';
 
@@ -28,6 +30,7 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 	const [ selectedObject, setSelectedObject ] = useState<number | null>( null );
 	const [ selectedType, setSelectedType ] = useState( 0 );
 	const [ windowScrollX, setWindowScrollX ] = useState( 0 );
+	const [ layerTileSetOption, setLayerTileSetOption ] = useState<LayerTileSetOption>( LayerTileSetOption.universal );
 
 	const { graphics, maps, palettes, selectedMap, selectedMapIndex, setSelectedMap, setMaps } = props;
 
@@ -39,9 +42,18 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		? []
 		: layers[ selectedLayer ]?.objects ?? [];
 
-	const typesFactory = getTypeFactory( selectedLayer && layers.length < selectedLayer
-		? ( layers[ selectedLayer ]?.type ?? LayerType.block )
-		: LayerType.block );
+	const layerType = selectedLayer !== null && selectedLayer < layers.length
+		? layers[ selectedLayer ].type
+		: LayerType.block;
+	const tilesetType = selectedMap !== null
+		? selectedMap.getTilesetType()
+		: TileSetType.urban;
+	const typesFactory = getBlockTypeFactory( layerType, tilesetType );
+	const typesFactoryGenerator = getBlockTypeFactoryOfType(
+		selectedLayer && selectedLayer < layers.length ? layers[ selectedLayer ].type : LayerType.block,
+		layerTileSetOption,
+		tilesetType,
+	);
 
 	const addLayer = () => {
 		if ( selectedMap === null ) {
@@ -53,7 +65,7 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		if ( ! renderer ) {
 			return;
 		}
-		renderer.addLayer( addLayerOption, palette );
+		renderer.addLayer( addLayerOption, palette, selectedMap.getTilesetType() );
 	};
 
 	const addObject = ( o: MapObjectArgs ) => {
@@ -64,7 +76,7 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		if ( ! renderer ) {
 			return;
 		}
-		renderer.updateLayerObjects( selectedLayer, objects );
+		renderer.updateLayerObjects( selectedLayer, objects, selectedMap.getTilesetType() );
 	};
 
 	const changeAddLayerOption = ( e: SyntheticEvent ) => {
@@ -212,7 +224,7 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		if ( ! renderer ) {
 			return;
 		}
-		renderer.updateLayerObjects( selectedLayer, objects );
+		renderer.updateLayerObjects( selectedLayer, objects, selectedMap.getTilesetType() );
 	};
 
 	const render = () => {
@@ -248,7 +260,22 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 			return;
 		}
 		renderer.setSelectedObject( index, objects, layers[ selectedLayer ].type );
-		renderer.updateLayerObjects( selectedLayer, objects );
+		renderer.updateLayerObjects( selectedLayer, objects, selectedMap.getTilesetType() );
+	};
+
+	const updateLayerTilesetOption = ( e: React.ChangeEvent<HTMLSelectElement> ) => {
+		const value = e.target.value as LayerTileSetOption;
+		if ( value === layerTileSetOption ) {
+			return;
+		}
+		setLayerTileSetOption( value );
+
+		// We also need to update the selected type to reflect changed tileset option.
+		if ( value === LayerTileSetOption.tilesetSpecific ) {
+			setSelectedType( 256 );
+		} else {
+			setSelectedType( 0 );
+		}
 	};
 
 	// On canvas load, generate renderer.
@@ -261,12 +288,17 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 			throw new Error( `Could not get webgl context for canvas` );
 		}
 
+		const tilesetType = selectedMap === null
+			? TileSetType.urban
+			: selectedMap.getTilesetType();
+
 		setRenderer( createMapRenderer(
 			ctx,
 			palettes,
 			graphics,
 			layers,
 			palette ?? 0,
+			tilesetType,
 		) );
 	}, [ canvasRef.current ] );
 
@@ -351,6 +383,19 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		renderer.updatePalette( palette );
 	}, [ palette, renderer ] );
 
+	useEffect( () => {
+		if ( renderer === null ) {
+			return;
+		}
+		renderer.updateTexture( tilesetType );
+
+		if ( selectedLayer === null || selectedMap === null ) {
+			return;
+		}
+
+		renderer.updateLayerObjects( selectedLayer, objects, selectedMap.getTilesetType() );
+	}, [ renderer, tilesetType ] );
+
 	return <div>
 		{ selectedMap !== null && <div>
 			<MapOptions
@@ -408,12 +453,30 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 				updateMap={ updateMap }
 			/> }
 			{ selectedLayer !== null && selectedLayer < layers.length && <div>
-				<label>
-					<span>Type:</span>
-					<select value={ selectedType } onChange={ e => setSelectedType( Number( e.target.value ) ) }>
-						{ typesFactory.map( ( type, i ) => <option key={ i } value={ i }>{ type.name }</option> ) }
+				<div>
+					<label>Tileset Type:</label>
+					<select
+						value={ layerTileSetOption }
+						onChange={ updateLayerTilesetOption }
+					>
+						<option value={ LayerTileSetOption.universal }>Universal</option>
+						<option value={ LayerTileSetOption.tilesetSpecific }>Tileset Specific</option>
 					</select>
-				</label>
+				</div>
+				<div>
+					<label>
+						<div>Type:</div>
+						<select
+							size={ 10 }
+							value={ selectedType }
+							onChange={ e => setSelectedType( Number( e.target.value ) ) }
+						>
+							{ typesFactoryGenerator.map(
+								( type, i ) => <option key={ i } value={ type.type }>{ type.name }</option>,
+							) }
+						</select>
+					</label>
+				</div>
 			</div> }
 			{ selectedLayer !== null
 			&& layers.length > selectedLayer
