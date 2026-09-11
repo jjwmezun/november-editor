@@ -19,6 +19,7 @@ import {
 	createRenderTextureObject,
 	createShaderProgram,
 } from './render';
+import { convertDegreesToRadians } from './utils';
 
 const createTexture = (
 	ctx: WebGLRenderingContext,
@@ -58,6 +59,8 @@ const createObjectRenderer = (
 	layerType: LayerType,
 	selectedPalette: number,
 	tilesetType: TileSetType,
+	mapWidth: number,
+	mapHeight: number,
 ): ObjectRenderer => {
 	const program = createShaderProgram(
 		ctx,
@@ -75,6 +78,8 @@ const createObjectRenderer = (
 					in vec3 a_texmodely;
 					in vec3 a_texmodelz;
 					in float a_animation;
+					in float a_priority;
+					in float a_animation_speed;
 
 					out vec2 v_texture_coords;
 
@@ -87,18 +92,24 @@ const createObjectRenderer = (
 							a_modely,
 							a_modelz
 						);
-						gl_Position = vec4( vec3( a_position, 1.0 ) * model, 1.0 ) + vec4( u_scroll, 0.0, 0.0 );
+						vec4 position = vec4( vec3( a_position, 1.0 ) * model, 1.0 ) + vec4( u_scroll, 0.0, 0.0 );
+						gl_Position = vec4( position.xy, a_priority, 1.0 );
 						mat3 texmodel = mat3(
 							a_texmodelx,
 							a_texmodely,
 							a_texmodelz
 						);
-						float animation = mod( u_animation, a_animation ) - 1.0;
-						vec3 coords = vec3( a_texture_coords, 1.0 ) * texmodel;
-						v_texture_coords = coords.xy;
-						if ( animation > 0.0 ) {
-							v_texture_coords.x += animation * ( 2.0 / 64.0 );
+						float animation = 0.0;
+						if ( a_animation > 0.0 ) {
+							animation = mod( floor( u_animation / a_animation_speed ), a_animation ) / 64.0;
 						}
+						mat3 animation_model = mat3(
+							vec3( 1.0, 0.0, animation ),
+							vec3( 0.0, 1.0, 0.0 ),
+							vec3( 0.0, 0.0, 1.0 )
+						);
+						vec3 coords = vec3( a_texture_coords, 1.0 ) * texmodel * animation_model;
+						v_texture_coords = coords.xy;
 					}
 				`,
 			},
@@ -126,6 +137,10 @@ const createObjectRenderer = (
 								u_palette_index / u_palette_count
 							)
 						);
+						if ( frag_color.a == 0.0 )
+						{
+							discard;
+						}
 						frag_color.a *= u_alpha;
 					}
 				`,
@@ -162,48 +177,57 @@ const createObjectRenderer = (
 
 	const instanceVbo = ctx.createBuffer();
 
-	let canvasWidth = ctx.canvas.width;
-	let canvasHeight = ctx.canvas.height;
+	let canvasWidth = mapWidth * 16;
+	let canvasHeight = mapHeight * 16;
 	let tiles: GraphicTile[] = [];
 
 	const updateModels = () => {
-		const modelsList: number[] = tiles.reduce(
-			( acc: number[], tile: GraphicTile ) => {
-				const {
-					animation,
-					srcHeight,
-					srcWidth,
-					srcx,
-					srcy,
-					x,
-					y,
-					flipx,
-					flipy,
-				} = tile;
-				const modelWidth = ( 8 / canvasWidth ) * srcWidth;
-				const modelHeight = ( 8 / canvasHeight ) * srcHeight;
-				const model = createMat3()
-					.translate( [
-						-1 + ( 1 + ( 2 / srcWidth ) * x ) * modelWidth,
-						1 - ( 1 + ( 2 / srcHeight ) * y ) * modelHeight,
-					] )
-					.scale( [
-						modelWidth * ( flipx ? -1 : 1 ),
-						modelHeight * ( flipy ? -1 : 1 ),
-					] );
-				const texmodel = createMat3()
-					.translate( [
-						srcx / 64,
-						srcy / textureHeight,
-					] )
-					.scale( [
-						1 / ( 64 / srcWidth ),
-						1 / ( textureHeight / srcHeight ),
-					] );
-				return acc.concat( model.getList().concat( texmodel.getList() ) ).concat( animation );
-			},
-			[],
-		);
+		const modelsList: number[] = tiles
+			.sort( ( a: GraphicTile, b: GraphicTile ) => b.priority - a.priority )
+			.reduce(
+				( acc: number[], tile: GraphicTile ) => {
+					const {
+						animation,
+						srcHeight,
+						srcWidth,
+						srcx,
+						srcy,
+						x,
+						y,
+						flipx,
+						flipy,
+						priority,
+						animationSpeed,
+						rotate,
+					} = tile;
+					const modelWidth = ( 8 / canvasWidth ) * srcWidth;
+					const modelHeight = ( 8 / canvasHeight ) * srcHeight;
+					const model = createMat3()
+						.translate( [
+							-1 + ( 1 + ( 2 / srcWidth ) * x ) * modelWidth,
+							1 - ( 1 + ( 2 / srcHeight ) * y ) * modelHeight,
+						] )
+						.scale( [
+							modelWidth * ( flipx ? -1 : 1 ),
+							modelHeight * ( flipy ? -1 : 1 ),
+						] )
+						.rotateZ( convertDegreesToRadians( -rotate ) );
+					const texmodel = createMat3()
+						.translate( [
+							srcx / 64,
+							srcy / textureHeight,
+						] )
+						.scale( [
+							1 / ( 64 / srcWidth ),
+							1 / ( textureHeight / srcHeight ),
+						] );
+					return acc.concat( model.getList().concat( texmodel.getList() ) )
+						.concat( animation )
+						.concat( priority )
+						.concat( animationSpeed );
+				},
+				[],
+			);
 
 		ctx.bindBuffer( ctx.ARRAY_BUFFER, instanceVbo );
 		ctx.bufferData(
@@ -216,13 +240,15 @@ const createObjectRenderer = (
 	updateModels();
 
 	[ `x`, `y`, `z` ].forEach( ( name, i ) => {
-		renderObject.addInstanceAttribute( `a_model${ name }`, 3, ctx.FLOAT, false, 76, i * 12 );
+		renderObject.addInstanceAttribute( `a_model${ name }`, 3, ctx.FLOAT, false, 84, i * 12 );
 	} );
 
 	[ `x`, `y`, `z` ].forEach( ( name, i ) => {
-		renderObject.addInstanceAttribute( `a_texmodel${ name }`, 3, ctx.FLOAT, false, 76, 36 + i * 12 );
+		renderObject.addInstanceAttribute( `a_texmodel${ name }`, 3, ctx.FLOAT, false, 84, 36 + i * 12 );
 	} );
-	renderObject.addInstanceAttribute( `a_animation`, 1, ctx.FLOAT, false, 76, 72 );
+	renderObject.addInstanceAttribute( `a_animation`, 1, ctx.FLOAT, false, 84, 72 );
+	renderObject.addInstanceAttribute( `a_priority`, 1, ctx.FLOAT, false, 84, 76 );
+	renderObject.addInstanceAttribute( `a_animation_speed`, 1, ctx.FLOAT, false, 84, 80 );
 
 	return Object.freeze( {
 		render: () => {
@@ -297,10 +323,13 @@ const createMapRenderer = (
 	layers: Layer[],
 	selectedPalette: number,
 	tilesetType: TileSetType,
+	mapWidth: number,
+	mapHeight: number,
+	magnification: number,
 ) => {
 	ctx.enable( ctx.BLEND );
 	ctx.blendFunc( ctx.SRC_ALPHA, ctx.ONE_MINUS_SRC_ALPHA );
-	ctx.viewport( 0, 0, ctx.canvas.width, ctx.canvas.height );
+	ctx.viewport( 0, 0, mapWidth * 16 * magnification, mapHeight * 16 * magnification );
 
 	let objectRenderers = layers
 		.map( ( layer: Layer ) => createObjectRenderer(
@@ -310,6 +339,8 @@ const createMapRenderer = (
 			layer.type,
 			selectedPalette,
 			tilesetType,
+			mapWidth,
+			mapHeight,
 		) );
 
 	objectRenderers.forEach( ( objectRenderer: ObjectRenderer, i: number ) => {
@@ -349,13 +380,15 @@ const createMapRenderer = (
 
 						out vec4 frag_color;
 
+						uniform float u_opacity;
+
 						void main() {
 							float x = mod( v_position.x, 16.0 );
 							float y = mod( v_position.y, 16.0 );
 							if ( x > 1.0 && y > 1.0 ) {
 								discard;
 							}
-							frag_color = vec4( 0.0, 0.5, 1.0, 0.75 );
+							frag_color = vec4( 0.0, 0.5, 1.0, u_opacity );
 						}
 					`,
 				},
@@ -365,13 +398,18 @@ const createMapRenderer = (
 
 		const renderObject = createRenderRectObject( ctx, program );
 
-		renderObject.addUniform( `u_resolution`, `2f`, [ ctx.canvas.width, ctx.canvas.height ] );
+		renderObject.addUniform( `u_resolution`, `2f`, [ mapWidth * 16, mapHeight * 16 ] );
+		renderObject.addUniform( `u_opacity`, `1f`, [ 0.75 ] );
 
 		return Object.freeze( {
 			render: renderObject.render,
 			updateDimensions: ( width: number, height: number ) => {
 				program.use();
 				renderObject.addUniform( `u_resolution`, `2f`, [ width * 16, height * 16 ] );
+			},
+			updateOpacity: ( opacity: number ) => {
+				program.use();
+				renderObject.addUniform( `u_opacity`, `1f`, [ opacity ] );
 			},
 		} );
 	} )();
@@ -418,8 +456,8 @@ const createMapRenderer = (
 
 		const renderObject = createRenderRectObject( ctx, program );
 
-		let canvasWidth = ctx.canvas.width / 16;
-		let canvasHeight = ctx.canvas.height / 16;
+		let canvasWidth = mapWidth;
+		let canvasHeight = mapHeight;
 		let rects: Rect[] = [];
 
 		const instanceVbo = ctx.createBuffer();
@@ -515,8 +553,8 @@ const createMapRenderer = (
 
 		const renderObject = createRenderRectObject( ctx, program );
 
-		let width = ctx.canvas.width / 16;
-		let height = ctx.canvas.height / 16;
+		let width = mapWidth;
+		let height = mapHeight;
 		let x = 0;
 		let y = 0;
 
@@ -569,6 +607,8 @@ const createMapRenderer = (
 					layer.type,
 					palette,
 					map.getTilesetType(),
+					width,
+					height,
 				) );
 
 			objectRenderers.forEach( ( objectRenderer: ObjectRenderer, i: number ) => {
@@ -597,7 +637,7 @@ const createMapRenderer = (
 			} );
 		},
 		updateDimensions: ( width: number, height: number ) => {
-			ctx.viewport( 0, 0, width * 16, height * 16 );
+			ctx.viewport( 0, 0, width * 16 * 2, height * 16 * 2 );
 			objectRenderers.forEach( ( objectRenderer: ObjectRenderer ) => {
 				objectRenderer.updateDimensions( width, height );
 			} );
@@ -605,8 +645,14 @@ const createMapRenderer = (
 			selectedObject.updateCanvas( width, height );
 			selectedTile.updateDimensions( width, height );
 		},
+		updateGridOpacity: ( opacity: number ) => {
+			gridLines.updateOpacity( opacity );
+		},
 		updateLayerObjects: ( layer: number, objects: MapObject[], tilesetType : TileSetType ) => {
 			objectRenderers[ layer ].updateObjects( objects, tilesetType );
+		},
+		updateMagnification: ( width: number, height: number, magnification: number ) => {
+			ctx.viewport( 0, 0, width * 16 * magnification, height * 16 * magnification );
 		},
 		updatePalette: ( palette: number ) => {
 			objectRenderers.forEach( ( objectRenderer: ObjectRenderer ) => {
@@ -614,7 +660,16 @@ const createMapRenderer = (
 			} );
 		},
 		addLayer: ( type: LayerType, selectedPalette: number, tilesetType : TileSetType ) => {
-			objectRenderers.push( createObjectRenderer( ctx, palettes, graphics, type, selectedPalette, tilesetType ) );
+			objectRenderers.push( createObjectRenderer(
+				ctx,
+				palettes,
+				graphics,
+				type,
+				selectedPalette,
+				tilesetType,
+				mapWidth,
+				mapHeight,
+			) );
 		},
 		removeLayer: ( layer: number ) => {
 			objectRenderers.splice( layer, 1 );

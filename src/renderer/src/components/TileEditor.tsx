@@ -803,6 +803,9 @@ const TileEditor = ( props: TileEditorProps ): ReactElement => {
 			onMouseMove={ onMouseMove }
 		/>
 		<div>
+			<span>x: { tileX }, y: { tileY }</span>
+		</div>
+		<div>
 			<label>
 				<span>Brush size:</span>
 				<input

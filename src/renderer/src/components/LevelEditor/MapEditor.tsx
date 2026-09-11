@@ -31,6 +31,8 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 	const [ selectedType, setSelectedType ] = useState( 0 );
 	const [ windowScrollX, setWindowScrollX ] = useState( 0 );
 	const [ layerTileSetOption, setLayerTileSetOption ] = useState<LayerTileSetOption>( LayerTileSetOption.universal );
+	const [ magnification, setMagnification ] = useState( 1 );
+	const [ gridOpacity, setGridOpacity ] = useState( 0.5 );
 
 	const { graphics, maps, palettes, selectedMap, selectedMapIndex, setSelectedMap, setMaps } = props;
 
@@ -54,6 +56,8 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		layerTileSetOption,
 		tilesetType,
 	);
+
+	const calculateLocalPosition = ( n: number ) => Math.floor( n / ( 16 * magnification ) );
 
 	const addLayer = () => {
 		if ( selectedMap === null ) {
@@ -121,8 +125,8 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 	const onClick = ( e: MouseEvent ) => {
 		const { x, y } = getMousePosition( e );
 
-		const gridX = Math.floor( x / 16 );
-		const gridY = Math.floor( y / 16 );
+		const gridX = calculateLocalPosition( x );
+		const gridY = calculateLocalPosition( y );
 
 		let newSelectedObject: number | null = null;
 
@@ -149,8 +153,8 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 	const onMouseMove = ( e: MouseEvent ) => {
 		const { x, y } = getMousePosition( e );
 
-		const gridX = Math.floor( x / 16 );
-		const gridY = Math.floor( y / 16 );
+		const gridX = calculateLocalPosition( x );
+		const gridY = calculateLocalPosition( y );
 
 		if ( selected.x === gridX && selected.y === gridY ) {
 			return;
@@ -187,8 +191,8 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 
 		const { x, y } = getMousePosition( e );
 
-		const gridX = Math.floor( x / 16 );
-		const gridY = Math.floor( y / 16 );
+		const gridX = calculateLocalPosition( x );
+		const gridY = calculateLocalPosition( y );
 
 		addObject( { ...typesFactory[ selectedType ].create( 0, gridX, gridY ), type: selectedType } );
 	};
@@ -278,6 +282,34 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		}
 	};
 
+	const updateMagnification = ( e: React.ChangeEvent<HTMLInputElement> ) => {
+		const value = Number( e.target.value );
+		setMagnification( value );
+
+		if ( renderer === null ) {
+			return;
+		}
+
+		const width = selectedMap === null
+			? 0
+			: selectedMap.getWidthBlocks();
+		const height = selectedMap === null
+			? 0
+			: selectedMap.getHeightBlocks();
+		renderer.updateMagnification( width, height, value );
+	};
+
+	const updateGridOpacity = ( e: React.ChangeEvent<HTMLInputElement> ) => {
+		const value = Number( e.target.value );
+		setGridOpacity( value );
+
+		if ( renderer === null ) {
+			return;
+		}
+
+		renderer.updateGridOpacity( value );
+	};
+
 	// On canvas load, generate renderer.
 	useEffect( () => {
 		if ( ! canvasRef.current ) {
@@ -292,6 +324,13 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 			? TileSetType.urban
 			: selectedMap.getTilesetType();
 
+		const width = selectedMap === null
+			? 0
+			: selectedMap.getWidthBlocks();
+		const height = selectedMap === null
+			? 0
+			: selectedMap.getHeightBlocks();
+
 		setRenderer( createMapRenderer(
 			ctx,
 			palettes,
@@ -299,6 +338,9 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 			layers,
 			palette ?? 0,
 			tilesetType,
+			width,
+			height,
+			magnification,
 		) );
 	}, [ canvasRef.current ] );
 
@@ -343,7 +385,7 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 				prevTicks = ticks;
 			} else {
 				const delta = ticks - prevTicks;
-				if ( delta > 1000 / 8 ) {
+				if ( delta > 1000 / 60 ) {
 					renderer.updateAnimationFrame( ++frame );
 					render();
 					prevTicks = ticks;
@@ -405,12 +447,40 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 			/>
 			<div>
 				<h2>Map</h2>
+				<div>
+					<label>
+						<span>Zoom:</span>
+						<input
+							max={ 8 }
+							min={ 1 }
+							step={ 0.25 }
+							type="range"
+							value={ magnification }
+							onChange={ updateMagnification }
+						/>
+						<span>{ magnification }</span>
+					</label>
+				</div>
+				<div>
+					<label>
+						<span>Grid Opacity:</span>
+						<input
+							max={ 1 }
+							min={ 0 }
+							step={ 0.1 }
+							type="range"
+							value={ gridOpacity }
+							onChange={ updateGridOpacity }
+						/>
+						<span>{ gridOpacity }</span>
+					</label>
+				</div>
 				<div className="window" onScroll={ onScrollWindow }>
 					<canvas
 						ref={ canvasRef }
 						id="editor"
-						width={ width * 16 }
-						height={ height * 16 }
+						width={ width * 16 * magnification }
+						height={ height * 16 * magnification }
 						onClick={ onClick }
 						onContextMenu={ onRightClick }
 						onMouseMove={ onMouseMove }

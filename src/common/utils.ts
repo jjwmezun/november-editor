@@ -1,6 +1,10 @@
 import { MouseEvent } from 'react';
 import { MousePosition } from './types';
 
+function convertDegreesToRadians( degrees: number ): number {
+	return degrees * ( Math.PI / 180 );
+}
+
 function createRange( min: number, max: number ): number[] {
 	const range: number[] = [];
 	for ( let i = min; i <= max; i++ ) {
@@ -28,6 +32,7 @@ function toTitleCase( str: string ): string {
 }
 
 export {
+	convertDegreesToRadians,
 	createRange,
 	getMousePosition,
 	toTitleCase,

@@ -50,6 +50,7 @@ import {
 	Palette,
 	PaletteList,
 	PaletteSystem,
+	TileSetType,
 } from '../../../common/types';
 import { createGoal } from '../../../common/goals';
 import {
@@ -606,6 +607,9 @@ const Editor = (): ReactElement => {
 				if ( typeof map.palette !== `number` ) {
 					throw new Error( `Invalid map palette for map #${ j } o’ level #${ i }` );
 				}
+				if ( typeof map.tileSetType !== `string` ) {
+					throw new Error( `Invalid map tileset type for map #${ j } o’ level #${ i }` );
+				}
 				if ( ! Array.isArray( map.layers ) ) {
 					throw new Error( `Invalid map layers for map #${ j } o’ level #${ i }` );
 				}
@@ -676,6 +680,7 @@ const Editor = (): ReactElement => {
 					map.height,
 					layers,
 					map.palette,
+					map.tileSetType as TileSetType,
 				);
 
 				return generateDataBytes( mapBlock );

@@ -124,14 +124,17 @@ interface GraphicsEntryRaw {
 
 interface GraphicTile {
 	animation: number;
+	animationSpeed: number;
+	flipx: boolean;
+	flipy: boolean;
+	priority: number;
+	rotate: number;
 	srcHeight: number;
 	srcWidth: number;
 	srcx: number;
 	srcy: number;
 	x: number;
 	y: number;
-	flipx: boolean;
-	flipy: boolean;
 }
 
 enum GraphicsType {
@@ -225,7 +228,12 @@ interface LevelProps { name: string, goal: Goal, maps: ArrayBuffer[] }
 
 interface LvMap {
 	addLayer: ( type: LayerType ) => LvMap,
+	getLayers: () => readonly Layer[],
+	getHeightBlocks: () => number,
+	getHeightPixels: () => number,
 	getProps: () => LvMapProps,
+	getWidthBlocks: () => number,
+	getWidthPixels: () => number,
 	getTilesetType: () => TileSetType,
 	removeLayer: ( index: number ) => LvMap,
 	switchLayers: ( a: number, b: number ) => LvMap,
@@ -323,7 +331,9 @@ interface MapRenderer {
 	render: () => void,
 	updateAnimationFrame: ( frame: number ) => void,
 	updateDimensions: ( width: number, height: number ) => void,
+	updateGridOpacity: ( opacity: number ) => void,
 	updateLayerObjects: ( layer: number, objects: MapObject[], tilesetType : TileSetType ) => void,
+	updateMagnification: ( width: number, height: number, magnification: number ) => void,
 	updatePalette: ( palette: number ) => void,
 	addLayer: ( type: LayerType, selectedPalette: number, tilesetType : TileSetType ) => void,
 	removeLayer: ( layer: number ) => void,
@@ -337,6 +347,9 @@ interface MapRenderer {
 
 interface Mat3 {
 	getList: () => number[];
+	rotateX: ( angle: number ) => Mat3;
+	rotateY: ( angle: number ) => Mat3;
+	rotateZ: ( angle: number ) => Mat3;
 	scale: ( v: [ number, number ] ) => Mat3;
 	translate: ( v: [ number, number ] ) => Mat3;
 }

@@ -197,6 +197,11 @@ const createMap = (
 			palette,
 			tileSetType,
 		),
+		getHeightBlocks: () => height,
+		getHeightPixels: () => height * 16,
+		getLayers: () => layers,
+		getWidthBlocks: () => width,
+		getWidthPixels: () => width * 16,
 		getProps: (): LvMapProps => ( {
 			width,
 			height,

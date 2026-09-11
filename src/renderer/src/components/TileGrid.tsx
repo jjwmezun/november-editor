@@ -429,6 +429,9 @@ const TileGrid = ( props: TileGridProps ): ReactElement => {
 				onMouseMove={ onMouseMove }
 			/>
 		</div>
+		<div>
+			<span>x: { hovered.x }, y: { hovered.y }</span>
+		</div>
 	</div>;
 };
 

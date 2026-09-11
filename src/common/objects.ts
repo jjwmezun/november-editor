@@ -23,6 +23,9 @@ const createTile = ( options: object ) => {
 		y: 0,
 		flipx: false,
 		flipy: false,
+		priority: 0.5,
+		animationSpeed: 8,
+		rotate: 0,
 		...options,
 	};
 };
@@ -78,7 +81,7 @@ const dummyType : MapObjectType = Object.freeze( {
 
 const universalBlockTypes: readonly MapObjectType[] = Object.freeze( [
 	{
-		name: `Gem`,
+		name: `Gem ( 100₧ )`,
 		create: ( id, x, y ) => ( {
 			id: id,
 			x: x,
@@ -102,28 +105,28 @@ const universalBlockTypes: readonly MapObjectType[] = Object.freeze( [
 			for ( let y = object.yTiles(); y < object.bottomTiles(); y += tilesPerBlock ) {
 				for ( let x = object.xTiles(); x < object.rightTiles(); x += tilesPerBlock ) {
 					tiles.push( createTile( {
-						animation: 4,
+						animation: 5,
 						srcx: 0,
 						srcy: 1,
 						x,
 						y,
 					} ) );
 					tiles.push( createTile( {
-						animation: 4,
+						animation: 5,
 						srcx: 5,
 						srcy: 1,
 						x: x + 1,
 						y,
 					} ) );
 					tiles.push( createTile( {
-						animation: 4,
+						animation: 5,
 						srcx: 10,
 						srcy: 1,
 						x,
 						y: y + 1,
 					} ) );
 					tiles.push( createTile( {
-						animation: 4,
+						animation: 5,
 						srcx: 15,
 						srcy: 1,
 						x: x + 1,
@@ -184,9 +187,4670 @@ const universalBlockTypes: readonly MapObjectType[] = Object.freeze( [
 			},
 		],
 	},
+	{
+		name: `Gem ( 250₧ )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+
+			for ( let y = object.yTiles(); y < object.bottomTiles(); y += tilesPerBlock ) {
+				for ( let x = object.xTiles(); x < object.rightTiles(); x += tilesPerBlock ) {
+					tiles.push( createTile( {
+						animation: 5,
+						srcx: 20,
+						srcy: 1,
+						x,
+						y,
+					} ) );
+					tiles.push( createTile( {
+						animation: 5,
+						srcx: 25,
+						srcy: 1,
+						x: x + 1,
+						y,
+					} ) );
+					tiles.push( createTile( {
+						animation: 5,
+						srcx: 30,
+						srcy: 1,
+						x,
+						y: y + 1,
+					} ) );
+					tiles.push( createTile( {
+						animation: 5,
+						srcx: 35,
+						srcy: 1,
+						x: x + 1,
+						y: y + 1,
+					} ) );
+				}
+			}
+
+			return tiles;
+		},
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `width` },
+			{ type: DataType.Uint8, key: `height` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Width`,
+				key: `width`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+			{
+				title: `Height`,
+				key: `height`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Gem ( 500₧ )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+
+			for ( let y = object.yTiles(); y < object.bottomTiles(); y += tilesPerBlock ) {
+				for ( let x = object.xTiles(); x < object.rightTiles(); x += tilesPerBlock ) {
+					tiles.push( createTile( {
+						animation: 5,
+						srcx: 40,
+						srcy: 1,
+						x,
+						y,
+					} ) );
+					tiles.push( createTile( {
+						animation: 5,
+						srcx: 45,
+						srcy: 1,
+						x: x + 1,
+						y,
+					} ) );
+					tiles.push( createTile( {
+						animation: 5,
+						srcx: 50,
+						srcy: 1,
+						x,
+						y: y + 1,
+					} ) );
+					tiles.push( createTile( {
+						animation: 5,
+						srcx: 55,
+						srcy: 1,
+						x: x + 1,
+						y: y + 1,
+					} ) );
+				}
+			}
+
+			return tiles;
+		},
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `width` },
+			{ type: DataType.Uint8, key: `height` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Width`,
+				key: `width`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+			{
+				title: `Height`,
+				key: `height`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Heart`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				animation: 2,
+				srcx: 60,
+				srcy: 1,
+				x: object.xTiles(),
+				y: object.yTiles(),
+				animationSpeed: 16,
+			} ),
+			createTile( {
+				animation: 2,
+				srcx: 62,
+				srcy: 1,
+				x: object.xTiles() + 1,
+				y: object.yTiles(),
+				animationSpeed: 16,
+			} ),
+			createTile( {
+				animation: 2,
+				srcx: 0,
+				srcy: 2,
+				x: object.xTiles(),
+				y: object.yTiles() + 1,
+				animationSpeed: 16,
+			} ),
+			createTile( {
+				animation: 2,
+				srcx: 2,
+				srcy: 2,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 1,
+				animationSpeed: 16,
+			} ),
+		],
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Keycane`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				animation: 6,
+				srcx: 27,
+				srcy: 4,
+				x: object.xTiles(),
+				y: object.yTiles(),
+			} ),
+			createTile( {
+				animation: 6,
+				srcx: 33,
+				srcy: 4,
+				x: object.xTiles() + 1,
+				y: object.yTiles(),
+			} ),
+			createTile( {
+				animation: 6,
+				srcx: 39,
+				srcy: 4,
+				x: object.xTiles(),
+				y: object.yTiles() + 1,
+			} ),
+			createTile( {
+				animation: 6,
+				srcx: 45,
+				srcy: 4,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 1,
+			} ),
+		],
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Tile Solid Block`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+
+			for ( let y = object.yTiles(); y < object.bottomTiles(); y += tilesPerBlock ) {
+				for ( let x = object.xTiles(); x < object.rightTiles(); x += tilesPerBlock ) {
+					tiles.push( createTile( {
+						srcx: 14,
+						srcy: 0,
+						x,
+						y,
+					} ) );
+					tiles.push( createTile( {
+						srcx: 15,
+						srcy: 0,
+						x: x + 1,
+						y,
+					} ) );
+					tiles.push( createTile( {
+						srcx: 16,
+						srcy: 0,
+						x,
+						y: y + 1,
+					} ) );
+					tiles.push( createTile( {
+						srcx: 17,
+						srcy: 0,
+						x: x + 1,
+						y: y + 1,
+					} ) );
+				}
+			}
+
+			return tiles;
+		},
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `width` },
+			{ type: DataType.Uint8, key: `height` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Width`,
+				key: `width`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+			{
+				title: `Height`,
+				key: `height`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Concrete Block`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 2,
+			height: 2,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+
+			tiles.push( createTile( {
+				srcx: 1,
+				srcy: 0,
+				x: object.xTiles(),
+				y: object.yTiles(),
+			} ) );
+
+			tiles.push( createTile( {
+				srcx: 3,
+				srcy: 0,
+				x: object.rightTiles() - 1,
+				y: object.yTiles(),
+			} ) );
+
+			tiles.push( createTile( {
+				srcx: 7,
+				srcy: 0,
+				x: object.xTiles(),
+				y: object.bottomTiles() - 1,
+			} ) );
+
+			tiles.push( createTile( {
+				srcx: 9,
+				srcy: 0,
+				x: object.rightTiles() - 1,
+				y: object.bottomTiles() - 1,
+			} ) );
+
+			for ( let x = object.xTiles() + 1; x < object.rightTiles() - 1; ++x ) {
+				tiles.push( createTile( {
+					srcx: 2,
+					srcy: 0,
+					x,
+					y: object.yTiles(),
+				} ) );
+				tiles.push( createTile( {
+					srcx: 8,
+					srcy: 0,
+					x,
+					y: object.bottomTiles() - 1,
+				} ) );
+			}
+
+			for ( let y = object.yTiles() + 1; y < object.bottomTiles() - 1; ++y ) {
+				tiles.push( createTile( {
+					srcx: 4,
+					srcy: 0,
+					x: object.xTiles(),
+					y,
+				} ) );
+				tiles.push( createTile( {
+					srcx: 6,
+					srcy: 0,
+					x: object.rightTiles() - 1,
+					y,
+				} ) );
+
+				for ( let x = object.xTiles() + 1; x < object.rightTiles() - 1; ++x ) {
+					tiles.push( createTile( {
+						srcx: 5,
+						srcy: 0,
+						x,
+						y,
+					} ) );
+				}
+			}
+
+			return tiles;
+		},
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `width` },
+			{ type: DataType.Uint8, key: `height` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: Math.pow( 2, 16 ) / 2,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: Math.pow( 2, 16 ) / 2,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Width`,
+				key: `width`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 2,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+			{
+				title: `Height`,
+				key: `height`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 2,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Ladder`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+
+			for ( let y = object.yTiles(); y < object.bottomTiles(); ++y ) {
+				tiles.push( createTile( {
+					srcx: 10,
+					srcy: 0,
+					x: object.xTiles(),
+					y,
+				} ) );
+				tiles.push( createTile( {
+					srcx: 11,
+					srcy: 0,
+					x: object.xTiles() + 1,
+					y,
+				} ) );
+			}
+
+			return tiles;
+		},
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `height` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Height`,
+				key: `height`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Ladder Top`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+
+			tiles.push( createTile( {
+				srcx: 12,
+				srcy: 0,
+				x: object.xTiles(),
+				y: object.yTiles(),
+			} ) );
+			tiles.push( createTile( {
+				srcx: 13,
+				srcy: 0,
+				x: object.xTiles() + 1,
+				y: object.yTiles(),
+			} ) );
+
+			for ( let y = object.yTiles() + 1; y < object.bottomTiles(); ++y ) {
+				tiles.push( createTile( {
+					srcx: 10,
+					srcy: 0,
+					x: object.xTiles(),
+					y,
+				} ) );
+				tiles.push( createTile( {
+					srcx: 11,
+					srcy: 0,
+					x: object.xTiles() + 1,
+					y,
+				} ) );
+			}
+
+			return tiles;
+		},
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `height` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Height`,
+				key: `height`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Switch Block ( Starts On )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+
+			for ( let y = object.yTiles(); y < object.bottomTiles(); y += tilesPerBlock ) {
+				for ( let x = object.xTiles(); x < object.rightTiles(); x += tilesPerBlock ) {
+					tiles.push( createTile( {
+						srcx: 18,
+						srcy: 0,
+						x,
+						y,
+					} ) );
+					tiles.push( createTile( {
+						srcx: 19,
+						srcy: 0,
+						x: x + 1,
+						y,
+					} ) );
+					tiles.push( createTile( {
+						srcx: 20,
+						srcy: 0,
+						x,
+						y: y + 1,
+					} ) );
+					tiles.push( createTile( {
+						srcx: 21,
+						srcy: 0,
+						x: x + 1,
+						y: y + 1,
+					} ) );
+				}
+			}
+
+			return tiles;
+		},
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `width` },
+			{ type: DataType.Uint8, key: `height` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Width`,
+				key: `width`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+			{
+				title: `Height`,
+				key: `height`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Switch Block ( Starts Off )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+
+			for ( let y = object.yTiles(); y < object.bottomTiles(); y += tilesPerBlock ) {
+				for ( let x = object.xTiles(); x < object.rightTiles(); x += tilesPerBlock ) {
+					tiles.push( createTile( {
+						srcx: 22,
+						srcy: 0,
+						x,
+						y,
+					} ) );
+					tiles.push( createTile( {
+						srcx: 23,
+						srcy: 0,
+						x: x + 1,
+						y,
+					} ) );
+					tiles.push( createTile( {
+						srcx: 24,
+						srcy: 0,
+						x,
+						y: y + 1,
+					} ) );
+					tiles.push( createTile( {
+						srcx: 25,
+						srcy: 0,
+						x: x + 1,
+						y: y + 1,
+					} ) );
+				}
+			}
+
+			return tiles;
+		},
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `width` },
+			{ type: DataType.Uint8, key: `height` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Width`,
+				key: `width`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+			{
+				title: `Height`,
+				key: `height`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Treasure Chest`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 2,
+			height: 2,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				srcx: 38,
+				srcy: 0,
+				x: object.xTiles(),
+				y: object.yTiles(),
+				srcWidth: 4,
+			} ),
+			createTile( {
+				srcx: 42,
+				srcy: 0,
+				x: object.xTiles(),
+				y: object.yTiles() + 1,
+				srcWidth: 4,
+			} ),
+			createTile( {
+				srcx: 46,
+				srcy: 0,
+				x: object.xTiles(),
+				y: object.yTiles() + 2,
+				srcWidth: 4,
+			} ),
+			createTile( {
+				srcx: 50,
+				srcy: 0,
+				x: object.xTiles(),
+				y: object.yTiles() + 3,
+				srcWidth: 4,
+			} ),
+		],
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Crate`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 2,
+			height: 2,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+
+			for ( let y = object.yTiles(); y < object.bottomTiles(); y += 4 ) {
+				for ( let x = object.xTiles(); x < object.rightTiles(); x += 4 ) {
+					tiles.push( createTile( {
+						srcx: 54,
+						srcy: 0,
+						x,
+						y: y,
+						srcWidth: 4,
+					} ) );
+					tiles.push( createTile( {
+						srcx: 58,
+						srcy: 0,
+						x,
+						y: y + 1,
+						srcWidth: 4,
+					} ) );
+					tiles.push( createTile( {
+						srcx: 4,
+						srcy: 2,
+						x,
+						y: y + 2,
+						srcWidth: 4,
+					} ) );
+					tiles.push( createTile( {
+						srcx: 8,
+						srcy: 2,
+						x,
+						y: y + 3,
+						srcWidth: 4,
+					} ) );
+				}
+			}
+
+			return tiles;
+		},
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `width` },
+			{ type: DataType.Uint8, key: `height` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Width`,
+				key: `width`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 2,
+					max: Math.pow( 2, 8 ) - 1,
+					step: 2,
+				},
+			},
+			{
+				title: `Height`,
+				key: `height`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 2,
+					max: Math.pow( 2, 8 ) - 1,
+					step: 2,
+				},
+			},
+		],
+	},
+	{
+		name: `Barrel`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 2,
+			height: 2,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+
+			for ( let y = object.yTiles(); y < object.bottomTiles(); y += 4 ) {
+				for ( let x = object.xTiles(); x < object.rightTiles(); x += 4 ) {
+					tiles.push( createTile( {
+						srcx: 12,
+						srcy: 2,
+						x,
+						y: y,
+						srcWidth: 4,
+					} ) );
+					tiles.push( createTile( {
+						srcx: 16,
+						srcy: 4,
+						x,
+						y: y + 1,
+						srcWidth: 4,
+					} ) );
+					tiles.push( createTile( {
+						srcx: 20,
+						srcy: 4,
+						x,
+						y: y + 2,
+						srcWidth: 4,
+					} ) );
+					tiles.push( createTile( {
+						srcx: 24,
+						srcy: 4,
+						x,
+						y: y + 3,
+						srcWidth: 4,
+					} ) );
+				}
+			}
+
+			return tiles;
+		},
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `width` },
+			{ type: DataType.Uint8, key: `height` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Width`,
+				key: `width`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 2,
+					max: Math.pow( 2, 8 ) - 1,
+					step: 2,
+				},
+			},
+			{
+				title: `Height`,
+				key: `height`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 2,
+					max: Math.pow( 2, 8 ) - 1,
+					step: 2,
+				},
+			},
+		],
+	},
+	{
+		name: `Club Card`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				animation: 8,
+				srcx: 16,
+				srcy: 2,
+				x: object.xTiles(),
+				y: object.yTiles(),
+			} ),
+			createTile( {
+				animation: 8,
+				srcx: 24,
+				srcy: 2,
+				x: object.xTiles() + 1,
+				y: object.yTiles(),
+			} ),
+			createTile( {
+				animation: 8,
+				srcx: 32,
+				srcy: 2,
+				x: object.xTiles(),
+				y: object.yTiles() + 1,
+			} ),
+			createTile( {
+				animation: 8,
+				srcx: 40,
+				srcy: 2,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 1,
+			} ),
+		],
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Spade Card`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				animation: 8,
+				srcx: 48,
+				srcy: 2,
+				x: object.xTiles(),
+				y: object.yTiles(),
+			} ),
+			createTile( {
+				animation: 8,
+				srcx: 56,
+				srcy: 2,
+				x: object.xTiles() + 1,
+				y: object.yTiles(),
+			} ),
+			createTile( {
+				animation: 8,
+				srcx: 0,
+				srcy: 3,
+				x: object.xTiles(),
+				y: object.yTiles() + 1,
+			} ),
+			createTile( {
+				animation: 8,
+				srcx: 8,
+				srcy: 3,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 1,
+			} ),
+		],
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Diamond Card`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				animation: 8,
+				srcx: 16,
+				srcy: 3,
+				x: object.xTiles(),
+				y: object.yTiles(),
+			} ),
+			createTile( {
+				animation: 8,
+				srcx: 24,
+				srcy: 3,
+				x: object.xTiles() + 1,
+				y: object.yTiles(),
+			} ),
+			createTile( {
+				animation: 8,
+				srcx: 32,
+				srcy: 3,
+				x: object.xTiles(),
+				y: object.yTiles() + 1,
+			} ),
+			createTile( {
+				animation: 8,
+				srcx: 40,
+				srcy: 3,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 1,
+			} ),
+		],
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Heart Card`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				animation: 8,
+				srcx: 48,
+				srcy: 3,
+				x: object.xTiles(),
+				y: object.yTiles(),
+			} ),
+			createTile( {
+				animation: 8,
+				srcx: 56,
+				srcy: 3,
+				x: object.xTiles() + 1,
+				y: object.yTiles(),
+			} ),
+			createTile( {
+				animation: 8,
+				srcx: 0,
+				srcy: 4,
+				x: object.xTiles(),
+				y: object.yTiles() + 1,
+			} ),
+			createTile( {
+				animation: 8,
+				srcx: 8,
+				srcy: 4,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 1,
+			} ),
+		],
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Spike ( Top )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+
+			for ( let x = object.xTiles(); x < object.rightTiles(); x += tilesPerBlock ) {
+				tiles.push( createTile( {
+					srcx: 34,
+					srcy: 0,
+					x: x,
+					y: object.yTiles(),
+				} ) );
+				tiles.push( createTile( {
+					srcx: 35,
+					srcy: 0,
+					x: x + 1,
+					y: object.yTiles(),
+				} ) );
+				tiles.push( createTile( {
+					srcx: 36,
+					srcy: 0,
+					x,
+					y: object.yTiles() + 1,
+				} ) );
+				tiles.push( createTile( {
+					srcx: 37,
+					srcy: 0,
+					x: x + 1,
+					y: object.yTiles() + 1,
+				} ) );
+			}
+
+			return tiles;
+		},
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `width` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Width`,
+				key: `width`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Spike ( Bottom )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+
+			for ( let x = object.xTiles(); x < object.rightTiles(); x += tilesPerBlock ) {
+				tiles.push( createTile( {
+					srcx: 36,
+					srcy: 0,
+					x: x,
+					y: object.yTiles(),
+					flipy: true,
+				} ) );
+				tiles.push( createTile( {
+					srcx: 37,
+					srcy: 0,
+					x: x + 1,
+					y: object.yTiles(),
+					flipy: true,
+				} ) );
+				tiles.push( createTile( {
+					srcx: 34,
+					srcy: 0,
+					x,
+					y: object.yTiles() + 1,
+					flipy: true,
+				} ) );
+				tiles.push( createTile( {
+					srcx: 35,
+					srcy: 0,
+					x: x + 1,
+					y: object.yTiles() + 1,
+					flipy: true,
+				} ) );
+			}
+
+			return tiles;
+		},
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `width` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Width`,
+				key: `width`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Spike ( Right )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+
+			for ( let y = object.yTiles(); y < object.bottomTiles(); y += tilesPerBlock ) {
+				tiles.push( createTile( {
+					srcx: 36,
+					srcy: 0,
+					x: object.xTiles(),
+					y: y,
+					rotate: 90,
+				} ) );
+				tiles.push( createTile( {
+					srcx: 34,
+					srcy: 0,
+					x: object.xTiles() + 1,
+					y: y,
+					rotate: 90,
+				} ) );
+				tiles.push( createTile( {
+					srcx: 37,
+					srcy: 0,
+					x: object.xTiles(),
+					y: y + 1,
+					rotate: 90,
+				} ) );
+				tiles.push( createTile( {
+					srcx: 35,
+					srcy: 0,
+					x: object.xTiles() + 1,
+					y: y + 1,
+					rotate: 90,
+				} ) );
+			}
+
+			return tiles;
+		},
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `height` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Height`,
+				key: `height`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Spike ( Left )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 1,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+
+			for ( let y = object.yTiles(); y < object.bottomTiles(); y += tilesPerBlock ) {
+				tiles.push( createTile( {
+					srcx: 35,
+					srcy: 0,
+					x: object.xTiles(),
+					y: y,
+					rotate: -90,
+				} ) );
+				tiles.push( createTile( {
+					srcx: 37,
+					srcy: 0,
+					x: object.xTiles() + 1,
+					y: y,
+					rotate: -90,
+				} ) );
+				tiles.push( createTile( {
+					srcx: 34,
+					srcy: 0,
+					x: object.xTiles(),
+					y: y + 1,
+					rotate: -90,
+				} ) );
+				tiles.push( createTile( {
+					srcx: 36,
+					srcy: 0,
+					x: object.xTiles() + 1,
+					y: y + 1,
+					rotate: -90,
+				} ) );
+			}
+
+			return tiles;
+		},
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Uint16, key: `x` },
+			{ type: DataType.Uint16, key: `y` },
+			{ type: DataType.Uint8, key: `height` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 0,
+					max: Math.pow( 2, 16 ) - 1,
+				},
+			},
+			{
+				title: `Height`,
+				key: `height`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
 ] );
 
 const atticBlockTypes: readonly MapObjectType[] = Object.freeze( [
+	{
+		name: `Attic Ground ( Horizontal )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 1,
+			height: 4,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+
+			for ( let x = 0; x < object.widthTiles(); ++x ) {
+				let srcxadd = ( x + 2 ) % 4;
+				tiles.push( createTile( {
+					srcx: 14 + srcxadd,
+					srcy: 0,
+					x: object.xTiles() + x,
+					y: object.yTiles() + 1,
+					srcWidth: 1,
+					srcHeight: 1,
+				} ) );
+				srcxadd = ( x + 1 ) % 4;
+				tiles.push( createTile( {
+					srcx: 15 + srcxadd,
+					srcy: 1,
+					x: object.xTiles() + x,
+					y: object.yTiles() + 2,
+					srcWidth: 1,
+					srcHeight: 1,
+				} ) );
+				srcxadd = x % 4;
+				tiles.push( createTile( {
+					srcx: 16 + srcxadd,
+					srcy: 2,
+					x: object.xTiles() + x,
+					y: object.yTiles() + 3,
+					srcWidth: 1,
+					srcHeight: 4,
+					priority: 0.25,
+				} ) );
+			}
+
+			return tiles;
+		},
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Int16, key: `x` },
+			{ type: DataType.Int16, key: `y` },
+			{ type: DataType.Uint8, key: `width` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Width`,
+				key: `width`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Attic Ground ( Vertical )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 4,
+			height: 1,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+
+			for ( let y = 0; y < object.heightTiles(); ++y ) {
+				let srcyadd = ( y + 1 ) % 4;
+				tiles.push( createTile( {
+					srcx: 13,
+					srcy: 1 + srcyadd,
+					x: object.xTiles() + 1,
+					y: object.yTiles() + y,
+					srcWidth: 1,
+					srcHeight: 1,
+				} ) );
+				srcyadd = ( y + 2 ) % 4;
+				tiles.push( createTile( {
+					srcx: 14,
+					srcy: 2 + srcyadd,
+					x: object.xTiles() + 2,
+					y: object.yTiles() + y,
+					srcWidth: 1,
+					srcHeight: 1,
+				} ) );
+				srcyadd = ( y + 3 ) % 4;
+				tiles.push( createTile( {
+					srcx: 15,
+					srcy: 3 + srcyadd,
+					x: object.xTiles() + 3,
+					y: object.yTiles() + y,
+					srcWidth: 1,
+					srcHeight: 1,
+				} ) );
+				srcyadd = y % 2;
+				const srcxadd = Math.floor( y / 2 ) % 2;
+				tiles.push( createTile( {
+					srcx: 16 + ( 2 * srcxadd ),
+					srcy: 3 + srcyadd,
+					x: object.xTiles() + 4,
+					y: object.yTiles() + y,
+					srcWidth: 2,
+					srcHeight: 1,
+				} ) );
+				srcyadd = y % 4;
+				tiles.push( createTile( {
+					srcx: 20,
+					srcy: 2 + srcyadd,
+					x: object.xTiles() + 6,
+					y: object.yTiles() + y,
+					srcWidth: 1,
+					srcHeight: 1,
+					priority: 0.25,
+				} ) );
+			}
+
+			return tiles;
+		},
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Int16, key: `x` },
+			{ type: DataType.Int16, key: `y` },
+			{ type: DataType.Uint8, key: `height` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Height`,
+				key: `height`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 1,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Attic Ground Corner ( Top Right )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 4,
+			height: 4,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				srcx: 16,
+				srcy: 0,
+				x: object.xTiles(),
+				y: object.yTiles() + 1,
+				srcWidth: 2,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 0,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 1,
+				srcWidth: 2,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 0,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 21,
+				srcy: 0,
+				x: object.xTiles() + 5,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 1,
+				x: object.xTiles(),
+				y: object.yTiles() + 2,
+				srcWidth: 3,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 1,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 2,
+				srcWidth: 2,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 21,
+				srcy: 1,
+				x: object.xTiles() + 5,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 22,
+				srcy: 1,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 2,
+				x: object.xTiles(),
+				y: object.yTiles() + 3,
+				srcWidth: 4,
+				srcHeight: 3,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 2,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 3,
+				srcWidth: 2,
+				srcHeight: 3,
+			} ),
+			createTile( {
+				srcx: 22,
+				srcy: 2,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 20,
+				srcy: 2,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 4,
+				srcWidth: 1,
+				srcHeight: 4,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 5,
+				x: object.xTiles(),
+				y: object.yTiles() + 6,
+				srcWidth: 2,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 5,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 21,
+				srcy: 2,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 13,
+				srcy: 1,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 7,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 5,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 7,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 5,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 7,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 6,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+		],
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Int16, key: `x` },
+			{ type: DataType.Int16, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Attic Ground Corner ( Top Left )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 4,
+			height: 4,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				srcx: 13,
+				srcy: 0,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 5,
+			} ),
+			createTile( {
+				srcx: 13,
+				srcy: 1,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 0,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 1,
+				srcWidth: 2,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 0,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 1,
+				srcWidth: 4,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 1,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 1,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 2,
+				srcWidth: 4,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 1,
+				x: object.xTiles() + 7,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 2,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 2,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 3,
+				srcWidth: 4,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 2,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 4,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 2,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 7,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 3,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 4,
+				srcWidth: 5,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 5,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 6,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 0,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 17,
+				srcy: 5,
+				x: object.xTiles() + 7,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 20,
+				srcy: 5,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 7,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+		],
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Int16, key: `x` },
+			{ type: DataType.Int16, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Attic Ground Corner ( Bottom Left )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 4,
+			height: 4,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				srcx: 13,
+				srcy: 2,
+				x: object.xTiles() + 1,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 3,
+			} ),
+			createTile( {
+				srcx: 13,
+				srcy: 1,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 4,
+				x: object.xTiles() + 2,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 2,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 4,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 6,
+				x: object.xTiles() + 3,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 3,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 4,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 6,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 5,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 19,
+				srcy: 0,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 5,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 20,
+				srcy: 0,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 19,
+				srcy: 1,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles(),
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 2,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 4,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 3,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 4,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 5,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 6,
+				srcWidth: 4,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 20,
+				srcy: 2,
+				x: object.xTiles() + 6,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 3,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 20,
+				srcy: 1,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 19,
+				srcy: 2,
+				x: object.xTiles() + 7,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 0,
+				x: object.xTiles() + 7,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 2,
+			} ),
+		],
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Int16, key: `x` },
+			{ type: DataType.Int16, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Attic Ground Corner ( Bottom Right )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 4,
+			height: 4,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				srcx: 14,
+				srcy: 4,
+				x: object.xTiles() + 1,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 13,
+				srcy: 2,
+				x: object.xTiles() + 2,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 6,
+				x: object.xTiles() + 3,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 3,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 0,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 2,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 4,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 3,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 4,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 3,
+				x: object.xTiles() + 0,
+				y: object.yTiles() + 4,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 20,
+				srcy: 2,
+				x: object.xTiles() + 6,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 4,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 20,
+				srcy: 2,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 4,
+				srcWidth: 1,
+				srcHeight: 2,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 5,
+				x: object.xTiles(),
+				y: object.yTiles() + 6,
+				srcWidth: 4,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 5,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 6,
+				srcWidth: 2,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 12,
+				srcy: 4,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 2,
+				x: object.xTiles(),
+				y: object.yTiles() + 3,
+				srcWidth: 2,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 2,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 11,
+				srcy: 4,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 0,
+				x: object.xTiles(),
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 1,
+				x: object.xTiles(),
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 1,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 12,
+				srcy: 3,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 11,
+				srcy: 3,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+		],
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Int16, key: `x` },
+			{ type: DataType.Int16, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Attic Ground Join ( Horizontal Top )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 4,
+			height: 4,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				srcx: 14,
+				srcy: 4,
+				x: object.xTiles() + 1,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 13,
+				srcy: 2,
+				x: object.xTiles() + 2,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 6,
+				x: object.xTiles() + 3,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 3,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 0,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 2,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 4,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 3,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 4,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 3,
+				x: object.xTiles() + 0,
+				y: object.yTiles() + 4,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 3,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 4,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 5,
+				x: object.xTiles(),
+				y: object.yTiles() + 6,
+				srcWidth: 4,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 5,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 6,
+				srcWidth: 4,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 2,
+				x: object.xTiles(),
+				y: object.yTiles() + 3,
+				srcWidth: 2,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 2,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 11,
+				srcy: 4,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 0,
+				x: object.xTiles(),
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 1,
+				x: object.xTiles(),
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 1,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 12,
+				srcy: 3,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 11,
+				srcy: 3,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 20,
+				srcy: 2,
+				x: object.xTiles() + 6,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 3,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 20,
+				srcy: 1,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 19,
+				srcy: 2,
+				x: object.xTiles() + 7,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 0,
+				x: object.xTiles() + 7,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 2,
+			} ),
+		],
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Int16, key: `x` },
+			{ type: DataType.Int16, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Attic Ground Join ( Horizontal Bottom )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 4,
+			height: 4,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				srcx: 16,
+				srcy: 0,
+				x: object.xTiles(),
+				y: object.yTiles() + 1,
+				srcWidth: 2,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 0,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 1,
+				srcWidth: 4,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 0,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 1,
+				srcWidth: 4,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 1,
+				x: object.xTiles(),
+				y: object.yTiles() + 2,
+				srcWidth: 3,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 1,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 2,
+				srcWidth: 4,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 1,
+				x: object.xTiles() + 7,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 2,
+				x: object.xTiles(),
+				y: object.yTiles() + 3,
+				srcWidth: 4,
+				srcHeight: 3,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 2,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 3,
+				srcWidth: 4,
+				srcHeight: 3,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 5,
+				x: object.xTiles(),
+				y: object.yTiles() + 6,
+				srcWidth: 2,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 5,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 21,
+				srcy: 2,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 13,
+				srcy: 1,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 7,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 5,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 7,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 5,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 7,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 6,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 0,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 17,
+				srcy: 5,
+				x: object.xTiles() + 7,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 20,
+				srcy: 5,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 7,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+		],
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Int16, key: `x` },
+			{ type: DataType.Int16, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Attic Ground Join ( Vertical Left )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 4,
+			height: 4,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				srcx: 14,
+				srcy: 4,
+				x: object.xTiles() + 1,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 13,
+				srcy: 2,
+				x: object.xTiles() + 2,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 6,
+				x: object.xTiles() + 3,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 3,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 0,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 2,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 4,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 3,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 4,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 3,
+				x: object.xTiles() + 0,
+				y: object.yTiles() + 4,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 20,
+				srcy: 2,
+				x: object.xTiles() + 6,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 4,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 20,
+				srcy: 2,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 4,
+				srcWidth: 1,
+				srcHeight: 4,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 2,
+				x: object.xTiles(),
+				y: object.yTiles() + 3,
+				srcWidth: 2,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 2,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 11,
+				srcy: 4,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 0,
+				x: object.xTiles(),
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 1,
+				x: object.xTiles(),
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 1,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 12,
+				srcy: 3,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 11,
+				srcy: 3,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 5,
+				x: object.xTiles(),
+				y: object.yTiles() + 6,
+				srcWidth: 2,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 5,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 21,
+				srcy: 2,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 13,
+				srcy: 1,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 7,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 5,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 7,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 5,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 7,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 6,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+		],
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Int16, key: `x` },
+			{ type: DataType.Int16, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Attic Ground Join ( Vertical Right )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 4,
+			height: 4,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				srcx: 13,
+				srcy: 2,
+				x: object.xTiles() + 1,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 3,
+			} ),
+			createTile( {
+				srcx: 13,
+				srcy: 1,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 4,
+			} ),
+			createTile( {
+				srcx: 13,
+				srcy: 1,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 7,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 4,
+				x: object.xTiles() + 2,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 2,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 4,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 2,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 6,
+				x: object.xTiles() + 3,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 3,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 4,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 6,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 5,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles(),
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 2,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 4,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 3,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 4,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 20,
+				srcy: 2,
+				x: object.xTiles() + 6,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 3,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 20,
+				srcy: 1,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 19,
+				srcy: 2,
+				x: object.xTiles() + 7,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 0,
+				x: object.xTiles() + 7,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 5,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 6,
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 18,
+				srcy: 0,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 17,
+				srcy: 5,
+				x: object.xTiles() + 7,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 20,
+				srcy: 5,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 7,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+		],
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Int16, key: `x` },
+			{ type: DataType.Int16, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Attic Ground End ( Left )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 2,
+			height: 4,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				srcx: 13,
+				srcy: 0,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 4,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 0,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 1,
+				srcWidth: 2,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 1,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 1,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 2,
+				srcWidth: 4,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 2,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 2,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 3,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 3,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 4,
+				srcWidth: 5,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 6,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 5,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 19,
+				srcy: 0,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 5,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 20,
+				srcy: 0,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 19,
+				srcy: 1,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+		],
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Int16, key: `x` },
+			{ type: DataType.Int16, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Attic Ground End ( Right )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 2,
+			height: 4,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				srcx: 16,
+				srcy: 0,
+				x: object.xTiles() + 0,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 21,
+				srcy: 0,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 1,
+				x: object.xTiles(),
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 21,
+				srcy: 1,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 22,
+				srcy: 1,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 19,
+				srcy: 2,
+				x: object.xTiles(),
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 3,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 2,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 3,
+			} ),
+			createTile( {
+				srcx: 22,
+				srcy: 2,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 20,
+				srcy: 2,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 4,
+				srcWidth: 1,
+				srcHeight: 2,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 5,
+				x: object.xTiles(),
+				y: object.yTiles() + 6,
+				srcWidth: 2,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 12,
+				srcy: 4,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 6,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+		],
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Int16, key: `x` },
+			{ type: DataType.Int16, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Attic Ground End ( Top )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 4,
+			height: 2,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				srcx: 13,
+				srcy: 0,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 3,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 0,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 1,
+				srcWidth: 2,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 1,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 1,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 2,
+				srcWidth: 2,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 2,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 2,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 22,
+				srcy: 2,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 3,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 0,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 21,
+				srcy: 0,
+				x: object.xTiles() + 5,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 21,
+				srcy: 1,
+				x: object.xTiles() + 5,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 22,
+				srcy: 1,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 2,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 3,
+				srcWidth: 2,
+				srcHeight: 1,
+			} ),
+		],
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Int16, key: `x` },
+			{ type: DataType.Int16, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Attic Ground End ( Bottom )`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 4,
+			height: 2,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => [
+			createTile( {
+				srcx: 13,
+				srcy: 2,
+				x: object.xTiles() + 1,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 14,
+				srcy: 4,
+				x: object.xTiles() + 2,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 6,
+				x: object.xTiles() + 3,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 15,
+				srcy: 6,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 19,
+				srcy: 0,
+				x: object.xTiles() + 1,
+				y: object.yTiles() + 1,
+				srcWidth: 1,
+				srcHeight: 1,
+			} ),
+			createTile( {
+				srcx: 20,
+				srcy: 0,
+				x: object.xTiles() + 2,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 19,
+				srcy: 1,
+				x: object.xTiles() + 3,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 3,
+				x: object.xTiles() + 4,
+				y: object.yTiles(),
+				srcWidth: 2,
+				srcHeight: 2,
+			} ),
+			createTile( {
+				srcx: 20,
+				srcy: 2,
+				x: object.xTiles() + 6,
+				y: object.yTiles(),
+				srcWidth: 1,
+				srcHeight: 2,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 16,
+				srcy: 5,
+				x: object.xTiles() + 4,
+				y: object.yTiles() + 2,
+				srcWidth: 2,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+			createTile( {
+				srcx: 12,
+				srcy: 4,
+				x: object.xTiles() + 6,
+				y: object.yTiles() + 2,
+				srcWidth: 1,
+				srcHeight: 1,
+				priority: 0.25,
+			} ),
+		],
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Int16, key: `x` },
+			{ type: DataType.Int16, key: `y` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+		],
+	},
+	{
+		name: `Wire`,
+		create: ( id, x, y ) => ( {
+			id: id,
+			x: x,
+			y: y,
+			width: 2,
+			height: 2,
+		} ),
+		generateHighlight: ( object: MapObject ) => {
+			return [
+				{
+					x: object.xBlocks(),
+					y: object.yBlocks(),
+					width: object.widthBlocks(),
+					height: object.heightBlocks(),
+				},
+			];
+		},
+		generateTiles: ( object: MapObject ) => {
+			const tiles: GraphicTile[] = [];
+			tiles.push( createTile( {
+				srcx: 23,
+				srcy: 5,
+				x: object.xTiles(),
+				y: object.bottomTiles() - 4,
+				srcWidth: 4,
+				srcHeight: 4,
+			} ) );
+
+			for ( let y = 0; y < object.heightTiles() - 4; ++y ) {
+				const yRel = 5 - ( y % 6 );
+				const yPosition = object.bottomTiles() - 4 - y;
+
+				switch ( yRel ) {
+					case ( 0 ):
+						tiles.push( createTile( {
+							srcx: 23,
+							srcy: 4,
+							x: object.xTiles(),
+							y: yPosition,
+							srcWidth: 3,
+							srcHeight: 1,
+						} ) );
+						tiles.push( createTile( {
+							srcx: 26,
+							srcy: 0,
+							x: object.xTiles() + 3,
+							y: yPosition,
+							srcWidth: 1,
+							srcHeight: 1,
+						} ) );
+					break;
+					case ( 1 ):
+						tiles.push( createTile( {
+							srcx: 23,
+							srcy: 1,
+							x: object.xTiles(),
+							y: yPosition,
+							srcWidth: 4,
+							srcHeight: 1,
+						} ) );
+					break;
+					case ( 2 ):
+						tiles.push( createTile( {
+							srcx: 23,
+							srcy: 2,
+							x: object.xTiles(),
+							y: yPosition,
+							srcWidth: 4,
+							srcHeight: 1,
+						} ) );
+					break;
+					case ( 3 ):
+						tiles.push( createTile( {
+							srcx: 23,
+							srcy: 3,
+							x: object.xTiles(),
+							y: yPosition,
+							srcWidth: 2,
+							srcHeight: 1,
+						} ) );
+						tiles.push( createTile( {
+							srcx: 25,
+							srcy: 4,
+							x: object.xTiles() + 2,
+							y: yPosition,
+							srcWidth: 1,
+							srcHeight: 1,
+						} ) );
+						tiles.push( createTile( {
+							srcx: 26,
+							srcy: 3,
+							x: object.xTiles() + 3,
+							y: yPosition,
+							srcWidth: 1,
+							srcHeight: 1,
+						} ) );
+					break;
+					case ( 4 ):
+					case ( 5 ):
+						tiles.push( createTile( {
+							srcx: 23,
+							srcy: 4,
+							x: object.xTiles(),
+							y: yPosition,
+							srcWidth: 4,
+							srcHeight: 1,
+						} ) );
+					break;
+				}
+			}
+
+			return tiles;
+		},
+		exportData: [
+			{ type: DataType.Uint16, key: `id` },
+			{ type: DataType.Int16, key: `x` },
+			{ type: DataType.Int16, key: `y` },
+			{ type: DataType.Uint8, key: `height` },
+		],
+		options: [
+			{
+				title: `X`,
+				key: `x`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Y`,
+				key: `y`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: -( Math.pow( 2, 16 ) / 2 ) + 1,
+					max: ( Math.pow( 2, 16 ) / 2 ) - 1,
+				},
+			},
+			{
+				title: `Height`,
+				key: `height`,
+				type: `number`,
+				update: v => parseInt( v ),
+				atts: {
+					min: 2,
+					max: Math.pow( 2, 8 ) - 1,
+				},
+			},
+		],
+	},
 	{
 		name: `Pipe ( Horizontal )`,
 		create: ( id, x, y ) => ( {
