@@ -6245,10 +6245,45 @@ const getOverworldTypeGenerator = ( layerType: OverworldLayerType ): (
 	};
 };
 
+const objectTypeHasOption = ( type: MapObjectType, key: string ): boolean => {
+	const options = type.options;
+	for ( let i = 0; i < options.length; i++ ) {
+		if ( options[ i ].key === key ) {
+			return true;
+		}
+	}
+	return false;
+};
+
+// Keep # within object option’s min & max values, if they exist.
+const objectLimitOption = ( type: MapObjectType, key: string, value: number ): number => {
+	let min = 1;
+	let max = Number.MAX_SAFE_INTEGER;
+	const options = type.options;
+	for ( let i = 0; i < options.length; i++ ) {
+		if ( options[ i ].key === key ) {
+			// @ts-expect-error - We have confirmed that this property exists on this object.
+			if ( `min` in options[ i ].atts && typeof options[ i ].atts.min === `number` ) {
+				// @ts-expect-error - We have confirmed that this property exists on this object.
+				min = options[ i ].atts.min;
+			}
+
+			// @ts-expect-error - We have confirmed that this property exists on this object.
+			if ( `max` in options[ i ].atts && typeof options[ i ].atts.max === `number` ) {
+				// @ts-expect-error - We have confirmed that this property exists on this object.
+				max = options[ i ].atts.max;
+			}
+		}
+	}
+	return Math.min( Math.max( value, min ), max );
+};
+
 export {
 	createObject,
 	getBlockTypeFactory,
 	getBlockTypeFactoryOfType,
 	getOverworldTypeFactory,
 	getOverworldTypeGenerator,
+	objectLimitOption,
+	objectTypeHasOption,
 };

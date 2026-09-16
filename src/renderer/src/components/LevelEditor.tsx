@@ -14,9 +14,6 @@ import { LevelOptions } from './LevelEditor/LevelOptions';
 import { MapSelectorList } from './LevelEditor/MapSelectorList';
 
 const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
-	const [ selectedMap, setSelectedMap ] = useState<LvMap | null>( null );
-	const [ selectedMapIndex, setSelectedMapIndex ] = useState<number | null>( null );
-
 	const {
 		closeLevel,
 		graphics,
@@ -25,6 +22,9 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 		setLevel,
 		updateLevelName,
 	} = props;
+
+	const [ selectedMap, setSelectedMap ] = useState<LvMap>( transformMapDataToObject( level.getMaps()[ 0 ] ) );
+	const [ selectedMapIndex, setSelectedMapIndex ] = useState<number>( 0 );
 
 	const maps = level.getMaps();
 
@@ -38,15 +38,19 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 	};
 
 	const deleteMap = () => {
+		if ( maps.length < 2 ) {
+			return;
+		}
 		setMaps( maps.filter( ( _, i ) => i !== selectedMapIndex ) );
-		setSelectedMap( null );
-		setSelectedMapIndex( null );
+		const newSelectedMapIndex = selectedMapIndex > 0 ? selectedMapIndex - 1 : 0;
+		setSelectedMapIndex( newSelectedMapIndex );
+		setSelectedMap( transformMapDataToObject( maps[ newSelectedMapIndex ] ) );
 	};
 
 	const exit = () => {
 		closeLevel();
-		setSelectedMap( null );
-		setSelectedMapIndex( null );
+		setSelectedMapIndex( 0 );
+		setSelectedMap( transformMapDataToObject( level.getMaps()[ 0 ] ) );
 	};
 
 	const exportMap = () => {
@@ -102,18 +106,18 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 	};
 
 	const onClose = () => {
-		setSelectedMap( null );
-		setSelectedMapIndex( null );
+		setSelectedMapIndex( 0 );
+		setSelectedMap( transformMapDataToObject( level.getMaps()[ 0 ] ) );
 	};
 
 	const onNew = () => {
-		setSelectedMap( null );
-		setSelectedMapIndex( null );
+		setSelectedMapIndex( 0 );
+		setSelectedMap( transformMapDataToObject( level.getMaps()[ 0 ] ) );
 	};
 
 	const onOpen = () => {
-		setSelectedMap( null );
-		setSelectedMapIndex( null );
+		setSelectedMapIndex( 0 );
+		setSelectedMap( transformMapDataToObject( level.getMaps()[ 0 ] ) );
 	};
 
 	useEffect( () => {
@@ -137,16 +141,16 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 			setLevel={ setLevel }
 			updateLevelName={ updateLevelName }
 		/>
-		{ maps.length > 0 && <MapSelectorList
+		<MapSelectorList
 			generateMapSelector={ generateMapSelector }
 			maps={ maps }
 			selectedMapIndex={ selectedMapIndex }
-		/> }
+		/>
 		<div>
 			<h2>Map controls</h2>
 			<div>
 				<button disabled={ maps.length >= 255 } onClick={ addMap }>Add Map</button>
-				<button disabled={ selectedMap === null } onClick={ deleteMap }>Delete Map</button>
+				<button disabled={ maps.length < 2 } onClick={ deleteMap }>Delete Map</button>
 				<button
 					disabled={ selectedMapIndex === null || selectedMapIndex === 0 }
 					onClick={ moveMapUp }
@@ -159,7 +163,7 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 				>
 					↓
 				</button>
-				<button disabled={ selectedMap === null } onClick={ exportMap }>Export Map</button>
+				<button onClick={ exportMap }>Export Map</button>
 				<button disabled={ maps.length >= 255 } onClick={ importMap }>Import Map</button>
 			</div>
 		</div>

@@ -64,6 +64,15 @@ interface DecodedGraphicsData {
 	remainingBytes: Uint8Array,
 }
 
+enum EditorStateType {
+	normal = `normal`,
+	move = `move`,
+	wresizeHover = `wresizeHover`,
+	wresizeMove = `wresizeMove`,
+	hresizeHover = `hresizeHover`,
+	hresizeMove = `hresizeMove`,
+}
+
 interface Goal {
 	getId: () => number,
 	getOption: ( key: string ) => GoalValue,
@@ -255,10 +264,10 @@ interface MapEditorProps {
 	graphics: Graphics;
 	maps: ArrayBuffer[];
 	palettes: PaletteList;
-	selectedMap: LvMap | null;
-	selectedMapIndex: number | null;
+	selectedMap: LvMap;
+	selectedMapIndex: number;
 	setMaps: ( maps: ArrayBuffer[] ) => void;
-	setSelectedMap: ( map: LvMap | null ) => void;
+	setSelectedMap: ( map: LvMap ) => void;
 }
 
 interface MapObject {
@@ -798,6 +807,7 @@ export {
 	DecodedLevelHeader,
 	DecodedTextData,
 	DecodedGraphicsData,
+	EditorStateType,
 	Goal,
 	GoalAtts,
 	GoalOptions,

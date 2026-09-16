@@ -3,9 +3,15 @@ import {
 	generateDataBytes,
 	layerTypeNames,
 } from '../../../../common/levels';
-import { getBlockTypeFactory, getBlockTypeFactoryOfType } from '../../../../common/objects';
+import {
+	getBlockTypeFactory,
+	getBlockTypeFactoryOfType,
+	objectLimitOption,
+	objectTypeHasOption,
+} from '../../../../common/objects';
 import { getMousePosition } from '../../../../common/utils';
 import {
+	EditorStateType,
 	LayerTileSetOption,
 	LayerType,
 	LvMap,
@@ -33,6 +39,8 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 	const [ layerTileSetOption, setLayerTileSetOption ] = useState<LayerTileSetOption>( LayerTileSetOption.universal );
 	const [ magnification, setMagnification ] = useState( 1 );
 	const [ gridOpacity, setGridOpacity ] = useState( 0.5 );
+	const [ editorState, setEditorState ] = useState<EditorStateType>( EditorStateType.normal );
+	const [ shift, setShift ] = useState( false );
 
 	const { graphics, maps, palettes, selectedMap, selectedMapIndex, setSelectedMap, setMaps } = props;
 
@@ -56,6 +64,14 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		layerTileSetOption,
 		tilesetType,
 	);
+	const cursorType = ( editorState === EditorStateType.wresizeHover
+		|| editorState === EditorStateType.wresizeMove )
+		? `ew-resize`
+		: ( editorState === EditorStateType.hresizeHover || editorState === EditorStateType.hresizeMove )
+			? `ns-resize`
+			: ( editorState === EditorStateType.move )
+				? `move`
+				: `default`;
 
 	const calculateLocalPosition = ( n: number ) => Math.floor( n / ( 16 * magnification ) );
 
@@ -123,6 +139,15 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 
 	// Select object on left click.
 	const onClick = ( e: MouseEvent ) => {
+		// If showing the resize icons & clicking, start resizing.
+		if ( selectedObject !== null && editorState === EditorStateType.wresizeHover ) {
+			setEditorState( EditorStateType.wresizeMove );
+			return;
+		} else if ( selectedObject !== null && editorState === EditorStateType.hresizeHover ) {
+			setEditorState( EditorStateType.hresizeMove );
+			return;
+		}
+
 		const { x, y } = getMousePosition( e );
 
 		const gridX = calculateLocalPosition( x );
@@ -146,12 +171,193 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		if ( renderer && selectedLayer !== null && layers.length > selectedLayer ) {
 			renderer.setSelectedObject( newSelectedObject, objects, layers[ selectedLayer ].type );
 		}
+
+		// If we successfully selected an object, also set to move when holding down.
+		if ( newSelectedObject !== null ) {
+			setEditorState( EditorStateType.move );
+		}
+
 		setSelectedObject( newSelectedObject );
+	};
+
+	// End all special states when releasing click.
+	const onMouseUp = () => {
+		if (
+			editorState === EditorStateType.wresizeMove
+			|| editorState === EditorStateType.hresizeMove
+			|| editorState === EditorStateType.move
+		) {
+			setEditorState( EditorStateType.normal );
+		}
+	};
+
+	const onKeyDown = ( e: React.KeyboardEvent<HTMLCanvasElement> ) => {
+		// Deselect object when pressing esc.
+		if ( e.key === `Escape` ) {
+			setEditorState( EditorStateType.normal );
+			setSelectedObject( null );
+			return;
+		}
+
+		// Shift trigger.
+		if ( e.key === `Shift` ) {
+			setShift( true );
+			return;
+		}
+
+		// Handle object manipulation when an object is selected.
+		// When using arrow keys, if shift is held, resize width or height;
+		// otherwise, move.
+		if ( selectedLayer !== null && selectedObject !== null ) {
+			if ( e.key === `Delete` ) {
+				removeObject();
+				setSelectedObject( null );
+				return;
+			} else if ( e.key === `ArrowUp` ) {
+				const object = layers[ selectedLayer ].objects[ selectedObject ];
+				if ( shift ) {
+					const newHeight = objectLimitOption(
+						typesFactory[ object.type() ],
+						`height`,
+						object.heightBlocks() - 1,
+					);
+					if ( newHeight !== object.heightBlocks() ) {
+						updateObject( selectedObject, { height: newHeight } );
+					}
+				} else {
+					updateObject( selectedObject, { y: object.yBlocks() - 1 } );
+				}
+				return;
+			} else if ( e.key === `ArrowDown` ) {
+				const object = layers[ selectedLayer ].objects[ selectedObject ];
+				if ( shift ) {
+					const newHeight = objectLimitOption(
+						typesFactory[ object.type() ],
+						`height`,
+						object.heightBlocks() + 1,
+					);
+					if ( newHeight !== object.heightBlocks() ) {
+						updateObject( selectedObject, { height: newHeight } );
+					}
+				} else {
+					updateObject( selectedObject, { y: object.yBlocks() + 1 } );
+				}
+				return;
+			} else if ( e.key === `ArrowLeft` ) {
+				const object = layers[ selectedLayer ].objects[ selectedObject ];
+				if ( shift ) {
+					const newWidth = objectLimitOption(
+						typesFactory[ object.type() ],
+						`width`,
+						object.widthBlocks() - 1,
+					);
+					if ( newWidth !== object.widthBlocks() ) {
+						updateObject( selectedObject, { width: newWidth } );
+					}
+				} else {
+					updateObject( selectedObject, { x: object.xBlocks() - 1 } );
+				}
+				return;
+			} else if ( e.key === `ArrowRight` ) {
+				const object = layers[ selectedLayer ].objects[ selectedObject ];
+				if ( shift ) {
+					const newWidth = objectLimitOption(
+						typesFactory[ object.type() ],
+						`width`,
+						object.widthBlocks() + 1,
+					);
+					if ( newWidth !== object.widthBlocks() ) {
+						updateObject( selectedObject, { width: newWidth } );
+					}
+				} else {
+					updateObject( selectedObject, { x: object.xBlocks() + 1 } );
+				}
+				return;
+			}
+		}
+	};
+
+	// When releasing shift.
+	const onKeyUp = ( e: React.KeyboardEvent<HTMLCanvasElement> ) => {
+		if ( e.key === `Shift` ) {
+			setShift( false );
+			return;
+		}
 	};
 
 	// Update cursor visuals on mouse move.
 	const onMouseMove = ( e: MouseEvent ) => {
 		const { x, y } = getMousePosition( e );
+
+		// Handle moving object when moving mouse in move state.
+		if ( selectedLayer !== null && selectedObject !== null && editorState === EditorStateType.move ) {
+			const object = layers[ selectedLayer ].objects[ selectedObject ];
+			const xblock = Math.floor( x / 16 );
+			const yblock = Math.floor( y / 16 );
+
+			// Only update if it actually changes to save time on redundant changes.
+			if ( xblock !== object.xBlocks() && yblock !== object.yBlocks() ) {
+				updateObject( selectedObject, { x: xblock, y: yblock } );
+			}
+			return;
+
+		// Handle resizing width in width-resize state.
+		} else if ( selectedLayer !== null && selectedObject !== null && editorState === EditorStateType.wresizeMove ) {
+			const object = layers[ selectedLayer ].objects[ selectedObject ];
+			const position = Math.floor( x / 16 );
+			const diff = position - object.rightBlocks();
+			const newWidth = objectLimitOption( typesFactory[ object.type() ], `width`, object.widthBlocks() + diff );
+
+			// Only update if it actually changes to save time on redundant changes.
+			if ( newWidth !== object.widthBlocks() ) {
+				updateObject( selectedObject, { width: newWidth } );
+			}
+			return;
+
+		// Handle resizing height in height-resize state.
+		} else if ( selectedLayer !== null && selectedObject !== null && editorState === EditorStateType.hresizeMove ) {
+			const object = layers[ selectedLayer ].objects[ selectedObject ];
+			const position = Math.floor( y / 16 );
+			const diff = position - object.bottomBlocks();
+			const newHeight = objectLimitOption(
+				typesFactory[ object.type() ],
+				`height`,
+				object.heightBlocks() + diff,
+			);
+
+			// Only update if it actually changes to save time on redundant changes.
+			if ( newHeight !== object.heightBlocks() ) {
+				updateObject( selectedObject, { height: newHeight } );
+			}
+			return;
+		}
+
+		// Test if we should show the resize icon & enable resizing,
+		// based on the mouse position being near the edges
+		// & if the object in question allows changing the width or height.
+		if ( selectedLayer !== null && selectedObject !== null ) {
+			const object = layers[ selectedLayer ].objects[ selectedObject ];
+			const objectType = typesFactory[ object.type() ];
+			if (
+				objectTypeHasOption( objectType, `width` )
+				&& x > object.rightPixels() - 5
+				&& x < object.rightPixels() + 5
+				&& y > object.yPixels()
+				&& y < object.bottomPixels()
+			) {
+				setEditorState( EditorStateType.wresizeHover );
+			} else if (
+				objectTypeHasOption( objectType, `height` )
+				&& y > object.bottomPixels() - 5
+				&& y < object.bottomPixels() + 5
+				&& x > object.xPixels()
+				&& x < object.rightPixels()
+			) {
+				setEditorState( EditorStateType.hresizeHover );
+			} else {
+				setEditorState( EditorStateType.normal );
+			}
+		}
 
 		const gridX = calculateLocalPosition( x );
 		const gridY = calculateLocalPosition( y );
@@ -347,9 +553,7 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 	useEffect( () => {
 		setSelectedLayer( null );
 		if ( renderer !== null
-			&& selectedMapIndex !== null
-			&& selectedMapIndex < maps.length
-			&& selectedMap !== null ) {
+			&& selectedMapIndex < maps.length ) {
 			renderer.changeMap( selectedMap );
 		}
 	}, [ renderer, selectedMapIndex ] );
@@ -403,7 +607,7 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 	useEffect( render );
 
 	useEffect( () => {
-		if ( ! renderer || selectedMap === null ) {
+		if ( ! renderer ) {
 			return;
 		}
 
@@ -411,7 +615,7 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 	}, [ width, height ] );
 
 	useEffect( () => {
-		if ( ! renderer || selectedMap === null ) {
+		if ( ! renderer ) {
 			return;
 		}
 
@@ -431,7 +635,7 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		}
 		renderer.updateTexture( tilesetType );
 
-		if ( selectedLayer === null || selectedMap === null ) {
+		if ( selectedLayer === null ) {
 			return;
 		}
 
@@ -439,127 +643,130 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 	}, [ renderer, tilesetType ] );
 
 	return <div>
-		{ selectedMap !== null && <div>
-			<MapOptions
-				selectedMap={ selectedMap }
-				updateMap={ updateMap }
-				palettes={ palettes }
-			/>
+		<MapOptions
+			selectedMap={ selectedMap }
+			updateMap={ updateMap }
+			palettes={ palettes }
+		/>
+		<div>
+			<h2>Map</h2>
 			<div>
-				<h2>Map</h2>
-				<div>
-					<label>
-						<span>Zoom:</span>
-						<input
-							max={ 8 }
-							min={ 1 }
-							step={ 0.25 }
-							type="range"
-							value={ magnification }
-							onChange={ updateMagnification }
-						/>
-						<span>{ magnification }</span>
-					</label>
-				</div>
-				<div>
-					<label>
-						<span>Grid Opacity:</span>
-						<input
-							max={ 1 }
-							min={ 0 }
-							step={ 0.1 }
-							type="range"
-							value={ gridOpacity }
-							onChange={ updateGridOpacity }
-						/>
-						<span>{ gridOpacity }</span>
-					</label>
-				</div>
-				<div className="window" onScroll={ onScrollWindow }>
-					<canvas
-						ref={ canvasRef }
-						id="editor"
-						width={ width * 16 * magnification }
-						height={ height * 16 * magnification }
-						onClick={ onClick }
-						onContextMenu={ onRightClick }
-						onMouseMove={ onMouseMove }
-						onMouseOut={ onMouseOut }
+				<label>
+					<span>Zoom:</span>
+					<input
+						max={ 8 }
+						min={ 1 }
+						step={ 0.25 }
+						type="range"
+						value={ magnification }
+						onChange={ updateMagnification }
 					/>
-				</div>
+					<span>{ magnification }</span>
+				</label>
 			</div>
-			{ layers.length > 0 && <LayerSelectorList
-				generateLayerSelector={ generateLayerSelector }
-				layers={ layers }
-				selectedLayer={ selectedLayer }
-			/> }
 			<div>
-				<h2>Layer controls</h2>
-				<div>
-					<button disabled={ layers.length >= 255 } onClick={ addLayer }>Add layer</button>
-					<select value={ addLayerOption } onChange={ changeAddLayerOption }>
-						{ Object.keys( layerTypeNames ).map( ( type, i ) => {
-							return <option key={ i } value={ type }>{ layerTypeNames[ type as LayerType ] }</option>;
-						} ) }
-					</select>
-					<button disabled={ selectedLayer === null } onClick={ removeLayer }>Delete layer</button>
-					<button
-						disabled={ selectedLayer === null || selectedLayer === 0 }
-						onClick={ moveLayerUp }
-					>
-						↑
-					</button>
-					<button
-						disabled={ selectedLayer === null || selectedLayer === layers.length - 1 }
-						onClick={ moveLayerDown }
-					>
-						↓
-					</button>
-				</div>
+				<label>
+					<span>Grid Opacity:</span>
+					<input
+						max={ 1 }
+						min={ 0 }
+						step={ 0.1 }
+						type="range"
+						value={ gridOpacity }
+						onChange={ updateGridOpacity }
+					/>
+					<span>{ gridOpacity }</span>
+				</label>
 			</div>
-			{ selectedLayer !== null && selectedLayer < layers.length && <LayerOptions
-				selectedLayer={ layers[ selectedLayer ] }
-				updateLayer={ selectedMap.updateLayer( selectedLayer ) }
-				updateMap={ updateMap }
-			/> }
-			{ selectedLayer !== null && selectedLayer < layers.length && <div>
-				<div>
-					<label>Tileset Type:</label>
+			<div className="window" onScroll={ onScrollWindow }>
+				<canvas
+					ref={ canvasRef }
+					id="editor"
+					width={ width * 16 * magnification }
+					height={ height * 16 * magnification }
+					tabIndex={ 0 }
+					onKeyDown={ onKeyDown }
+					onKeyUp={ onKeyUp }
+					onMouseDown={ onClick }
+					onMouseUp={ onMouseUp }
+					onContextMenu={ onRightClick }
+					onMouseMove={ onMouseMove }
+					onMouseOut={ onMouseOut }
+					style={{ cursor: cursorType }}
+				/>
+			</div>
+		</div>
+		{ layers.length > 0 && <LayerSelectorList
+			generateLayerSelector={ generateLayerSelector }
+			layers={ layers }
+			selectedLayer={ selectedLayer }
+		/> }
+		<div>
+			<h2>Layer controls</h2>
+			<div>
+				<button disabled={ layers.length >= 255 } onClick={ addLayer }>Add layer</button>
+				<select value={ addLayerOption } onChange={ changeAddLayerOption }>
+					{ Object.keys( layerTypeNames ).map( ( type, i ) => {
+						return <option key={ i } value={ type }>{ layerTypeNames[ type as LayerType ] }</option>;
+					} ) }
+				</select>
+				<button disabled={ selectedLayer === null } onClick={ removeLayer }>Delete layer</button>
+				<button
+					disabled={ selectedLayer === null || selectedLayer === 0 }
+					onClick={ moveLayerUp }
+				>
+					↑
+				</button>
+				<button
+					disabled={ selectedLayer === null || selectedLayer === layers.length - 1 }
+					onClick={ moveLayerDown }
+				>
+					↓
+				</button>
+			</div>
+		</div>
+		{ selectedLayer !== null && selectedLayer < layers.length && <LayerOptions
+			selectedLayer={ layers[ selectedLayer ] }
+			updateLayer={ selectedMap.updateLayer( selectedLayer ) }
+			updateMap={ updateMap }
+		/> }
+		{ selectedLayer !== null && selectedLayer < layers.length && <div>
+			<div>
+				<label>Tileset Type:</label>
+				<select
+					value={ layerTileSetOption }
+					onChange={ updateLayerTilesetOption }
+				>
+					<option value={ LayerTileSetOption.universal }>Universal</option>
+					<option value={ LayerTileSetOption.tilesetSpecific }>Tileset Specific</option>
+				</select>
+			</div>
+			<div>
+				<label>
+					<div>Type:</div>
 					<select
-						value={ layerTileSetOption }
-						onChange={ updateLayerTilesetOption }
+						size={ 10 }
+						value={ selectedType }
+						onChange={ e => setSelectedType( Number( e.target.value ) ) }
 					>
-						<option value={ LayerTileSetOption.universal }>Universal</option>
-						<option value={ LayerTileSetOption.tilesetSpecific }>Tileset Specific</option>
+						{ typesFactoryGenerator.map(
+							( type, i ) => <option key={ i } value={ type.type }>{ type.name }</option>,
+						) }
 					</select>
-				</div>
-				<div>
-					<label>
-						<div>Type:</div>
-						<select
-							size={ 10 }
-							value={ selectedType }
-							onChange={ e => setSelectedType( Number( e.target.value ) ) }
-						>
-							{ typesFactoryGenerator.map(
-								( type, i ) => <option key={ i } value={ type.type }>{ type.name }</option>,
-							) }
-						</select>
-					</label>
-				</div>
-			</div> }
-			{ selectedLayer !== null
-			&& layers.length > selectedLayer
-			&& selectedObject !== null
-			&& objects.length > selectedObject
-			&& <ObjectOptions
-				objects={ objects }
-				removeObject={ removeObject }
-				selectedObject={ selectedObject }
-				typesFactory={ typesFactory }
-				updateObject={ updateObject }
-			/> }
+				</label>
+			</div>
 		</div> }
+		{ selectedLayer !== null
+		&& layers.length > selectedLayer
+		&& selectedObject !== null
+		&& objects.length > selectedObject
+		&& <ObjectOptions
+			objects={ objects }
+			removeObject={ removeObject }
+			selectedObject={ selectedObject }
+			typesFactory={ typesFactory }
+			updateObject={ updateObject }
+		/> }
 	</div>;
 };
 
