@@ -168,9 +168,6 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 				break;
 			}
 		}
-		if ( renderer && selectedLayer !== null && layers.length > selectedLayer ) {
-			renderer.setSelectedObject( newSelectedObject, objects, layers[ selectedLayer ].type );
-		}
 
 		// If we successfully selected an object, also set to move when holding down.
 		if ( newSelectedObject !== null ) {
@@ -438,14 +435,6 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 	};
 
 	const render = () => {
-		if ( ! canvasRef.current ) {
-			return;
-		}
-		const ctx = canvasRef.current.getContext( `webgl2` );
-		if ( ! ctx ) {
-			throw new Error( `Could not get webgl2 context for canvas` );
-		}
-
 		if ( ! renderer ) {
 			return;
 		}
@@ -571,8 +560,9 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 			return;
 		}
 
-		if ( selectedObject === null || objects.length === 0 ) {
-			renderer.setSelectedObject( null, [], LayerType.block );
+		// Update selected object in renderer..
+		if ( selectedLayer !== null && layers.length > selectedLayer ) {
+			renderer.setSelectedObject( selectedObject, objects, layers[ selectedLayer ].type );
 		}
 	}, [ renderer, selectedObject ] );
 
@@ -726,7 +716,10 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 			</div>
 		</div>
 		{ selectedLayer !== null && selectedLayer < layers.length && <LayerOptions
+			map={ selectedMap }
 			selectedLayer={ layers[ selectedLayer ] }
+			selectedObject={ selectedObject }
+			setSelectedObject={ setSelectedObject }
 			updateLayer={ selectedMap.updateLayer( selectedLayer ) }
 			updateMap={ updateMap }
 		/> }

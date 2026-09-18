@@ -1,4 +1,5 @@
 import { ReactElement, SyntheticEvent, useEffect, useState } from 'react';
+import { useImmer } from 'use-immer';
 import {
 	createMap,
 	generateDataBytes,
@@ -23,7 +24,7 @@ const LevelEditor = ( props: LevelEditorProps ): ReactElement => {
 		updateLevelName,
 	} = props;
 
-	const [ selectedMap, setSelectedMap ] = useState<LvMap>( transformMapDataToObject( level.getMaps()[ 0 ] ) );
+	const [ selectedMap, setSelectedMap ] = useImmer<LvMap>( transformMapDataToObject( level.getMaps()[ 0 ] ) );
 	const [ selectedMapIndex, setSelectedMapIndex ] = useState<number>( 0 );
 
 	const maps = level.getMaps();

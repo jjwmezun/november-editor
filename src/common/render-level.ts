@@ -181,53 +181,57 @@ const createObjectRenderer = (
 	let canvasHeight = mapHeight * 16;
 	let tiles: GraphicTile[] = [];
 
+	const generateTileModel = ( tile: GraphicTile ) => {
+		const {
+			animation,
+			srcHeight,
+			srcWidth,
+			srcx,
+			srcy,
+			x,
+			y,
+			flipx,
+			flipy,
+			priority,
+			animationSpeed,
+			rotate,
+		} = tile;
+		const modelWidth = ( 8 / canvasWidth ) * srcWidth;
+		const modelHeight = ( 8 / canvasHeight ) * srcHeight;
+		const model = createMat3()
+			.translate( [
+				-1 + ( 1 + ( 2 / srcWidth ) * x ) * modelWidth,
+				1 - ( 1 + ( 2 / srcHeight ) * y ) * modelHeight,
+			] )
+			.scale( [
+				modelWidth * ( flipx ? -1 : 1 ),
+				modelHeight * ( flipy ? -1 : 1 ),
+			] )
+			.rotateZ( convertDegreesToRadians( -rotate ) );
+		const texmodel = createMat3()
+			.translate( [
+				srcx / 64,
+				srcy / textureHeight,
+			] )
+			.scale( [
+				1 / ( 64 / srcWidth ),
+				1 / ( textureHeight / srcHeight ),
+			] );
+		return model.getList().concat( texmodel.getList() )
+			.concat( animation )
+			.concat( priority )
+			.concat( animationSpeed );
+	};
+
 	const updateModels = () => {
-		const modelsList: number[] = tiles
-			.sort( ( a: GraphicTile, b: GraphicTile ) => b.priority - a.priority )
-			.reduce(
-				( acc: number[], tile: GraphicTile ) => {
-					const {
-						animation,
-						srcHeight,
-						srcWidth,
-						srcx,
-						srcy,
-						x,
-						y,
-						flipx,
-						flipy,
-						priority,
-						animationSpeed,
-						rotate,
-					} = tile;
-					const modelWidth = ( 8 / canvasWidth ) * srcWidth;
-					const modelHeight = ( 8 / canvasHeight ) * srcHeight;
-					const model = createMat3()
-						.translate( [
-							-1 + ( 1 + ( 2 / srcWidth ) * x ) * modelWidth,
-							1 - ( 1 + ( 2 / srcHeight ) * y ) * modelHeight,
-						] )
-						.scale( [
-							modelWidth * ( flipx ? -1 : 1 ),
-							modelHeight * ( flipy ? -1 : 1 ),
-						] )
-						.rotateZ( convertDegreesToRadians( -rotate ) );
-					const texmodel = createMat3()
-						.translate( [
-							srcx / 64,
-							srcy / textureHeight,
-						] )
-						.scale( [
-							1 / ( 64 / srcWidth ),
-							1 / ( textureHeight / srcHeight ),
-						] );
-					return acc.concat( model.getList().concat( texmodel.getList() ) )
-						.concat( animation )
-						.concat( priority )
-						.concat( animationSpeed );
-				},
-				[],
-			);
+		// Generate models list based on tiles.
+		const modelsList = [];
+		for ( let i = 0; i < tiles.length; ++i ) {
+			const model = generateTileModel( tiles[ i ] );
+			for ( let j = 0; j < model.length; ++j ) {
+				modelsList.push( model[ j ] );
+			}
+		}
 
 		ctx.bindBuffer( ctx.ARRAY_BUFFER, instanceVbo );
 		ctx.bufferData(
@@ -271,21 +275,25 @@ const createObjectRenderer = (
 		},
 		updateObjects: ( objects: MapObject[], tilesetType: TileSetType ) => {
 			program.use();
+
+			// Generate tiles from objects.
 			const typeFactory = getBlockTypeFactory( layerType, tilesetType );
-			tiles = objects.reduce(
-				( acc: GraphicTile[], object: MapObject ) => {
-					return acc.concat(
-						typeFactory[ object.type() ].generateTiles( object, acc )
-							.map( ( tile: GraphicTile ) => {
-								if ( object.type() > 255 ) {
-									tile.srcy += 8;
-								}
-								return tile;
-							} ),
-					);
-				},
-				[],
-			);
+			tiles = [];
+			for ( let i = 0; i < objects.length; ++i ) {
+				const object = objects[ i ];
+				const objectTiles = typeFactory[ object.type() ].generateTiles( object, [] );
+				for ( let j = 0; j < objectTiles.length; ++j ) {
+					const tile = objectTiles[ j ];
+					if ( object.type() > 255 ) {
+						tile.srcy += 8;
+					}
+					tiles.push( tile );
+				}
+			}
+
+			// Sort by priority.
+			tiles.sort( ( a: GraphicTile, b: GraphicTile ) => b.priority - a.priority );
+
 			updateModels();
 		},
 		updatePalette: ( palette: number ) => {
@@ -463,26 +471,28 @@ const createMapRenderer = (
 		const instanceVbo = ctx.createBuffer();
 
 		const updateModels = () => {
-			const modelsList: number[] = rects.reduce(
-				( acc: number[], rect: Rect ) => {
-					const {
-						x,
-						y,
-						width,
-						height,
-					} = rect;
-					const modelWidth = width / canvasWidth;
-					const modelHeight = height / canvasHeight;
-					return createMat3()
-						.translate( [
-							-1 + modelWidth + ( 2 / canvasWidth ) * x,
-							1 - modelHeight - ( 2 / canvasHeight ) * y,
-						] )
-						.scale( [ modelWidth, modelHeight ] )
-						.getList();
-				},
-				[],
-			);
+			const modelsList: number[] = [];
+			for ( let i = 0; i < rects.length; ++i ) {
+				const rect = rects[ i ];
+				const {
+					x,
+					y,
+					width,
+					height,
+				} = rect;
+				const modelWidth = width / canvasWidth;
+				const modelHeight = height / canvasHeight;
+				const model = createMat3()
+					.translate( [
+						-1 + modelWidth + ( 2 / canvasWidth ) * x,
+						1 - modelHeight - ( 2 / canvasHeight ) * y,
+					] )
+					.scale( [ modelWidth, modelHeight ] )
+					.getList();
+				for ( let j = 0; j < model.length; ++j ) {
+					modelsList.push( model[ j ] );
+				}
+			}
 
 			ctx.bindBuffer( ctx.ARRAY_BUFFER, instanceVbo );
 			ctx.bufferData(
