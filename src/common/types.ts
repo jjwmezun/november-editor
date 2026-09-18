@@ -43,24 +43,9 @@ enum DataType {
 	Int32 = `Int32`,
 }
 
-interface DecodedLevelData {
-	data: LevelData,
-	remainingBytes: Uint8Array,
-}
-
-interface DecodedLevelHeader {
-	header: LevelHeader,
-	remainingBytes: Uint8Array,
-}
-
 interface DecodedTextData {
 	text: string,
 	bytesUsed: number,
-	remainingBytes: Uint8Array,
-}
-
-interface DecodedGraphicsData {
-	graphics: Graphics,
 	remainingBytes: Uint8Array,
 }
 
@@ -101,12 +86,9 @@ interface GoalTemplate {
 type GoalValue = string | number | boolean;
 
 interface Graphics {
-	atticBlocks: GraphicsEntry,
-	charset: GraphicsEntry,
-	overworld: GraphicsEntry,
-	sprites: GraphicsEntry,
-	universalBlocks: GraphicsEntry,
-	urbanBlocks: GraphicsEntry,
+	backgrounds: GraphicsEntry[],
+	general: GraphicsEntry[],
+	tilesets: GraphicsEntry[],
 }
 
 interface GraphicsEntry {
@@ -120,15 +102,30 @@ interface GraphicsEntry {
 	getHeightPixels: () => number,
 	getPixels: () => number[],
 	importPixels: ( newPixels: number[], importWidth: number, importHeight: number, tileIndex: number ) => void,
+	slug: () => string,
+	title: () => string,
 	toJSON: () => object,
 	updatePixels: ( newPixels: number[] ) => GraphicsEntry,
 	updatePixel: ( color: number, x: number, y: number ) => void,
+	updateTitle: ( newTitle: string ) => GraphicsEntry,
 }
 
 interface GraphicsEntryRaw {
 	pixels: number[],
 	width: number,
 	height: number,
+}
+
+enum GraphicsGeneral {
+	charset = 0,
+	overworld = 1,
+}
+
+enum GraphicsTilesets {
+	atticBlocks = 0,
+	sprites = 1,
+	universalBlocks = 2,
+	urbanBlocks = 3,
 }
 
 interface GraphicTile {
@@ -147,12 +144,9 @@ interface GraphicTile {
 }
 
 enum GraphicsType {
-	atticBlocks = `atticBlocks`,
-	charset = `charset`,
-	overworld = `overworld`,
-	sprites = `sprites`,
-	universalBlocks = `universalBlocks`,
-	urbanBlocks = `urbanBlocks`,
+	backgrounds = `backgrounds`,
+	general = `general`,
+	tilesets = `tilesets`,
 }
 
 interface GraphicsTypeInfo {
@@ -803,10 +797,7 @@ export {
 	ColorSelectorProps,
 	Coordinates,
 	DataType,
-	DecodedLevelData,
-	DecodedLevelHeader,
 	DecodedTextData,
-	DecodedGraphicsData,
 	EditorStateType,
 	Goal,
 	GoalAtts,
@@ -816,6 +807,8 @@ export {
 	Graphics,
 	GraphicsEntry,
 	GraphicsEntryRaw,
+	GraphicsGeneral,
+	GraphicsTilesets,
 	GraphicTile,
 	GraphicsType,
 	GraphicsTypeInfo,

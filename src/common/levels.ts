@@ -5,12 +5,12 @@ import { encodeText, decodeText } from './text';
 import {
 	ByteBlock,
 	DataType,
-	DecodedLevelData,
-	DecodedLevelHeader,
 	Goal,
 	Layer,
 	LayerType,
 	Level,
+	LevelData,
+	LevelHeader,
 	LvMap,
 	LvMapByteProps,
 	LvMapProps,
@@ -441,7 +441,7 @@ const splitMapBytes = ( data: ArrayBuffer, count: number ) => {
 	};
 };
 
-const decodeLevelData = ( data: Uint8Array ): DecodedLevelData => {
+const decodeLevelData = ( data: Uint8Array ): LevelData => {
 	// Gather goal.
 	const goalIdBuffer = new ArrayBuffer( 1 );
 	const goalIdView = new DataView( goalIdBuffer );
@@ -473,15 +473,12 @@ const decodeLevelData = ( data: Uint8Array ): DecodedLevelData => {
 	const maps = mapData.maps;
 
 	return {
-		data: {
-			goal,
-			maps,
-		},
-		remainingBytes: mapData.remainingBytes,
+		goal,
+		maps,
 	};
 };
 
-const decodeLevelHeaders = ( data: Uint8Array ): DecodedLevelHeader => {
+const decodeLevelHeaders = ( data: Uint8Array ): LevelHeader => {
 	// Gather name.
 	const nameData = decodeText( data );
 	const name = nameData.text;
@@ -506,13 +503,10 @@ const decodeLevelHeaders = ( data: Uint8Array ): DecodedLevelHeader => {
 	const timeScoreSeconds = getSecondsFromTotalSeconds( totalSeconds );
 
 	return {
-		header: {
-			name,
-			ptsScore,
-			timeScoreMinutes,
-			timeScoreSeconds,
-		},
-		remainingBytes: remainingBytes.slice( 6 ),
+		name,
+		ptsScore,
+		timeScoreMinutes,
+		timeScoreSeconds,
 	};
 };
 

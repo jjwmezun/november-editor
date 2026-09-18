@@ -4,7 +4,7 @@ import TileEditor from './TileEditor';
 import ColorSelector from './ColorSelector';
 import { tileSize } from '../../../common/constants';
 import { Graphics, GraphicsEntryRaw, GraphicsType, PaletteSystem } from '../../../common/types';
-import { getGraphicsTypeInfo } from '../../../common/graphics';
+import { createBlankGraphicsEntry, getGraphicsTypeName } from '../../../common/graphics';
 
 type GraphicsProps = {
 	exitMode: () => void,
@@ -16,23 +16,26 @@ type GraphicsProps = {
 const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 	const { exitMode, graphics, palettes, setGraphics } = props;
 
-	const [ selectedGraphicType, setSelectedGraphicType ] = useState( GraphicsType.urbanBlocks );
+	const [ selectedGraphicType, setSelectedGraphicType ] = useState( GraphicsType.general );
+	const [ selectedGraphicsEntry, setSelectedGraphicsEntry ] = useState( 0 );
 	const [ selectedTile, setSelectedTile ] = useState( 0 );
 	const [ selectedColor, setSelectedColor ] = useState( 0 );
 	const [ selectedPaletteType, setSelectedPaletteType ] = useState( `main` );
 	const [ selectedPalette, setSelectedPalette ] = useState( 0 );
 
-	const selectedGraphicsEntry = graphics[ selectedGraphicType ];
+	const graphicsType = graphics[ selectedGraphicType ];
+	const graphicsEntry = graphicsType[ selectedGraphicsEntry ];
+
 	const selectedPaletteList = palettes[ selectedPaletteType as keyof PaletteSystem ];
 
 	const drawPixel = ( x: number, y: number ) => {
-		const tileY = Math.floor( selectedTile / selectedGraphicsEntry.getWidthTiles() );
-		const tileX = selectedTile % selectedGraphicsEntry.getWidthTiles();
+		const tileY = Math.floor( selectedTile / graphicsEntry.getWidthTiles() );
+		const tileX = selectedTile % graphicsEntry.getWidthTiles();
 		const pixelY = tileY * tileSize + y;
 		const pixelX = tileX * tileSize + x;
 		setGraphics( {
 			...graphics,
-			[ selectedGraphicType ]: selectedGraphicsEntry.updatePixel(
+			[ selectedGraphicType ]: graphicsEntry.updatePixel(
 				selectedColor,
 				pixelX,
 				pixelY,
@@ -43,14 +46,14 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 	const clearTile = () => {
 		setGraphics( {
 			...graphics,
-			[ selectedGraphicType ]: selectedGraphicsEntry.clearTile( selectedTile ),
+			[ selectedGraphicType ]: graphicsEntry.clearTile( selectedTile ),
 		} );
 	};
 
 	const clearAllTiles = () => {
 		setGraphics( {
 			...graphics,
-			[ selectedGraphicType ]: selectedGraphicsEntry.clearAllTiles(),
+			[ selectedGraphicType ]: graphicsEntry.clearAllTiles(),
 		} );
 	};
 
@@ -67,28 +70,72 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 		setSelectedPalette( 0 );
 	};
 
-	const changeGraphicEntry = ( e: SyntheticEvent ) => {
+	const changeGraphicsType = ( e: SyntheticEvent ) => {
 		const target = e.target as HTMLSelectElement;
 		const graphicType = target.value as GraphicsType;
 		setSelectedGraphicType( graphicType );
+		setSelectedGraphicsEntry( 0 );
 		setSelectedTile( 0 );
 	};
 
-	const exportTiles = () => window.electronAPI.openTileExportWindow( selectedGraphicsEntry.getData() );
+	const changeGraphicsEntry = ( e: SyntheticEvent ) => {
+		const target = e.target as HTMLSelectElement;
+		const graphicsEntry = parseInt( target.value );
+		setSelectedGraphicsEntry( graphicsEntry );
+		setSelectedTile( 0 );
+	};
+
+	const addBackground = () => {
+		setGraphics( {
+			...graphics,
+			backgrounds: [
+				...graphics.backgrounds,
+				createBlankGraphicsEntry( `unnamedBackground`, GraphicsType.backgrounds, 0 ),
+			],
+		} );
+	};
+
+	const removeBackground = () => {
+		if ( graphics.backgrounds.length < 2 ) {
+			return;
+		}
+
+		setGraphics( {
+			...graphics,
+			backgrounds: graphics.backgrounds.filter( ( _entry, index ) => index !== selectedGraphicsEntry ),
+		} );
+	};
+
+	const updateBackgroundTitle = ( e: SyntheticEvent ) => {
+		const target = e.target as HTMLInputElement;
+		const newTitle = target.value;
+		const newGraphics = { ...graphics };
+		const entry = graphics[ selectedGraphicType ][ selectedGraphicsEntry ];
+		newGraphics[ selectedGraphicType ][ selectedGraphicsEntry ] = entry.updateTitle( newTitle );
+		setGraphics( newGraphics );
+	};
+
+	const exportTiles = () => window.electronAPI.openTileExportWindow( graphicsEntry.getData() );
 
 	useEffect( () => {
 		const handleImportTiles = ( _event: SyntheticEvent, data: GraphicsEntryRaw ) => {
 			const { pixels, width, height } = data;
-			setGraphics( {
-				...graphics,
-				[ selectedGraphicType ]: selectedGraphicsEntry.importPixels( pixels, width, height, selectedTile ),
-			} );
+			const newGraphics = { ...graphics };
+			const newGraphicsEntry = { ...newGraphics[ selectedGraphicType ][ selectedGraphicsEntry ] };
+			newGraphicsEntry.importPixels(
+				pixels,
+				width,
+				height,
+				selectedTile,
+			);
+			newGraphics[ selectedGraphicType ][ selectedGraphicsEntry ] = newGraphicsEntry;
+			setGraphics( newGraphics );
 		};
 
 		window.electronAPI.on( `import-tiles__graphics-mode`, handleImportTiles );
 
 		return () => window.electronAPI.remove( `import-tiles__graphics-mode` );
-	}, [ selectedTile, graphics, selectedGraphicType ] );
+	}, [ selectedTile, graphics, selectedGraphicType, selectedGraphicsEntry ] );
 
 	return <div>
 		<h1>Graphics Editor</h1>
@@ -113,18 +160,45 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 					</option>;
 				} ) }
 			</select>
-			<select onChange={ changeGraphicEntry } value={ selectedGraphicType }>
+			<select onChange={ changeGraphicsType } value={ selectedGraphicType }>
 				{ Object.values( GraphicsType ).map( ( graphicType, index ) => {
 					return <option
 						key={ index }
 						value={ graphicType }
 					>
-						{ getGraphicsTypeInfo( graphicType ).name }
+						{ getGraphicsTypeName( graphicType ) }
 					</option>;
 				} ) }
 			</select>
+			<select onChange={ changeGraphicsEntry } value={ selectedGraphicsEntry }>
+				{ graphicsType.map( ( entry, index ) => {
+					return <option
+						key={ index }
+						value={ index }
+					>
+						{ entry.title() }
+					</option>;
+				} ) }
+			</select>
+			{ selectedGraphicType === GraphicsType.backgrounds && <div>
+				<label>
+					<span>Name:</span>
+					<input
+						type="text"
+						value={ graphicsEntry.title() }
+						onChange={ updateBackgroundTitle }
+					/>
+				</label>
+				<button onClick={ addBackground }>Add Background</button>
+				<button
+					disabled={ graphics.backgrounds.length < 2 }
+					onClick={ removeBackground }
+				>
+					Remove Background
+				</button>
+			</div> }
 			<TileGrid
-				graphics={ selectedGraphicsEntry }
+				graphics={ graphicsEntry }
 				palettes={ palettes }
 				selectedPalette={
 					selectedPaletteType === `overworld` ? selectedPalette + palettes.main.getLength() : selectedPalette
@@ -136,14 +210,14 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 				clearAllTiles={ clearAllTiles }
 				clearTile={ clearTile }
 				drawPixel={ drawPixel }
-				graphics={ selectedGraphicsEntry }
+				graphics={ graphicsEntry }
 				palettes={ palettes }
 				selectedColor={ selectedColor }
 				selectedPalette={
 					selectedPaletteType === `overworld` ? selectedPalette + palettes.main.getLength() : selectedPalette
 				}
-				tileX={ selectedTile % selectedGraphicsEntry.getWidthTiles() }
-				tileY={ Math.floor( selectedTile / selectedGraphicsEntry.getWidthTiles() ) }
+				tileX={ selectedTile % graphicsEntry.getWidthTiles() }
+				tileY={ Math.floor( selectedTile / graphicsEntry.getWidthTiles() ) }
 			/>
 			<ColorSelector
 				palettes={ selectedPaletteList }

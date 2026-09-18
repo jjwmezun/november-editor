@@ -1,7 +1,7 @@
 import { getBlockTypeFactory } from './objects';
 import {
 	Graphics,
-	GraphicsType,
+	GraphicsTilesets,
 	GraphicTile,
 	Layer,
 	LayerType,
@@ -156,13 +156,13 @@ const createObjectRenderer = (
 	const textureIndex = layerType === LayerType.block ? 1 : 2;
 	const pixels = ( () => {
 		if ( layerType === LayerType.sprite ) {
-			return graphics[ GraphicsType.sprites ].getPixels();
+			return graphics.tilesets[ GraphicsTilesets.sprites ].getPixels();
 		}
 		const tilesetGfx = tilesetType === TileSetType.attic
-			? GraphicsType.atticBlocks
-			: GraphicsType.urbanBlocks;
-		return graphics[ GraphicsType.universalBlocks ].getPixels()
-			.concat( graphics[ tilesetGfx ].getPixels() );
+			? GraphicsTilesets.atticBlocks
+			: GraphicsTilesets.urbanBlocks;
+		return graphics.tilesets[ GraphicsTilesets.universalBlocks ].getPixels()
+			.concat( graphics.tilesets[ tilesetGfx ].getPixels() );
 	} )();
 	const tilesetTexture = createTexture( ctx, textureIndex, pixels, 64 * 8, 40 * 8 );
 	const textureHeight = layerType === LayerType.block ? 40 : 64;
@@ -312,10 +312,10 @@ const createObjectRenderer = (
 
 			const pixels = ( () => {
 				const tilesetGfx = tilesetType === TileSetType.attic
-					? GraphicsType.atticBlocks
-					: GraphicsType.urbanBlocks;
-				return graphics[ GraphicsType.universalBlocks ].getPixels()
-					.concat( graphics[ tilesetGfx ].getPixels() );
+					? GraphicsTilesets.atticBlocks
+					: GraphicsTilesets.urbanBlocks;
+				return graphics.tilesets[ GraphicsTilesets.universalBlocks ].getPixels()
+					.concat( graphics.tilesets[ tilesetGfx ].getPixels() );
 			} )();
 			const tilesetTexture = createTexture( ctx, textureIndex, pixels, 64 * 8, 40 * 8 );
 

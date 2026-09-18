@@ -1,4 +1,11 @@
-import { DecodedGraphicsData, Graphics, GraphicsEntry, GraphicsType, GraphicsTypeInfo } from "./types";
+import {
+	Graphics,
+	GraphicsEntry,
+	GraphicsGeneral,
+	GraphicsTilesets,
+	GraphicsType,
+	GraphicsTypeInfo,
+} from "./types";
 import { tileSize } from "./constants";
 import { combineUint8ArrayIntoUint32, getBitsFromByte } from "./bytes";
 
@@ -19,44 +26,73 @@ const getColorFromBits = ( bits: number[] ): number => {
 	return color;
 };
 
-const getGraphicsTypeInfo = ( type: GraphicsType ): GraphicsTypeInfo => {
+const getGraphicsTypeName = ( type: GraphicsType ): string => {
 	switch ( type ) {
-		case GraphicsType.atticBlocks:
+		case GraphicsType.general:
+			return `General`;
+		case GraphicsType.backgrounds:
+			return `Backgrounds`;
+		case GraphicsType.tilesets:
+			return `Tilesets`;
+		default:
+			throw new Error( `Invalid graphics type` );
+	}
+};
+
+const getGraphicsEntryInfo = ( type: GraphicsType, i: number ): GraphicsTypeInfo => {
+	switch ( type ) {
+		case GraphicsType.general:
+			switch ( i ) {
+				case ( GraphicsGeneral.charset ):
+					return {
+						name: `Charset`,
+						widthTiles: 64,
+						heightTiles: 72,
+					};
+				case ( GraphicsGeneral.overworld ):
+					return {
+						name: `Overworld`,
+						widthTiles: 128,
+						heightTiles: 128,
+					};
+				default:
+					throw new Error( `Invalid general graphics type` );
+			}
+		case GraphicsType.backgrounds:
 			return {
-				name: `Attic Blocks`,
+				name: `Unnamed Background`,
 				widthTiles: 64,
-				heightTiles: 32,
+				heightTiles: 48,
 			};
-		case GraphicsType.charset:
-			return {
-				name: `Charset`,
-				widthTiles: 64,
-				heightTiles: 72,
-			};
-		case GraphicsType.overworld:
-			return {
-				name: `Overworld`,
-				widthTiles: 128,
-				heightTiles: 128,
-			};
-		case GraphicsType.sprites:
-			return {
-				name: `Sprites`,
-				widthTiles: 64,
-				heightTiles: 96,
-			};
-		case GraphicsType.universalBlocks:
-			return {
-				name: `Universal Blocks`,
-				widthTiles: 64,
-				heightTiles: 8,
-			};
-		case GraphicsType.urbanBlocks:
-			return {
-				name: `Urban Blocks`,
-				widthTiles: 64,
-				heightTiles: 32,
-			};
+		case GraphicsType.tilesets:
+			switch ( i ) {
+				case ( GraphicsTilesets.atticBlocks ):
+					return {
+						name: `Attic Blocks`,
+						widthTiles: 64,
+						heightTiles: 32,
+					};
+				case ( GraphicsTilesets.sprites ):
+					return {
+						name: `Sprites`,
+						widthTiles: 64,
+						heightTiles: 96,
+					};
+				case ( GraphicsTilesets.urbanBlocks ):
+					return {
+						name: `Urban Blocks`,
+						widthTiles: 64,
+						heightTiles: 32,
+					};
+				case ( GraphicsTilesets.universalBlocks ):
+					return {
+						name: `Universal Blocks`,
+						widthTiles: 64,
+						heightTiles: 8,
+					};
+				default:
+					throw new Error( `Invalid tileset graphics type` );
+			}
 		default:
 			throw new Error( `Invalid graphics type` );
 	}
@@ -95,6 +131,21 @@ const compressPixels = async ( pixels: number[], name: string ): Promise<number[
 	} );
 };
 
+const convertAllGraphicsToJSON = ( graphics: Graphics ): Promise<object> => {
+	return new Promise( resolve => Promise.all( graphics.general.map( entry => entry.toJSON() ) )
+		.then( general => {
+			Promise.all( graphics.tilesets.map( entry => entry.toJSON() ) ).then( tilesets => {
+				Promise.all( graphics.backgrounds.map( entry => entry.toJSON() ) ).then( backgrounds => {
+					resolve( {
+						general,
+						tilesets,
+						backgrounds,
+					} );
+				} );
+			} );
+		} ) );
+};
+
 const decompressPixels = async ( pixels: number[], name: string ): Promise<number[]> => {
 	return new Promise( resolve => {
 		window.electronAPI.on( `decompression-response`, ( _event, pixels, _name ) => {
@@ -126,18 +177,21 @@ const decompressPixels = async ( pixels: number[], name: string ): Promise<numbe
 };
 
 const createGraphicsEntry = (
-	type: GraphicsType,
+	slug: string,
+	title: string,
+	width: number,
+	height: number,
 	pixels: number[],
 ): GraphicsEntry => {
-	const widthTiles = getGraphicsTypeInfo( type as GraphicsType ).widthTiles;
-	const heightTiles = getGraphicsTypeInfo( type as GraphicsType ).heightTiles;
+	const widthTiles = width;
+	const heightTiles = height;
 	const getWidthPixels = () => widthTiles * tileSize;
 	const getHeightPixels = () => heightTiles * tileSize;
 
 	return {
 		clearAllTiles: () => {
 			pixels.fill( 0 );
-			return createGraphicsEntry( type, pixels );
+			return createGraphicsEntry( slug, title, width, height, pixels );
 		},
 		clearTile: tileIndex => {
 			const tileX = tileIndex % widthTiles;
@@ -148,7 +202,7 @@ const createGraphicsEntry = (
 				const start = pixelY * getWidthPixels() + x;
 				pixels.fill( 0, start, start + tileSize );
 			}
-			return createGraphicsEntry( type, pixels );
+			return createGraphicsEntry( slug, title, width, height, pixels );
 		},
 		createTexture: ( ctx: WebGLRenderingContext, index: number ): WebGLTexture => {
 			const texture = ctx.createTexture();
@@ -202,11 +256,13 @@ const createGraphicsEntry = (
 					}
 				}
 			}
-			return createGraphicsEntry( type, pixels );
+			return createGraphicsEntry( slug, title, width, height, pixels );
 		},
+		slug: () => slug,
+		title: () => title,
 		toJSON: async () => {
 			// Compress pixels & convert to base64 string.
-			const pixelList = await compressPixels( pixels, type );
+			const pixelList = await compressPixels( pixels, title );
 			let pixelString = ``;
 			for ( let i = 0; i < pixelList.length; i++ ) {
 				pixelString += String.fromCharCode( pixelList[ i ] );
@@ -217,80 +273,96 @@ const createGraphicsEntry = (
 				widthTiles,
 				heightTiles,
 				pixels: pixelData,
+				slug: slug,
+				title: title,
 			};
 		},
-		updatePixels: newPixels => createGraphicsEntry( type, newPixels ),
+		updatePixels: newPixels => createGraphicsEntry( slug, title, width, height, newPixels ),
 		updatePixel: ( color, x, y ) => {
 			const index = y * getWidthPixels() + x;
 			pixels[ index ] = color;
-			return createGraphicsEntry( type, pixels );
+			return createGraphicsEntry( slug, title, width, height, pixels );
 		},
+		updateTitle: newTitle => createGraphicsEntry( slug, newTitle, width, height, pixels ),
 	};
 };
 
 const createBlankGraphicsEntry = (
+	slug: string,
 	type: GraphicsType,
-): GraphicsEntry => createGraphicsEntry(
-	type,
-	new Array(
-		getGraphicsTypeInfo( type ).widthTiles * tileSize * getGraphicsTypeInfo( type ).heightTiles * tileSize,
-	).fill( 0 ),
-);
+	i: number,
+): GraphicsEntry => {
+	const info = getGraphicsEntryInfo( type, i );
+	return createGraphicsEntry(
+		slug,
+		info.name,
+		info.widthTiles,
+		info.heightTiles,
+		new Array(
+			info.widthTiles * tileSize * info.heightTiles * tileSize,
+		).fill( 0 ),
+	);
+};
 
 const createNewGraphics = (): Graphics => {
-	const graphics: Graphics = {};
-	for ( const type of Object.values( GraphicsType ) ) {
-		graphics[ type ] = createBlankGraphicsEntry( type );
-	}
-	return graphics;
+	return {
+		general: [
+			createBlankGraphicsEntry( `general`, GraphicsType.general, GraphicsGeneral.charset ),
+			createBlankGraphicsEntry( `overworld`, GraphicsType.general, GraphicsGeneral.overworld ),
+		],
+		tilesets: [
+			createBlankGraphicsEntry(
+				`atticBlocks`,
+				GraphicsType.tilesets,
+				GraphicsTilesets.atticBlocks,
+			),
+			createBlankGraphicsEntry(
+				`sprites`,
+				GraphicsType.tilesets,
+				GraphicsTilesets.sprites,
+			),
+			createBlankGraphicsEntry(
+				`universalBlocks`,
+				GraphicsType.tilesets,
+				GraphicsTilesets.universalBlocks,
+			),
+			createBlankGraphicsEntry(
+				`urbanBlocks`,
+				GraphicsType.tilesets,
+				GraphicsTilesets.urbanBlocks,
+			),
+		],
+		backgrounds: [
+			createBlankGraphicsEntry(
+				`unnamedBackground`,
+				GraphicsType.backgrounds,
+				0,
+			),
+		],
+	};
 };
 
-const loadGraphicsFromData = async ( data: Uint8Array ): Promise<DecodedGraphicsData> => {
-	const graphics: Graphics = createNewGraphics();
-
-	// Gather list o’ data sizes.
-	const sizes = [
-		GraphicsType.charset,
-		GraphicsType.universalBlocks,
-		GraphicsType.urbanBlocks,
-		GraphicsType.atticBlocks,
-		GraphicsType.sprites,
-		GraphicsType.overworld,
-	].map( ( type: GraphicsType ) => {
-		const dataSize = combineUint8ArrayIntoUint32( Array.from( data.slice( 0, 4 ) ) );
-		const prevData = [ ...data ];
-		data = data.slice( dataSize + 4 );
-		return {
-			dataSize,
-			data: prevData,
-			type,
-		};
+const loadGraphicsFromData = async (
+	slug: string,
+	title: string,
+	width: number,
+	height: number,
+	data: Uint8Array,
+): Promise<GraphicsEntry> => new Promise<GraphicsEntry>( ( resolve: ( value: GraphicsEntry ) => void ) => {
+	const dataSize = combineUint8ArrayIntoUint32( Array.from( data.slice( 0, 4 ) ) );
+	decompressPixels( Array.from( data ).slice( 4, dataSize + 4 ), title ).then( ( pixels: number[] ) => {
+		resolve( createGraphicsEntry( slug, title, width, height, pixels ) );
 	} );
-
-	// For each data size, decompress graphics & add to graphics.
-	return Promise.all( sizes.map( async ( { data, dataSize, type } ) => {
-		let entry = createBlankGraphicsEntry( type );
-		return new Promise<void>( resolve => {
-			decompressPixels( Array.from( data ).slice( 4, dataSize + 4 ), type ).then( ( pixels: number[] ) => {
-				entry = entry.updatePixels( pixels );
-				graphics[ type ] = entry;
-				resolve();
-			} );
-		} );
-	} ) ).then( () => {
-		return {
-			graphics,
-			remainingBytes: data,
-		};
-	} );
-};
+} );
 
 export {
 	compressPixels,
+	convertAllGraphicsToJSON,
 	createBlankGraphicsEntry,
 	createGraphicsEntry,
 	createNewGraphics,
 	decompressPixels,
-	getGraphicsTypeInfo,
+	getGraphicsEntryInfo,
+	getGraphicsTypeName,
 	loadGraphicsFromData,
 };
