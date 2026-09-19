@@ -21,6 +21,10 @@ const modeMap: readonly Mode[] = Object.freeze( [
 		name: `O’erworld`,
 		slug: `overworld`,
 	},
+	{
+		name: `Backgrounds`,
+		slug: `backgrounds`,
+	},
 ] );
 
 type ModeKeys = {
@@ -29,6 +33,7 @@ type ModeKeys = {
 	graphics: number,
 	palettes: number,
 	overworld: number,
+	backgrounds: number,
 };
 
 const modeKeys: ModeKeys = {
@@ -37,6 +42,7 @@ const modeKeys: ModeKeys = {
 	graphics: 2,
 	palettes: 3,
 	overworld: 4,
+	backgrounds: 5,
 };
 
 export {

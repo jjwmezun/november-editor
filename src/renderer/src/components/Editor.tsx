@@ -67,6 +67,7 @@ import {
 	decodePaletteNames,
 } from '../../../common/palettes';
 import { createBlankOverworld, createOverworldFromJSON, loadOverworldFromData } from '../../../common/ow';
+import BackgroundMode from './BackgroundMode';
 
 const generateExportData = async (
 	levels: Level[],
@@ -930,6 +931,11 @@ const Editor = (): ReactElement => {
 				overworld={ overworld }
 				palettes={ palettes.overworld }
 				setOverworld={ updateOverworld }
+			/> }
+			{ mode === modeKeys.backgrounds && <BackgroundMode
+				exitMode={ resetMode }
+				graphics={ graphics }
+				palettes={ palettes }
 			/> }
 		</div> }
 	</div>;

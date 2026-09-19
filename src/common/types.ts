@@ -1,3 +1,18 @@
+interface BackgroundGraphicsTileGridProps {
+	graphics: GraphicsEntry,
+	palettes: PaletteSystem,
+	selectedPalette: number,
+	selectedTiles: Rect | null,
+	setSelectedTiles: ( tiles: Rect ) => void,
+}
+
+interface BackgroundGraphicsTileGridRenderer {
+	render: ( hovered: Rect | null, selected: Rect | null, showGridLines: boolean ) => void,
+	updateSelectedPalette: ( selectedPalette: number ) => void,
+	updateResolution: ( width: number, height: number ) => void,
+	updateGraphics: ( graphics: GraphicsEntry ) => void,
+}
+
 interface ByteBlock {
 	type: DataType,
 	value: number,
@@ -790,6 +805,8 @@ declare global {
 }
 
 export {
+	BackgroundGraphicsTileGridProps,
+	BackgroundGraphicsTileGridRenderer,
 	ByteBlock,
 	ByteBlockRef,
 	CharItem,
