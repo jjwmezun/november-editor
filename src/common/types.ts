@@ -105,9 +105,11 @@ interface GraphicsEntry {
 	slug: () => string,
 	title: () => string,
 	toJSON: () => object,
+	updateHeightTiles: ( newHeight: number ) => GraphicsEntry,
 	updatePixels: ( newPixels: number[] ) => GraphicsEntry,
 	updatePixel: ( color: number, x: number, y: number ) => void,
 	updateTitle: ( newTitle: string ) => GraphicsEntry,
+	updateWidthTiles: ( newWidth: number ) => GraphicsEntry,
 }
 
 interface GraphicsEntryRaw {

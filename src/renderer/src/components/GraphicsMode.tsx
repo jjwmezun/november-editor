@@ -33,28 +33,35 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 		const tileX = selectedTile % graphicsEntry.getWidthTiles();
 		const pixelY = tileY * tileSize + y;
 		const pixelX = tileX * tileSize + x;
-		setGraphics( {
-			...graphics,
-			[ selectedGraphicType ]: graphicsEntry.updatePixel(
-				selectedColor,
-				pixelX,
-				pixelY,
-			),
-		} );
+
+		const newGraphics = { ...graphics };
+
+		// @ts-expect-error - TypeScript is dumb & thinks this is “void”, whate’er that is.
+		newGraphics[ selectedGraphicType ][ selectedGraphicsEntry ] = graphicsEntry.updatePixel(
+			selectedColor,
+			pixelX,
+			pixelY,
+		);
+
+		setGraphics( newGraphics );
 	};
 
 	const clearTile = () => {
-		setGraphics( {
-			...graphics,
-			[ selectedGraphicType ]: graphicsEntry.clearTile( selectedTile ),
-		} );
+		const newGraphics = { ...graphics };
+
+		// @ts-expect-error - TypeScript is dumb & thinks this is “void”, whate’er that is.
+		newGraphics[ selectedGraphicType ][ selectedGraphicsEntry ] = graphicsEntry.clearTile( selectedTile );
+
+		setGraphics( newGraphics );
 	};
 
 	const clearAllTiles = () => {
-		setGraphics( {
-			...graphics,
-			[ selectedGraphicType ]: graphicsEntry.clearAllTiles(),
-		} );
+		const newGraphics = { ...graphics };
+
+		// @ts-expect-error - TypeScript is dumb & thinks this is “void”, whate’er that is.
+		newGraphics[ selectedGraphicType ][ selectedGraphicsEntry ] = graphicsEntry.clearAllTiles();
+
+		setGraphics( newGraphics );
 	};
 
 	const updatePalette = ( e: SyntheticEvent ) => {
@@ -112,6 +119,24 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 		const newGraphics = { ...graphics };
 		const entry = graphics[ selectedGraphicType ][ selectedGraphicsEntry ];
 		newGraphics[ selectedGraphicType ][ selectedGraphicsEntry ] = entry.updateTitle( newTitle );
+		setGraphics( newGraphics );
+	};
+
+	const updateBackgroundWidth = ( e: SyntheticEvent ) => {
+		const target = e.target as HTMLInputElement;
+		const newWidth = parseInt( target.value );
+		const newGraphics = { ...graphics };
+		const entry = graphics[ selectedGraphicType ][ selectedGraphicsEntry ];
+		newGraphics[ selectedGraphicType ][ selectedGraphicsEntry ] = entry.updateWidthTiles( newWidth );
+		setGraphics( newGraphics );
+	};
+
+	const updateBackgroundHeight = ( e: SyntheticEvent ) => {
+		const target = e.target as HTMLInputElement;
+		const newHeight = parseInt( target.value );
+		const newGraphics = { ...graphics };
+		const entry = graphics[ selectedGraphicType ][ selectedGraphicsEntry ];
+		newGraphics[ selectedGraphicType ][ selectedGraphicsEntry ] = entry.updateHeightTiles( newHeight );
 		setGraphics( newGraphics );
 	};
 
@@ -187,6 +212,22 @@ const GraphicsMode = ( props: GraphicsProps ): ReactElement => {
 						type="text"
 						value={ graphicsEntry.title() }
 						onChange={ updateBackgroundTitle }
+					/>
+				</label>
+				<label>
+					<span>Width:</span>
+					<input
+						type="number"
+						value={ graphicsEntry.getWidthTiles() }
+						onChange={ updateBackgroundWidth }
+					/>
+				</label>
+				<label>
+					<span>Height:</span>
+					<input
+						type="number"
+						value={ graphicsEntry.getHeightTiles() }
+						onChange={ updateBackgroundHeight }
 					/>
 				</label>
 				<button onClick={ addBackground }>Add Background</button>

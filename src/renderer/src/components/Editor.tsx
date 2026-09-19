@@ -39,6 +39,7 @@ import {
 	GoalAtts,
 	Graphics,
 	GraphicsEntry,
+	GraphicsEntryRaw,
 	GraphicsGeneral,
 	GraphicsTilesets,
 	GraphicsType,
@@ -205,19 +206,25 @@ const generateExportData = async (
 	}
 
 	const bgGFX = await Promise.all( graphics.backgrounds.map( async ( background: GraphicsEntry ) => {
-		return Array.from( await compressPixels(
-			background.getPixels(),
-			background.title(),
-		) );
+		return {
+			height: background.getHeightTiles(),
+			pixels: Array.from( await compressPixels(
+				background.getPixels(),
+				background.title(),
+			) ),
+			width: background.getWidthTiles(),
+		};
 	} ) );
-	bgGFX.forEach( ( bg: number[], i: number ) => {
+	bgGFX.forEach( ( bg: GraphicsEntryRaw, i: number ) => {
 		// Update background table of contents entry with actual pointer.
 		saveData[ backgroundTableOfContentsStart + i ].value = getTotalBytes( saveData );
 
 		// Encode background graphics data.
-		saveData.push( { type: DataType.Uint32, value: bg.length } );
+		saveData.push( { type: DataType.Uint8, value: bg.width } );
+		saveData.push( { type: DataType.Uint8, value: bg.height } );
+		saveData.push( { type: DataType.Uint32, value: bg.pixels.length } );
 		saveData = saveData.concat(
-			bg.map( ( byte: number ): ByteBlock => ( { type: DataType.Uint8, value: byte } ) ),
+			bg.pixels.map( ( byte: number ): ByteBlock => ( { type: DataType.Uint8, value: byte } ) ),
 		);
 	} );
 
@@ -513,9 +520,9 @@ const Editor = (): ReactElement => {
 			Promise.all( backgrounds.map( ( pointer: number, i: number ) => loadGraphicsFromData(
 				`backgrounds`,
 				`background-${ i }`,
-				graphicsInfo.widthTiles,
-				graphicsInfo.heightTiles,
-				data.slice( pointer ),
+				data[ pointer ],
+				data[ pointer + 1 ],
+				data.slice( pointer + 2 ),
 			) ) ),
 		] ).then( ( graphicsData: GraphicsEntry[][] ) => {
 			const [ generalData, tilesetsData, backgroundsData ] = graphicsData;

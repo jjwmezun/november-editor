@@ -277,6 +277,20 @@ const createGraphicsEntry = (
 				title: title,
 			};
 		},
+		updateHeightTiles: newHeight => {
+			const newPixels = [];
+			for ( let y = 0; y < newHeight * tileSize; y++ ) {
+				for ( let x = 0; x < getWidthPixels(); x++ ) {
+					if ( y < getHeightPixels() ) {
+						const srcIndex = y * getWidthPixels() + x;
+						newPixels.push( pixels[ srcIndex ] );
+					} else {
+						newPixels.push( 0 );
+					}
+				}
+			}
+			return createGraphicsEntry( slug, title, widthTiles, newHeight, newPixels );
+		},
 		updatePixels: newPixels => createGraphicsEntry( slug, title, width, height, newPixels ),
 		updatePixel: ( color, x, y ) => {
 			const index = y * getWidthPixels() + x;
@@ -284,6 +298,20 @@ const createGraphicsEntry = (
 			return createGraphicsEntry( slug, title, width, height, pixels );
 		},
 		updateTitle: newTitle => createGraphicsEntry( slug, newTitle, width, height, pixels ),
+		updateWidthTiles: newWidth => {
+			const newPixels = [];
+			for ( let y = 0; y < getHeightPixels(); y++ ) {
+				for ( let x = 0; x < newWidth * tileSize; x++ ) {
+					if ( x < getWidthPixels() ) {
+						const srcIndex = y * getWidthPixels() + x;
+						newPixels.push( pixels[ srcIndex ] );
+					} else {
+						newPixels.push( 0 );
+					}
+				}
+			}
+			return createGraphicsEntry( slug, title, newWidth, heightTiles, newPixels );
+		},
 	};
 };
 
