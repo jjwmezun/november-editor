@@ -1,3 +1,14 @@
+interface BackgroundLayerData {
+	graphics: number,
+	scrollX: number,
+	scrollY: number,
+}
+
+interface BlockLayerData {
+	objects: MapObject[],
+	scrollX: number,
+}
+
 interface ByteBlock {
 	type: DataType,
 	value: number,
@@ -157,13 +168,10 @@ interface GraphicsTypeInfo {
 	heightTiles: number,
 }
 
-interface BlockLayer {
+interface Layer {
 	type: LayerType,
-	objects: MapObject[],
-	scrollX: number,
+	data: BlockLayerData | BackgroundLayerData,
 }
-
-type Layer = BlockLayer;
 
 enum LayerTileSetOption {
 	universal = `universal`,
@@ -171,6 +179,7 @@ enum LayerTileSetOption {
 }
 
 enum LayerType {
+	background = `background`,
 	block = `block`,
 	sprite = `sprite`,
 }
@@ -792,6 +801,8 @@ declare global {
 }
 
 export {
+	BackgroundLayerData,
+	BlockLayerData,
 	ByteBlock,
 	ByteBlockRef,
 	CharItem,

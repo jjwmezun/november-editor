@@ -48,9 +48,12 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		? selectedMap.getProps()
 		: { height: 0, layers: [], palette: 0, width: 0 };
 
-	const objects = selectedLayer === null || layers.length < selectedLayer
+	const objects = ( selectedLayer === null
+		|| layers.length < selectedLayer
+		|| ! layers[ selectedLayer ]
+		|| ! ( `objects` in layers[ selectedLayer ].data ) )
 		? []
-		: layers[ selectedLayer ]?.objects ?? [];
+		: layers[ selectedLayer ].data.objects ?? [];
 
 	const layerType = selectedLayer !== null && selectedLayer < layers.length
 		? layers[ selectedLayer ].type
@@ -205,13 +208,13 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		// Handle object manipulation when an object is selected.
 		// When using arrow keys, if shift is held, resize width or height;
 		// otherwise, move.
-		if ( selectedLayer !== null && selectedObject !== null ) {
+		if ( selectedLayer !== null && selectedObject !== null && `objects` in layers[ selectedLayer ].data ) {
 			if ( e.key === `Delete` ) {
 				removeObject();
 				setSelectedObject( null );
 				return;
 			} else if ( e.key === `ArrowUp` ) {
-				const object = layers[ selectedLayer ].objects[ selectedObject ];
+				const object = layers[ selectedLayer ].data.objects[ selectedObject ];
 				if ( shift ) {
 					const newHeight = objectLimitOption(
 						typesFactory[ object.type() ],
@@ -226,7 +229,7 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 				}
 				return;
 			} else if ( e.key === `ArrowDown` ) {
-				const object = layers[ selectedLayer ].objects[ selectedObject ];
+				const object = layers[ selectedLayer ].data.objects[ selectedObject ];
 				if ( shift ) {
 					const newHeight = objectLimitOption(
 						typesFactory[ object.type() ],
@@ -241,7 +244,7 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 				}
 				return;
 			} else if ( e.key === `ArrowLeft` ) {
-				const object = layers[ selectedLayer ].objects[ selectedObject ];
+				const object = layers[ selectedLayer ].data.objects[ selectedObject ];
 				if ( shift ) {
 					const newWidth = objectLimitOption(
 						typesFactory[ object.type() ],
@@ -256,7 +259,7 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 				}
 				return;
 			} else if ( e.key === `ArrowRight` ) {
-				const object = layers[ selectedLayer ].objects[ selectedObject ];
+				const object = layers[ selectedLayer ].data.objects[ selectedObject ];
 				if ( shift ) {
 					const newWidth = objectLimitOption(
 						typesFactory[ object.type() ],
@@ -287,8 +290,11 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		const { x, y } = getMousePosition( e );
 
 		// Handle moving object when moving mouse in move state.
-		if ( selectedLayer !== null && selectedObject !== null && editorState === EditorStateType.move ) {
-			const object = layers[ selectedLayer ].objects[ selectedObject ];
+		if ( selectedLayer !== null
+			&& selectedObject !== null
+			&& `objects` in layers[ selectedLayer ].data
+			&& editorState === EditorStateType.move ) {
+			const object = layers[ selectedLayer ].data.objects[ selectedObject ];
 			const xblock = Math.floor( x / 16 );
 			const yblock = Math.floor( y / 16 );
 
@@ -299,8 +305,11 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 			return;
 
 		// Handle resizing width in width-resize state.
-		} else if ( selectedLayer !== null && selectedObject !== null && editorState === EditorStateType.wresizeMove ) {
-			const object = layers[ selectedLayer ].objects[ selectedObject ];
+		} else if ( selectedLayer !== null
+			&& selectedObject !== null
+			&& `objects` in layers[ selectedLayer ].data
+			&& editorState === EditorStateType.wresizeMove ) {
+			const object = layers[ selectedLayer ].data.objects[ selectedObject ];
 			const position = Math.floor( x / 16 );
 			const diff = position - object.rightBlocks();
 			const newWidth = objectLimitOption( typesFactory[ object.type() ], `width`, object.widthBlocks() + diff );
@@ -312,8 +321,11 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 			return;
 
 		// Handle resizing height in height-resize state.
-		} else if ( selectedLayer !== null && selectedObject !== null && editorState === EditorStateType.hresizeMove ) {
-			const object = layers[ selectedLayer ].objects[ selectedObject ];
+		} else if ( selectedLayer !== null
+			&& selectedObject !== null
+			&& `objects` in layers[ selectedLayer ].data
+			&& editorState === EditorStateType.hresizeMove ) {
+			const object = layers[ selectedLayer ].data.objects[ selectedObject ];
 			const position = Math.floor( y / 16 );
 			const diff = position - object.bottomBlocks();
 			const newHeight = objectLimitOption(
@@ -332,8 +344,8 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		// Test if we should show the resize icon & enable resizing,
 		// based on the mouse position being near the edges
 		// & if the object in question allows changing the width or height.
-		if ( selectedLayer !== null && selectedObject !== null ) {
-			const object = layers[ selectedLayer ].objects[ selectedObject ];
+		if ( selectedLayer !== null && selectedObject !== null && `objects` in layers[ selectedLayer ].data ) {
+			const object = layers[ selectedLayer ].data.objects[ selectedObject ];
 			const objectType = typesFactory[ object.type() ];
 			if (
 				objectTypeHasOption( objectType, `width` )
@@ -548,7 +560,9 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 	}, [ renderer, selectedMapIndex ] );
 
 	useEffect( () => {
-		if ( selectedLayer === null || layers[ selectedLayer ].objects.length === 0 ) {
+		if ( selectedLayer === null
+			|| ! ( `objects` in layers[ selectedLayer ].data )
+			|| layers[ selectedLayer ].data.objects.length === 0 ) {
 			setSelected( { x: null, y: null } );
 			setSelectedObject( null );
 			setSelectedType( 0 );

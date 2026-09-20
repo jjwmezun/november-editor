@@ -22,6 +22,7 @@ import {
 	loadGraphicsFromData,
 } from '../../../common/graphics';
 import {
+	createBlockLayer,
 	createLayer,
 	createLevel,
 	createMap,
@@ -470,7 +471,6 @@ const Editor = (): ReactElement => {
 
 		// Load GFX.
 		const gfx = createNewGraphics();
-		const graphicsInfo = getGraphicsEntryInfo( GraphicsType.backgrounds, 0 );
 		const backgroundsCount = bufferView.getUint8( tableOfContents.graphics.backgrounds );
 		const backgrounds = [];
 		for ( let i = 0; i < backgroundsCount; ++i ) {
@@ -762,57 +762,73 @@ const Editor = (): ReactElement => {
 					if ( typeof layer.type !== `string` ) {
 						throw new Error( `Invalid layer type for layer #${ k } o’ map #${ j } o’ level #${ i }` );
 					}
-					if ( ! Array.isArray( layer.objects ) ) {
-						// eslint-disable-next-line max-len
-						throw new Error( `Invalid layer objects for layer #${ k } o’ map #${ j } o’ level #${ i }` );
-					}
-					if ( typeof layer.scrollX !== `number` ) {
-						// eslint-disable-next-line max-len
-						throw new Error( `Invalid layer scrollX for layer #${ k } o’ map #${ j } o’ level #${ i }` );
+
+					if ( ! ( `data` in layer ) || typeof layer.data !== `object` || layer.data === null ) {
+						throw new Error( `Invalid layer data for layer #${ k } o’ map #${ j } o’ level #${ i }` );
 					}
 
-					const objects = layer.objects.map(
-						( object: Record<string, unknown>, l: number ): MapObject => {
-							if ( ! object || typeof object !== `object` ) {
-								// eslint-disable-next-line max-len
-								throw new Error( `Invalid object data for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
-							}
-							if ( typeof object[ `type` ] !== `number` ) {
-								// eslint-disable-next-line max-len
-								throw new Error( `Invalid object type for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
-							}
-							if ( typeof object[ `x` ] !== `number` ) {
-								// eslint-disable-next-line max-len
-								throw new Error( `Invalid object x for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
-							}
-							if ( typeof object[ `y` ] !== `number` ) {
-								// eslint-disable-next-line max-len
-								throw new Error( `Invalid object y for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
-							}
-							if ( `width` in object && typeof object[ `width` ] !== `number` ) {
-								// eslint-disable-next-line max-len
-								throw new Error( `Invalid object width for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
-							}
-							if ( `height` in object && typeof object[ `height` ] !== `number` ) {
-								// eslint-disable-next-line max-len
-								throw new Error( `Invalid object height for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
-							}
+					if ( layer.type === `block` || layer.type === `sprite` ) {
+						if ( ! ( `objects` in layer.data ) || ! Array.isArray( layer.data.objects ) ) {
+							// eslint-disable-next-line max-len
+							throw new Error( `Invalid layer objects for layer #${ k } o’ map #${ j } o’ level #${ i }` );
+						}
+						if ( ! ( `scrollX` in layer.data ) || typeof layer.data.scrollX !== `number` ) {
+							// eslint-disable-next-line max-len
+							throw new Error( `Invalid layer scrollX for layer #${ k } o’ map #${ j } o’ level #${ i }` );
+						}
 
-							return createObject( {
-								type: object.type,
-								x: object.x,
-								y: object.y,
-								width: object.width as number,
-								height: object.height as number,
-								...object,
-							} );
-						},
-					);
+						const objects = layer.data.objects.map(
+							( object: Record<string, unknown>, l: number ): MapObject => {
+								if ( ! object || typeof object !== `object` ) {
+									// eslint-disable-next-line max-len
+									throw new Error( `Invalid object data for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+								}
+								if ( typeof object[ `type` ] !== `number` ) {
+									// eslint-disable-next-line max-len
+									throw new Error( `Invalid object type for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+								}
+								if ( typeof object[ `x` ] !== `number` ) {
+									// eslint-disable-next-line max-len
+									throw new Error( `Invalid object x for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+								}
+								if ( typeof object[ `y` ] !== `number` ) {
+									// eslint-disable-next-line max-len
+									throw new Error( `Invalid object y for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+								}
+								if ( `width` in object && typeof object[ `width` ] !== `number` ) {
+									// eslint-disable-next-line max-len
+									throw new Error( `Invalid object width for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+								}
+								if ( `height` in object && typeof object[ `height` ] !== `number` ) {
+									// eslint-disable-next-line max-len
+									throw new Error( `Invalid object height for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+								}
+
+								return createObject( {
+									type: object.type,
+									x: object.x,
+									y: object.y,
+									width: object.width as number,
+									height: object.height as number,
+									...object,
+								} );
+							},
+						);
+
+						return createBlockLayer(
+							layer.type as LayerType,
+							objects,
+							layer.data.scrollX,
+						);
+					}
 
 					return createLayer(
 						layer.type as LayerType,
-						objects,
-						layer.scrollX,
+						{
+							graphics: 0,
+							scrollX: 0,
+							scrollY: 0,
+						},
 					);
 				} );
 

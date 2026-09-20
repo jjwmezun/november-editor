@@ -3,6 +3,8 @@ import { getDataTypeSize } from './bytes';
 import { createGoal, goals } from './goals';
 import { encodeText, decodeText } from './text';
 import {
+	BackgroundLayerData,
+	BlockLayerData,
 	ByteBlock,
 	DataType,
 	Goal,
@@ -26,6 +28,25 @@ const convertTileSetTypeToNumber = ( tileSetType: TileSetType ) : number => {
 		break;
 	}
 	return 0;
+};
+
+const convertBlockLayerDataToJSON = ( layer: Layer ): object => {
+	if ( ! ( `objects` in layer.data ) ) {
+		throw new Error( `Invalid block layer data` );
+	}
+	return {
+		objects: layer.data.objects.map( object => object.toJSON() ),
+		scrollX: layer.data.scrollX,
+	};
+};
+
+const convertLayerToJSON = ( layer: Layer ): object => {
+	return {
+		type: layer.type,
+		data: layer.type === LayerType.block || layer.type === LayerType.sprite
+			? convertBlockLayerDataToJSON( layer )
+			: layer.data,
+	};
 };
 
 const convertNumberToTileSetType = ( n: number ) : TileSetType => {
@@ -71,6 +92,7 @@ const getDataFromMapHeader = ( view: DataView ): LvMapByteProps => {
 const getMapHeaderSize = () => generateDataList().reduce( ( acc, { type } ) => acc + getDataTypeSize( type ), 0 );
 
 const layerTypeNames = Object.freeze( {
+	[ LayerType.background ]: `Background`,
 	[ LayerType.block ]: `Block`,
 	[ LayerType.sprite ]: `Sprite`,
 } );
@@ -81,6 +103,8 @@ const convertLayerTypeToByte = ( type: LayerType ): number => {
 			return 0;
 		case LayerType.sprite:
 			return 1;
+		case LayerType.background:
+			return 2;
 		default:
 			throw new Error( `Invalid layer type: ${ type }` );
 	}
@@ -92,19 +116,54 @@ const convertByteToLayerType = ( byte: number ): LayerType => {
 			return LayerType.block;
 		case 1:
 			return LayerType.sprite;
+		case 2:
+			return LayerType.background;
 		default:
 			throw new Error( `Invalid layer type byte: ${ byte }` );
 	}
 };
 
+const createBlankLayerOfType = ( type: LayerType ): Layer => {
+	switch ( type ) {
+		case LayerType.block:
+		case LayerType.sprite:
+			return createLayer(
+				type,
+				{
+					objects: [],
+					scrollX: 1.0,
+				},
+			);
+		case LayerType.background:
+			return createLayer(
+				type,
+				{
+					graphics: 0,
+					scrollX: 1.0,
+					scrollY: 1.0,
+				},
+			);
+		default:
+			throw new Error( `Invalid layer type: ${ type }` );
+	}
+};
+
+const createBlockLayer = ( type: LayerType, objects: MapObject[] = [], scrollX: number = 1.0 ): Layer => {
+	return createLayer(
+		type,
+		{
+			objects,
+			scrollX,
+		},
+	);
+};
+
 const createLayer = (
 	type: LayerType = LayerType.block,
-	objects: MapObject[] = [],
-	scrollX: number = 1.0,
+	data: BlockLayerData | BackgroundLayerData,
 ): Layer => Object.freeze( {
 	type,
-	objects,
-	scrollX,
+	data,
 } );
 
 const createLevel = (
@@ -193,7 +252,7 @@ const createMap = (
 		addLayer: ( type: LayerType ): LvMap => createMap(
 			width,
 			height,
-			[ ...layers, createLayer( type ) ],
+			[ ...layers, createBlankLayerOfType( type ) ],
 			palette,
 			tileSetType,
 		),
@@ -225,11 +284,7 @@ const createMap = (
 		toJSON: () => ( {
 			width,
 			height,
-			layers: layers.map( layer => ( {
-				type: layer.type,
-				objects: layer.objects.map( object => object.toJSON() ),
-				scrollX: layer.scrollX,
-			} ) ),
+			layers: layers.map( convertLayerToJSON ),
 			palette,
 			tileSetType,
 		} ),
@@ -237,18 +292,24 @@ const createMap = (
 			return {
 				addObject: ( object: MapObjectArgs ) => {
 					const newLayers = [ ...layers ];
-					newLayers[ index ].objects.push( createObject( object ) );
+					if ( `objects` in newLayers[ index ].data ) {
+						newLayers[ index ].data.objects.push( createObject( object ) );
+					}
 					return createMap( width, height, newLayers, palette, tileSetType );
 				},
 				removeObject: ( objectIndex: number ) => {
 					const newLayers = [ ...layers ];
-					newLayers[ index ].objects.splice( objectIndex, 1 );
+					if ( `objects` in newLayers[ index ].data ) {
+						newLayers[ index ].data.objects.splice( objectIndex, 1 );
+					}
 					return createMap( width, height, newLayers, palette, tileSetType );
 				},
 				updateObject: ( objectIndex: number, newObject: MapObjectArgs ) => {
 					const newLayers = [ ...layers ];
-					newLayers[ index ].objects[ objectIndex ] =
-						newLayers[ index ].objects[ objectIndex ].update( newObject );
+					if ( `objects` in newLayers[ index ].data ) {
+						newLayers[ index ].data.objects[ objectIndex ] =
+							newLayers[ index ].data.objects[ objectIndex ].update( newObject );
+					}
 					return createMap( width, height, newLayers, palette, tileSetType );
 				},
 				updateOption: ( key: string, value: unknown ) => {
@@ -269,9 +330,13 @@ const createMap = (
 
 			// Clear block layers.
 			for ( let i = 0; i < newLayers.length; ++i ) {
-				if ( newLayers[ i ].type === LayerType.block ) {
-					while ( newLayers[ i ].objects.length ) {
-						newLayers[ i ].objects.pop();
+				if ( newLayers[ i ].type === LayerType.block
+					&& ( `objects` in newLayers[ i ].data )
+				) {
+					// @ts-expect-error - We literally just checked for this.
+					while ( newLayers[ i ].data.objects.length ) {
+						// @ts-expect-error - We literally just checked for this.
+						newLayers[ i ].data.objects.pop();
 					}
 				}
 			}
@@ -311,7 +376,10 @@ const transformMapDataToObject = ( data: ArrayBuffer ): LvMap => {
 
 			// If objectType is terminator, move to next layer.
 			if ( objectType === 0xFFFF ) {
-				layers.push( createLayer( layerType === 1 ? LayerType.sprite : LayerType.block, objects, scrollX ) );
+				const newLayer = layerType === 0 || layerType === 1
+					? createBlockLayer( convertByteToLayerType( layerType ), objects, scrollX )
+					: createLayer( convertByteToLayerType( layerType ), { graphics: 0, scrollX: 0, scrollY: 0 } );
+				layers.push( newLayer );
 				objects = [];
 				++currentLayer;
 				i += 2; // Move to bytes after objectType.
@@ -347,19 +415,21 @@ const generateDataBytes = ( map: LvMap ): ArrayBuffer => {
 	const dataList = generateDataList( width, height, layers.length, palette, tileSetType );
 
 	layers.forEach( layer => {
-		const typeFactory = getBlockTypeFactory( layer.type, map.getTilesetType() );
-
 		// Add layer options.
 		dataList.push( { type: DataType.Uint8, value: convertLayerTypeToByte( layer.type ) } );
-		dataList.push( { type: DataType.Float32, value: layer.scrollX } );
+		dataList.push( { type: DataType.Float32, value: layer.data.scrollX } );
 
-		// For each object, add 2 bytes for type, then add bytes for each object data type
-		// & add each datum to data list.
-		layer.objects.forEach( object => {
-			dataList.push( { type: DataType.Uint16, value: object.type() } );
-			const data = typeFactory[ object.type() ].exportData;
-			dataList.push( ...data.map( ( { type, key } ) => ( { type, value: object.getProp( key ) } ) ) );
-		} );
+		if ( `objects` in layer.data ) {
+			const typeFactory = getBlockTypeFactory( layer.type, map.getTilesetType() );
+
+			// For each object, add 2 bytes for type, then add bytes for each object data type
+			// & add each datum to data list.
+			layer.data.objects.forEach( object => {
+				dataList.push( { type: DataType.Uint16, value: object.type() } );
+				const data = typeFactory[ object.type() ].exportData;
+				dataList.push( ...data.map( ( { type, key } ) => ( { type, value: object.getProp( key ) } ) ) );
+			} );
+		}
 
 		// Add terminator for layer.
 		dataList.push( { type: DataType.Uint16, value: 0xFFFF } );
@@ -547,6 +617,7 @@ const getTotalSecondsFromMinutesAndSeconds = ( minutes: number, seconds: number 
 };
 
 export {
+	createBlockLayer,
 	createLayer,
 	createLevel,
 	createMap,

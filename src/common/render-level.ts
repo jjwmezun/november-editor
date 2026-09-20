@@ -352,7 +352,8 @@ const createMapRenderer = (
 		) );
 
 	objectRenderers.forEach( ( objectRenderer: ObjectRenderer, i: number ) => {
-		objectRenderer.updateObjects( layers[ i ].objects, tilesetType );
+		const objects = `objects` in layers[ i ].data ? layers[ i ].data.objects : [];
+		objectRenderer.updateObjects( objects, tilesetType );
 		objectRenderer.updatePalette( selectedPalette );
 	} );
 
@@ -622,7 +623,8 @@ const createMapRenderer = (
 				) );
 
 			objectRenderers.forEach( ( objectRenderer: ObjectRenderer, i: number ) => {
-				objectRenderer.updateObjects( layers[ i ].objects, map.getTilesetType() );
+				const objects = `objects` in layers[ i ].data ? layers[ i ].data.objects : [];
+				objectRenderer.updateObjects( objects, map.getTilesetType() );
 				objectRenderer.updatePalette( palette );
 				objectRenderer.updateDimensions( width, height );
 			} );
@@ -659,6 +661,9 @@ const createMapRenderer = (
 			gridLines.updateOpacity( opacity );
 		},
 		updateLayerObjects: ( layer: number, objects: MapObject[], tilesetType : TileSetType ) => {
+			if ( layer >= objectRenderers.length ) {
+				return;
+			}
 			objectRenderers[ layer ].updateObjects( objects, tilesetType );
 		},
 		updateMagnification: ( width: number, height: number, magnification: number ) => {
@@ -709,7 +714,7 @@ const createMapRenderer = (
 		updateScrollX: ( windowScrollX: number, map: LvMap ) => {
 			const { layers, width } = map.getProps();
 			objectRenderers.forEach( ( objectRenderer: ObjectRenderer, i: number ) => {
-				objectRenderer.updateScrollX( layers[ i ].scrollX, windowScrollX, width );
+				objectRenderer.updateScrollX( layers[ i ].data.scrollX, windowScrollX, width );
 			} );
 		},
 		updateTexture: ( tilesetType : TileSetType ) => {

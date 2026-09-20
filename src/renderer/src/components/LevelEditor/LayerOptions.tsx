@@ -20,7 +20,7 @@ interface LayerOptionsProps {
 
 const LayerOptions = ( props: LayerOptionsProps ) => {
 	const { map, selectedLayer, selectedObject, setSelectedObject, updateLayer, updateMap } = props;
-	const { objects, type } = selectedLayer;
+	const { data, type } = selectedLayer;
 
 	const blockFactory = getBlockTypeFactory( type, map.getTilesetType() );
 
@@ -43,12 +43,12 @@ const LayerOptions = ( props: LayerOptionsProps ) => {
 				<span>Scroll X:</span>
 				<input
 					type="number"
-					value={ selectedLayer.scrollX }
+					value={ selectedLayer.data.scrollX }
 					onChange={ generateLayerOptionUpdater( `scrollX` ) }
 				/>
 			</label>
 		</div>
-		<div>
+		{ `objects` in data && <div>
 			<label>
 				<span>Object List:</span>
 				<select
@@ -57,7 +57,7 @@ const LayerOptions = ( props: LayerOptionsProps ) => {
 					onChange={ generateSelectedObjectUpdater }
 				>
 					<option value="null">Select an object</option>
-					{ objects.map( ( object: MapObject, i: number ) => (
+					{ data.objects.map( ( object: MapObject, i: number ) => (
 						<option key={ i } value={ i }>
 							{ i }.
 							{ blockFactory[ object.type() ].name } ( { object.xBlocks() }, { object.yBlocks() } )
@@ -65,7 +65,7 @@ const LayerOptions = ( props: LayerOptionsProps ) => {
 					) ) }
 				</select>
 			</label>
-		</div>
+		</div> }
 	</div>;
 };
 
