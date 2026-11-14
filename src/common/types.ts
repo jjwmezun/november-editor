@@ -252,17 +252,36 @@ interface LvMap {
 	removeLayer: ( index: number ) => LvMap,
 	switchLayers: ( a: number, b: number ) => LvMap,
 	toJSON: () => object,
-	updateLayer: ( index: number ) => {
-		addObject: ( object: object ) => LvMap,
-		removeObject: ( objectIndex: number ) => LvMap,
-		updateObject: ( objectIndex: number, newObject: MapObjectArgs ) => LvMap,
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		updateOption: ( key: string, value: any ) => LvMap,
-	},
+	updateLayer: ( index: number ) => LvMapLayerUpdater,
 	updateHeight: ( newHeight: number ) => LvMap,
 	updatePalette: ( newPalette: number ) => LvMap,
 	updateTilesetType: ( newTileSetType: TileSetType ) => LvMap,
 	updateWidth: ( newWidth: number ) => LvMap,
+}
+
+interface LvMapByteProps {
+	width: number,
+	height: number,
+	layerCount: number,
+	palette: number,
+	tileSetType: number,
+}
+
+interface LvMapLayerUpdater {
+	addObject: ( object: object ) => LvMap,
+	removeObject: ( objectIndex: number ) => LvMap,
+	updateBackgroundGraphics: ( newBackgroundTextureIndex: number ) => LvMap,
+	updateObject: ( objectIndex: number, newObject: MapObjectArgs ) => LvMap,
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	updateOption: ( key: string, value: any ) => LvMap,
+}
+
+interface LvMapProps {
+	width: number,
+	height: number,
+	layers: Layer[],
+	palette: number,
+	tileSetType: TileSetType,
 }
 
 interface MapEditorProps {
@@ -344,12 +363,13 @@ interface MapRenderer {
 	changeMap: ( map: LvMap ) => void,
 	render: () => void,
 	updateAnimationFrame: ( frame: number ) => void,
+	updateBackground: ( selectedLayer: number, background: number ) => void,
 	updateDimensions: ( width: number, height: number ) => void,
 	updateGridOpacity: ( opacity: number ) => void,
 	updateLayerObjects: ( layer: number, objects: MapObject[], tilesetType : TileSetType ) => void,
 	updateMagnification: ( width: number, height: number, magnification: number ) => void,
 	updatePalette: ( palette: number ) => void,
-	addLayer: ( type: LayerType, selectedPalette: number, tilesetType : TileSetType ) => void,
+	addLayer: ( layer: Layer, selectedPalette: number, tilesetType : TileSetType ) => void,
 	removeLayer: ( layer: number ) => void,
 	setSelectedLayer: ( selectedLayer: number ) => void,
 	setSelectedObject: ( i: number | null, objects: MapObject[], layerType: LayerType ) => void,
@@ -373,31 +393,16 @@ interface Mode {
 	slug: string;
 }
 
-interface LvMapByteProps {
-	width: number,
-	height: number,
-	layerCount: number,
-	palette: number,
-	tileSetType: number,
-}
-
-interface LvMapProps {
-	width: number,
-	height: number,
-	layers: Layer[],
-	palette: number,
-	tileSetType: TileSetType,
-}
-
 interface MousePosition {
 	x: number,
 	y: number,
 }
 
-interface ObjectRenderer {
+interface LayerRenderer {
 	render: () => void;
 	setSelectedLayer: ( isSelected: boolean ) => void;
 	updateAnimationFrame: ( frame: number ) => void;
+	updateBackground: ( background: number ) => void;
 	updateDimensions: ( width: number, height: number ) => void;
 	updateObjects: ( objects: MapObject[], tilesetType: TileSetType ) => void;
 	updatePalette: ( palette: number ) => void;
@@ -837,6 +842,7 @@ export {
 	LevelProps,
 	LvMap,
 	LvMapByteProps,
+	LvMapLayerUpdater,
 	LvMapProps,
 	MapEditorProps,
 	MapObject,
@@ -847,7 +853,7 @@ export {
 	Mat3,
 	Mode,
 	MousePosition,
-	ObjectRenderer,
+	LayerRenderer,
 	Overworld,
 	OverworldEvent,
 	OverworldEventsList,

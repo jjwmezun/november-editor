@@ -140,6 +140,9 @@ const createRenderObject = (
 			case `3fv`:
 				program.setUniformMatrix3fv( name, value as Float32Array );
 			break;
+			case `mat3`:
+				program.setUniformMatrix3fv( name, value as Float32Array );
+			break;
 			default:
 				throw new Error( `Unknown uniform type: ${ type }` );
 		}

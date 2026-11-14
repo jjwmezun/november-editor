@@ -123,6 +123,21 @@ const convertByteToLayerType = ( byte: number ): LayerType => {
 	}
 };
 
+const createBackgroundLayer = (
+	graphics: number = 0,
+	scrollX: number = 1.0,
+	scrollY: number = 1.0,
+): Layer => {
+	return createLayer(
+		LayerType.background,
+		{
+			graphics,
+			scrollX,
+			scrollY,
+		},
+	);
+};
+
 const createBlankLayerOfType = ( type: LayerType ): Layer => {
 	switch ( type ) {
 		case LayerType.block:
@@ -304,6 +319,13 @@ const createMap = (
 					}
 					return createMap( width, height, newLayers, palette, tileSetType );
 				},
+				updateBackgroundGraphics: ( newBackgroundTextureIndex: number ) => {
+					const newLayers = [ ...layers ];
+					if ( `graphics` in newLayers[ index ].data ) {
+						newLayers[ index ].data.graphics = newBackgroundTextureIndex;
+					}
+					return createMap( width, height, newLayers, palette, tileSetType );
+				},
 				updateObject: ( objectIndex: number, newObject: MapObjectArgs ) => {
 					const newLayers = [ ...layers ];
 					if ( `objects` in newLayers[ index ].data ) {
@@ -358,30 +380,50 @@ const transformMapDataToObject = ( data: ArrayBuffer ): LvMap => {
 
 	// Read layer data from buffer.
 	const layers: Layer[] = [];
-	let currentLayer = 0;
+	let currentLayerIndex = 0;
+	let currentLayer: Layer = createBlockLayer( LayerType.block, [], 0 );
 	let state = `readingLayerOptions`;
 	let objectType = 0;
 	let i = getMapHeaderSize(); // Initialize to bytes after width, height, palette, & layer count.
-	let scrollX: number = 0;
-	let layerType: number = 0;
-	let objects: MapObject[] = [];
-	while ( currentLayer < layerCount ) {
+	let layerType = LayerType.block;
+	while ( currentLayerIndex < layerCount ) {
 		if ( state === `readingLayerOptions` ) {
-			layerType = view.getUint8( i );
-			scrollX = view.getFloat32( i + 1 );
-			i += 5; // Move to bytes after layer options.
+			layerType = convertByteToLayerType( view.getUint8( i ) );
+			i += 1;
+
+			switch ( layerType ) {
+				case LayerType.background: {
+					const graphics = view.getUint8( i );
+					i += 1;
+					const scrollX = view.getFloat32( i );
+					i += 4;
+					const scrollY = view.getFloat32( i );
+					i += 4;
+					currentLayer = createBackgroundLayer(
+						graphics,
+						scrollX,
+						scrollY,
+					);
+				} break;
+				case LayerType.block:
+				case LayerType.sprite: {
+					const scrollX = view.getFloat32( i );
+					i += 4;
+					currentLayer = createBlockLayer(
+						layerType,
+						[],
+						scrollX,
+					);
+				} break;
+			}
 			state = `readingType`;
 		} else if ( state === `readingType` ) {
 			objectType = view.getUint16( i );
 
 			// If objectType is terminator, move to next layer.
 			if ( objectType === 0xFFFF ) {
-				const newLayer = layerType === 0 || layerType === 1
-					? createBlockLayer( convertByteToLayerType( layerType ), objects, scrollX )
-					: createLayer( convertByteToLayerType( layerType ), { graphics: 0, scrollX: 0, scrollY: 0 } );
-				layers.push( newLayer );
-				objects = [];
-				++currentLayer;
+				layers.push( currentLayer );
+				++currentLayerIndex;
 				i += 2; // Move to bytes after objectType.
 				state = `readingLayerOptions`;
 			} else { // Otherwise, interpret bytes as objectType for next object.
@@ -390,7 +432,7 @@ const transformMapDataToObject = ( data: ArrayBuffer ): LvMap => {
 			}
 		} else {
 			// Initialize object with type’s default.
-			const typeFactory = getBlockTypeFactory( convertByteToLayerType( layerType ), tileSetTypeValue );
+			const typeFactory = getBlockTypeFactory( layerType, tileSetTypeValue );
 			const object = typeFactory[ objectType ].create( 0, 0, 0 );
 
 			// Go thru each object data type, read from buffer, then move forward bytes read.
@@ -399,7 +441,10 @@ const transformMapDataToObject = ( data: ArrayBuffer ): LvMap => {
 				object[ key ] = view[ `get${ type }` ]( i );
 				i += getDataTypeSize( type );
 			} );
-			objects.push( createObject( { ...object, type: objectType } ) );
+			if ( ! ( `objects` in currentLayer.data ) ) {
+				throw new Error( `Layer of type ${ layerType } must have objects.` );
+			}
+			currentLayer.data.objects.push( createObject( { ...object, type: objectType } ) );
 
 			// Since object has been fully read, try reading the next object’s type.
 			state = `readingType`;
@@ -417,18 +462,32 @@ const generateDataBytes = ( map: LvMap ): ArrayBuffer => {
 	layers.forEach( layer => {
 		// Add layer options.
 		dataList.push( { type: DataType.Uint8, value: convertLayerTypeToByte( layer.type ) } );
-		dataList.push( { type: DataType.Float32, value: layer.data.scrollX } );
 
-		if ( `objects` in layer.data ) {
-			const typeFactory = getBlockTypeFactory( layer.type, map.getTilesetType() );
+		switch ( layer.type ) {
+			case LayerType.background: {
+				if ( ! ( `graphics` in layer.data ) ) {
+					throw new Error( `Layer of type ${ layer.type } must have graphics.` );
+				}
+				dataList.push( { type: DataType.Uint8, value: layer.data.graphics } );
+				dataList.push( { type: DataType.Float32, value: layer.data.scrollX } );
+				dataList.push( { type: DataType.Float32, value: layer.data.scrollY } );
+			} break;
+			case LayerType.block:
+			case LayerType.sprite: {
+				dataList.push( { type: DataType.Float32, value: layer.data.scrollX } );
+				if ( ! ( `objects` in layer.data ) ) {
+					throw new Error( `Layer of type ${ layer.type } must have objects.` );
+				}
+				const typeFactory = getBlockTypeFactory( layer.type, map.getTilesetType() );
 
-			// For each object, add 2 bytes for type, then add bytes for each object data type
-			// & add each datum to data list.
-			layer.data.objects.forEach( object => {
-				dataList.push( { type: DataType.Uint16, value: object.type() } );
-				const data = typeFactory[ object.type() ].exportData;
-				dataList.push( ...data.map( ( { type, key } ) => ( { type, value: object.getProp( key ) } ) ) );
-			} );
+				// For each object, add 2 bytes for type, then add bytes for each object data type
+				// & add each datum to data list.
+				layer.data.objects.forEach( object => {
+					dataList.push( { type: DataType.Uint16, value: object.type() } );
+					const data = typeFactory[ object.type() ].exportData;
+					dataList.push( ...data.map( ( { type, key } ) => ( { type, value: object.getProp( key ) } ) ) );
+				} );
+			} break;
 		}
 
 		// Add terminator for layer.
@@ -461,14 +520,25 @@ const splitMapBytes = ( data: ArrayBuffer, count: number ) => {
 		const tileSetType = convertNumberToTileSetType( view.getUint8( i + 5 ) );
 		const layerCount = view.getUint8( i + 6 );
 		let currentLayer = 0;
-		let currentLayerType = 0;
+		let currentLayerType = LayerType.block;
 		let state = `readingLayerOptions`;
 		let type = 0;
 		i += getMapHeaderSize(); // Move to bytes after width, height, palette, tileset type, & layer count.
 		while ( currentLayer < layerCount ) {
 			if ( state === `readingLayerOptions` ) {
-				currentLayerType = view.getUint8( i );
-				i += 5; // Move to bytes after layer options.
+				currentLayerType = convertByteToLayerType( view.getUint8( i ) );
+
+				switch ( currentLayerType ) {
+					case LayerType.background: {
+						i += 10; // Move to bytes after layer options.
+					} break;
+					case LayerType.block:
+					case LayerType.sprite: {
+						i += 5; // Move to bytes after layer options.
+					} break;
+					default:
+						throw new Error( `Unknown layer type: ${ currentLayerType }` );
+				}
 				state = `readingType`;
 			} else if ( state === `readingType` ) {
 				type = view.getUint16( i );
@@ -485,7 +555,7 @@ const splitMapBytes = ( data: ArrayBuffer, count: number ) => {
 			} else {
 				// Go thru each object data type, read from buffer, then move forward bytes read.
 				const typeFactory = getBlockTypeFactory(
-					convertByteToLayerType( currentLayerType ), tileSetType,
+					currentLayerType, tileSetType,
 				);
 				const data = typeFactory[ type ].exportData;
 				data.forEach( ( { type } ) => {
@@ -617,6 +687,7 @@ const getTotalSecondsFromMinutesAndSeconds = ( minutes: number, seconds: number 
 };
 
 export {
+	createBackgroundLayer,
 	createBlockLayer,
 	createLayer,
 	createLevel,

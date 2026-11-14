@@ -22,6 +22,7 @@ import {
 	loadGraphicsFromData,
 } from '../../../common/graphics';
 import {
+	createBackgroundLayer,
 	createBlockLayer,
 	createLayer,
 	createLevel,
@@ -767,59 +768,82 @@ const Editor = (): ReactElement => {
 						throw new Error( `Invalid layer data for layer #${ k } o’ map #${ j } o’ level #${ i }` );
 					}
 
-					if ( layer.type === `block` || layer.type === `sprite` ) {
-						if ( ! ( `objects` in layer.data ) || ! Array.isArray( layer.data.objects ) ) {
-							// eslint-disable-next-line max-len
-							throw new Error( `Invalid layer objects for layer #${ k } o’ map #${ j } o’ level #${ i }` );
+					switch ( layer.type ) {
+						case `block`:
+						case `sprite`: {
+							if ( ! ( `objects` in layer.data ) || ! Array.isArray( layer.data.objects ) ) {
+								// eslint-disable-next-line max-len
+								throw new Error( `Invalid layer objects for layer #${ k } o’ map #${ j } o’ level #${ i }` );
+							}
+							if ( ! ( `scrollX` in layer.data ) || typeof layer.data.scrollX !== `number` ) {
+								// eslint-disable-next-line max-len
+								throw new Error( `Invalid layer scrollX for layer #${ k } o’ map #${ j } o’ level #${ i }` );
+							}
+
+							const objects = layer.data.objects.map(
+								( object: Record<string, unknown>, l: number ): MapObject => {
+									if ( ! object || typeof object !== `object` ) {
+										// eslint-disable-next-line max-len
+										throw new Error( `Invalid object data for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+									}
+									if ( typeof object[ `type` ] !== `number` ) {
+										// eslint-disable-next-line max-len
+										throw new Error( `Invalid object type for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+									}
+									if ( typeof object[ `x` ] !== `number` ) {
+										// eslint-disable-next-line max-len
+										throw new Error( `Invalid object x for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+									}
+									if ( typeof object[ `y` ] !== `number` ) {
+										// eslint-disable-next-line max-len
+										throw new Error( `Invalid object y for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+									}
+									if ( `width` in object && typeof object[ `width` ] !== `number` ) {
+										// eslint-disable-next-line max-len
+										throw new Error( `Invalid object width for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+									}
+									if ( `height` in object && typeof object[ `height` ] !== `number` ) {
+										// eslint-disable-next-line max-len
+										throw new Error( `Invalid object height for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
+									}
+
+									return createObject( {
+										type: object.type,
+										x: object.x,
+										y: object.y,
+										width: object.width as number,
+										height: object.height as number,
+										...object,
+									} );
+								},
+							);
+
+							return createBlockLayer(
+								layer.type as LayerType,
+								objects,
+								layer.data.scrollX,
+							);
 						}
-						if ( ! ( `scrollX` in layer.data ) || typeof layer.data.scrollX !== `number` ) {
-							// eslint-disable-next-line max-len
-							throw new Error( `Invalid layer scrollX for layer #${ k } o’ map #${ j } o’ level #${ i }` );
-						}
-
-						const objects = layer.data.objects.map(
-							( object: Record<string, unknown>, l: number ): MapObject => {
-								if ( ! object || typeof object !== `object` ) {
-									// eslint-disable-next-line max-len
-									throw new Error( `Invalid object data for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
-								}
-								if ( typeof object[ `type` ] !== `number` ) {
-									// eslint-disable-next-line max-len
-									throw new Error( `Invalid object type for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
-								}
-								if ( typeof object[ `x` ] !== `number` ) {
-									// eslint-disable-next-line max-len
-									throw new Error( `Invalid object x for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
-								}
-								if ( typeof object[ `y` ] !== `number` ) {
-									// eslint-disable-next-line max-len
-									throw new Error( `Invalid object y for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
-								}
-								if ( `width` in object && typeof object[ `width` ] !== `number` ) {
-									// eslint-disable-next-line max-len
-									throw new Error( `Invalid object width for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
-								}
-								if ( `height` in object && typeof object[ `height` ] !== `number` ) {
-									// eslint-disable-next-line max-len
-									throw new Error( `Invalid object height for object #${ l } o’ layer #${ k } o’ map #${ j } o’ level #${ i }` );
-								}
-
-								return createObject( {
-									type: object.type,
-									x: object.x,
-									y: object.y,
-									width: object.width as number,
-									height: object.height as number,
-									...object,
-								} );
-							},
-						);
-
-						return createBlockLayer(
-							layer.type as LayerType,
-							objects,
-							layer.data.scrollX,
-						);
+						break;
+						case `background`: {
+							if ( ! ( `graphics` in layer.data ) || typeof layer.data.graphics !== `number` ) {
+								// eslint-disable-next-line max-len
+								throw new Error( `Invalid graphics for background layer #${ k } o’ map #${ j } o’ level #${ i }` );
+							}
+							if ( ! ( `scrollX` in layer.data ) || typeof layer.data.scrollX !== `number` ) {
+								// eslint-disable-next-line max-len
+								throw new Error( `Invalid layer scrollX for layer #${ k } o’ map #${ j } o’ level #${ i }` );
+							}
+							if ( ! ( `scrollY` in layer.data ) || typeof layer.data.scrollY !== `number` ) {
+								// eslint-disable-next-line max-len
+								throw new Error( `Invalid layer scrollY for layer #${ k } o’ map #${ j } o’ level #${ i }` );
+							}
+							return createBackgroundLayer(
+								layer.data.graphics,
+								layer.data.scrollX,
+								layer.data.scrollY,
+							);
+						} break;
 					}
 
 					return createLayer(

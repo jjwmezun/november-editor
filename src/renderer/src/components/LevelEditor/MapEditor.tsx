@@ -75,6 +75,12 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 			: ( editorState === EditorStateType.move )
 				? `move`
 				: `default`;
+	const backgroundTextureIndex = ( selectedLayer === null
+		|| layers.length < selectedLayer
+		|| ! layers[ selectedLayer ]
+		|| ! ( `graphics` in layers[ selectedLayer ].data ) )
+		? 0
+		: layers[ selectedLayer ].data.graphics ?? 0;
 
 	const calculateLocalPosition = ( n: number ) => Math.floor( n / ( 16 * magnification ) );
 
@@ -82,13 +88,14 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		if ( selectedMap === null ) {
 			return;
 		}
-		setSelectedLayer( layers.length );
+		const selectedLayerIndex = layers.length;
+		setSelectedLayer( selectedLayerIndex );
 		setSelectedObject( null );
 		updateMap( selectedMap.addLayer( addLayerOption ) );
 		if ( ! renderer ) {
 			return;
 		}
-		renderer.addLayer( addLayerOption, palette, selectedMap.getTilesetType() );
+		renderer.addLayer( selectedMap.getLayers()[ selectedLayerIndex ], palette, selectedMap.getTilesetType() );
 	};
 
 	const addObject = ( o: MapObjectArgs ) => {
@@ -646,6 +653,14 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		renderer.updateLayerObjects( selectedLayer, objects, selectedMap.getTilesetType() );
 	}, [ renderer, tilesetType ] );
 
+	useEffect( () => {
+		if ( ! renderer || selectedLayer === null ) {
+			return;
+		}
+
+		renderer.updateBackground( selectedLayer, backgroundTextureIndex );
+	}, [ renderer, backgroundTextureIndex ] );
+
 	return <div>
 		<MapOptions
 			selectedMap={ selectedMap }
@@ -730,6 +745,7 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 			</div>
 		</div>
 		{ selectedLayer !== null && selectedLayer < layers.length && <LayerOptions
+			graphics={ graphics }
 			map={ selectedMap }
 			selectedLayer={ layers[ selectedLayer ] }
 			selectedObject={ selectedObject }
