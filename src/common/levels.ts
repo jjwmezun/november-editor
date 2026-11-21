@@ -1,5 +1,5 @@
 import { createObject, getBlockTypeFactory } from './objects';
-import { getDataTypeSize } from './bytes';
+import { getDataTypeSize, getTotalBytes } from './bytes';
 import { createGoal, goals } from './goals';
 import { encodeText, decodeText } from './text';
 import {
@@ -336,7 +336,7 @@ const createMap = (
 				},
 				updateOption: ( key: string, value: unknown ) => {
 					const newLayers = [ ...layers ];
-					newLayers[ index ] = { ...newLayers[ index ], [ key ]: value };
+					newLayers[ index ].data[ key ] = value;
 					return createMap( width, height, newLayers, palette, tileSetType );
 				},
 			};
@@ -604,10 +604,12 @@ const decodeLevelData = ( data: Uint8Array ): LevelData => {
 
 	// Gather maps.
 	const mapCount = data[ goalDataSize + 1 ];
-	const mapsBuffer = new ArrayBuffer( data.length - goalDataSize - 2 );
+
+	const mapStart = goalDataSize + 2 + mapCount * 4;
+	const mapsBuffer = new ArrayBuffer( data.length - goalDataSize - 2 - mapCount * 4 );
 	const mapsView = new DataView( mapsBuffer );
 	for ( let i = 0; i < mapsBuffer.byteLength; i++ ) {
-		mapsView.setUint8( i, data[ i + goalDataSize + 2 ] );
+		mapsView.setUint8( i, data[ i + mapStart ] );
 	}
 	const mapData = splitMapBytes( mapsBuffer, mapCount );
 	const maps = mapData.maps;
@@ -668,6 +670,16 @@ const encodeLevelData = ( level: Level ): ByteBlock[] => {
 		data.push( { type, value: goal.getOptionData( key ) } );
 	} );
 	data.push( { type: DataType.Uint8, value: maps.length } );
+
+	let mapPointerStart = getTotalBytes( data ) + ( maps.length * 4 );
+
+	// Implement map pointers.
+	maps.forEach( map => {
+		data.push( { type: DataType.Uint32, value: mapPointerStart } );
+		mapPointerStart += Array.from( new Uint8Array( map ) ).length;
+	} );
+
+	// Concat map data.
 	maps.forEach( map => {
 		new Uint8Array( map ).forEach( byte => data.push( { type: DataType.Uint8, value: byte } ) );
 	} );
