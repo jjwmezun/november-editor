@@ -91,22 +91,25 @@ const MapEditor = ( props: MapEditorProps ): ReactElement => {
 		const selectedLayerIndex = layers.length;
 		setSelectedLayer( selectedLayerIndex );
 		setSelectedObject( null );
-		updateMap( selectedMap.addLayer( addLayerOption ) );
+		const newMap = selectedMap.addLayer( addLayerOption );
+		updateMap( newMap );
 		if ( ! renderer ) {
 			return;
 		}
-		renderer.addLayer( selectedMap.getLayers()[ selectedLayerIndex ], palette, selectedMap.getTilesetType() );
+		renderer.addLayer( newMap.getLayers()[ selectedLayerIndex ], palette, newMap.getTilesetType() );
 	};
 
 	const addObject = ( o: MapObjectArgs ) => {
 		if ( selectedMap === null || selectedLayer === null ) {
 			return;
 		}
-		updateMap( selectedMap.updateLayer( selectedLayer ).addObject( o ) );
+		const newMap = selectedMap.updateLayer( selectedLayer ).addObject( o );
+		updateMap( newMap );
+		const newObjects = newMap.getLayers()[ selectedLayer ]?.data?.objects ?? [];
 		if ( ! renderer ) {
 			return;
 		}
-		renderer.updateLayerObjects( selectedLayer, objects, selectedMap.getTilesetType() );
+		renderer.updateLayerObjects( selectedLayer, newObjects, newMap.getTilesetType() );
 	};
 
 	const changeAddLayerOption = ( e: SyntheticEvent ) => {

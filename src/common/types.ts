@@ -173,6 +173,18 @@ interface Layer {
 	data: BlockLayerData | BackgroundLayerData,
 }
 
+interface LayerRenderer {
+	render: () => void;
+	setSelectedLayer: ( isSelected: boolean ) => void;
+	updateAnimationFrame: ( frame: number ) => void;
+	updateBackground: ( background: number ) => void;
+	updateDimensions: ( width: number, height: number ) => void;
+	updateObjects: ( objects: MapObject[], tilesetType: TileSetType ) => void;
+	updatePalette: ( palette: number ) => void;
+	updateScrollX: ( layerScrollX: number, windowScrollX: number, mapWidth: number ) => void;
+	updateTexture: ( tilesetType : TileSetType ) => void;
+}
+
 enum LayerTileSetOption {
 	universal = `universal`,
 	tilesetSpecific = `tilesetSpecific`,
@@ -396,18 +408,6 @@ interface Mode {
 interface MousePosition {
 	x: number,
 	y: number,
-}
-
-interface LayerRenderer {
-	render: () => void;
-	setSelectedLayer: ( isSelected: boolean ) => void;
-	updateAnimationFrame: ( frame: number ) => void;
-	updateBackground: ( background: number ) => void;
-	updateDimensions: ( width: number, height: number ) => void;
-	updateObjects: ( objects: MapObject[], tilesetType: TileSetType ) => void;
-	updatePalette: ( palette: number ) => void;
-	updateScrollX: ( layerScrollX: number, windowScrollX: number, mapWidth: number ) => void;
-	updateTexture: ( tilesetType : TileSetType ) => void;
 }
 
 interface Overworld {
